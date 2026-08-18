@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Overture">
+  <rect width="32" height="32" rx="7" fill="#0f172a" />
+  <g fill="none" stroke="#4cc2ff" stroke-width="2.6" stroke-linecap="round">
+    <path d="M8 22V14" />
+    <path d="M14 22V10" />
+    <path d="M20 22V13" />
+    <path d="M26 22V17" />
+  </g>
+</svg>

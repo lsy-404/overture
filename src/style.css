@@ -1,0 +1,616 @@
+@import "./vendor/winui/styles/theme.css";
+
+:root {
+  /* Standard Microsoft/WinUI look: theme.css's own accent (#0067C0 light /
+     #4CC2FF dark) and neutral white/gray surfaces, unmodified — only the
+     geometry/type tokens it doesn't define are added here. */
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --shadow-card: 0 1px 2px var(--ctrl-elevation-bottom, rgba(0, 0, 0, 0.08)), 0 8px 24px -12px rgba(0, 0, 0, 0.22);
+  --font-sans: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.35), 0 12px 32px -16px rgba(0, 0, 0, 0.65);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* theme.css (vendor/winui) styles its own demo shell as a fixed-viewport
+   app with `height: 100%; overflow: hidden` on html/body/#app — it manages
+   scrolling itself via internal regions. We're a normal scrolling document
+   (and #app is Vite's default mount id, so that rule targets us too), so
+   undo it here. */
+html,
+body,
+#app {
+  height: auto;
+  overflow: visible;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--app-bg);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  margin: 0 0 0.5em;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--accent-base);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+}
+
+input,
+select {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* The vendored theme sets `user-select: none` on `*` — a desktop-app
+   convention that also blocks editing form fields and copying deployment
+   output, both of which this wizard needs. */
+input,
+textarea,
+p,
+li,
+td,
+th,
+code,
+pre,
+h1,
+h2,
+h3,
+h4 {
+  user-select: text;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--card-bg-secondary);
+  padding: 0.1em 0.4em;
+  border-radius: var(--radius-md);
+}
+
+/* Shared wizard building blocks — plain utility classes, no framework. */
+
+.step-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.step-subtitle {
+  color: var(--text-secondary);
+  margin-bottom: 1.5em;
+}
+
+.field {
+  margin-bottom: 18px;
+}
+
+.field label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+  color: var(--text-primary);
+}
+
+.field input,
+.field select {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ctrl-border, var(--card-stroke));
+  border-bottom-width: 2px;
+  background: var(--ctrl-fill-default);
+  color: var(--text-primary);
+  transition: border-color var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease), background var(--fast-duration, 0.167s);
+}
+
+.field input:hover,
+.field select:hover {
+  background: var(--ctrl-fill-secondary);
+}
+
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-bottom-color: var(--accent-base);
+  background: var(--ctrl-fill-input-active);
+}
+
+.field input:disabled,
+.field select:disabled {
+  background: var(--ctrl-fill-disabled);
+  color: var(--text-disabled);
+}
+
+.field-help {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 6px;
+}
+
+.field-tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 1px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+
+.field-tag.required {
+  background: var(--SystemFillColorCriticalBackgroundBrush);
+  color: var(--SystemFillColorCriticalBrush);
+}
+
+.field-tag.optional {
+  background: var(--subtle-secondary);
+  color: var(--text-secondary);
+}
+
+.field-tag.recommended {
+  background: var(--SystemFillColorCautionBackgroundBrush);
+  color: var(--SystemFillColorCautionBrush);
+}
+
+.step-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.step-actions .spacer {
+  flex: 1;
+}
+
+/* Primary step navigation reads as more prominent than an inline control. */
+.step-actions .win-btn {
+  padding: 10px 22px;
+  min-height: 40px;
+  font-size: 0.95rem;
+}
+
+/* Reserved for <a class="btn ..."> link-buttons (WinButton can't render an <a>).
+   Actual <button> elements use the WinButton component instead. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--ctrl-border, var(--card-stroke));
+  padding: 5px 11px 6px;
+  min-height: 32px;
+  font-size: 0.875rem;
+  font-weight: normal;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--ctrl-fill-default);
+  color: var(--text-primary);
+  transition: background var(--fast-duration, 0.167s) var(--fast-out-slow-in, ease);
+}
+
+.btn:hover {
+  background: var(--ctrl-fill-secondary);
+  text-decoration: none;
+}
+
+.card-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color var(--fast-duration, 0.167s), box-shadow var(--fast-duration, 0.167s);
+}
+
+.card-option:hover {
+  border-color: var(--accent-hover);
+}
+
+.card-option.selected {
+  border-color: var(--accent-base);
+  box-shadow: 0 0 0 1px var(--accent-base);
+}
+
+.card-option h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.card-option p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.screenshot-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 160px;
+  border: 1px dashed var(--card-stroke);
+  border-radius: var(--radius-lg);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  background: var(--card-bg-secondary);
+  margin: 12px 0;
+}
+
+.guide-card {
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  background: var(--card-bg);
+  backdrop-filter: blur(20px);
+  margin: 16px 0;
+}
+
+.guide-card h3 {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.guide-card ol {
+  margin: 0 0 4px;
+  padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.guide-card ol li + li {
+  margin-top: 4px;
+}
+
+.permission-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 0.76rem;
+}
+
+.permission-table-wrap {
+  overflow-x: auto;
+}
+
+.permission-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.permission-table th,
+.permission-table td {
+  padding: 8px;
+  border: 1px solid var(--stroke-divider);
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.permission-table th {
+  background: var(--subtle-secondary);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.requirement-required,
+.requirement-recommended,
+.requirement-optional {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.requirement-required {
+  color: var(--SystemFillColorSuccessBrush);
+}
+
+.requirement-recommended {
+  color: var(--SystemFillColorCautionBrush);
+}
+
+.requirement-optional {
+  color: var(--text-secondary);
+}
+
+.check-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+.check-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ctrl-strong-fill);
+}
+
+.check-dot-checking {
+  background: var(--accent-base);
+}
+
+.check-dot-ok {
+  background: var(--SystemFillColorSuccessBrush);
+}
+
+.check-dot-unknown {
+  background: var(--SystemFillColorCautionBrush);
+}
+
+.check-dot-missing,
+.check-dot-error {
+  background: var(--SystemFillColorCriticalBrush);
+}
+
+.kv-list {
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 16px;
+  background: var(--card-bg-secondary);
+}
+
+.kv-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  font-size: 0.88rem;
+  border-bottom: 1px solid var(--stroke-divider);
+}
+
+.kv-row:last-child {
+  border-bottom: none;
+}
+
+.kv-row dt {
+  color: var(--text-secondary);
+}
+
+.kv-row dd {
+  margin: 0;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  word-break: break-word;
+}
+
+.execute-steps {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.execute-step-row {
+  align-items: center;
+}
+
+.execute-step-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-dot {
+  display: inline-block;
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--ctrl-strong-fill);
+}
+
+.status-dot-running {
+  background: var(--accent-base);
+}
+
+.status-dot-success {
+  background: var(--SystemFillColorSuccessBrush);
+}
+
+.status-dot-failed {
+  background: var(--SystemFillColorCriticalBrush);
+}
+
+.required-star {
+  color: var(--SystemFillColorCriticalBrush);
+  font-weight: 700;
+  margin-right: 3px;
+}
+
+/* WinCheckBox renders `display: inline-flex` (fine standalone, but several
+   in a row flow side by side with no line break). Stack them like the old
+   .check-row labels did. */
+.win-checkbox {
+  display: flex;
+  margin-bottom: 12px;
+}
+
+/* WinInfoBar's own layout has no top/bottom padding — it relies on the
+   (16px-tall) severity icon's margin for vertical breathing room, which we
+   don't render (IsIconVisible="false", no bundled icon font). Add it back. */
+.win-infobar-layout {
+  padding-top: 10px !important;
+  padding-bottom: 10px !important;
+}
+
+.tos-scroll {
+  margin: 8px 0 0;
+}
+
+.credential-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.credential-label {
+  font-weight: 600;
+  min-width: 64px;
+}
+
+.credential-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  word-break: break-all;
+}
+
+.tos-section {
+  margin-bottom: 14px;
+}
+
+.tos-section:last-child {
+  margin-bottom: 0;
+}
+
+.tos-section h4 {
+  font-size: 0.85rem;
+  margin: 0 0 4px;
+  color: var(--text-primary);
+}
+
+.tos-section p {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.tos-section ul {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  padding-left: 20px;
+}
+
+.tos-section li + li {
+  margin-top: 4px;
+}
+
+/* Step navigation slide, direction-aware (App.vue picks the name by step delta).
+   No out-in mode — both steps are briefly present at once, so the leaving one
+   is taken out of flow (absolute) to avoid doubling the scroll container's
+   height while they cross-fade. */
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active {
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+}
+
+.slide-left-leave-active,
+.slide-right-leave-active {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.slide-left-enter-from {
+  transform: translateX(24px);
+  opacity: 0;
+}
+
+.slide-left-leave-to {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.slide-right-enter-from {
+  transform: translateX(-24px);
+  opacity: 0;
+}
+
+.slide-right-leave-to {
+  transform: translateX(24px);
+  opacity: 0;
+}
+
+.confetti-layer {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 999;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  opacity: 0.9;
+  border-radius: 1px;
+  animation-name: confetti-fall;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translate(var(--confetti-drift), 105vh) rotate(var(--confetti-spin));
+    opacity: 0;
+  }
+}
