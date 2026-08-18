@@ -22,10 +22,10 @@
     "vue-i18n": "^11.4.5"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260524.1",
+    "@cloudflare/workers-types": "^5.20260815.1",
     "tsx": "^4.20.3",
     "typescript": "^6.0.3",
-    "vite-node": "^4.0.9",
+    "vite-node": "^6.0.0",
     "vue-tsc": "^3.3.4",
     "wrangler": "^4.94.0"
   }

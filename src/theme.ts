@@ -18,7 +18,7 @@ import { ref } from "vue";
 export const SUPPORTED_THEME_MODES = ["light", "dark", "auto"] as const;
 export type ThemeMode = (typeof SUPPORTED_THEME_MODES)[number];
 
-const THEME_KEY = "edgesonic_installer_theme";
+const THEME_KEY = "overture_theme";
 
 // vendor/winui's theme.css ships `html.theme-light` / `html.theme-dark`
 // overrides (higher specificity than its `@media (prefers-color-scheme)`

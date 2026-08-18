@@ -16,3 +16,10 @@ These are not style preferences. A change that breaks one of them is a vulnerabi
   path is gated again by the Worker relay's allowlist. Neither gate may be widened to a prefix match.
 - The relay must never become a general-purpose proxy, and must never log Authorization headers or
   request/response bodies.
+- **No logging, anywhere.** This is a public deployer pointed at strangers' Cloudflare accounts, so it
+  keeps no record of who deployed what: no `console.*` in the SPA or the Worker, no Workers
+  observability, no analytics, no narration channel out of the sandbox. The one permitted diagnostic is
+  a failure message attached to the step it happened in, shown to the user in their own browser and
+  stored nowhere.
+- **No persistence.** The Worker has no KV, no D1, no cache of its own. The deploy policy is plain
+  Worker vars read per request. Nothing about a deployment survives the request that made it.

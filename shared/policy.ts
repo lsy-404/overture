@@ -17,14 +17,18 @@
 // is willing to fetch a package from. Shared by the policy page and the Worker
 // that enforces it. Keep this file free of Worker and DOM globals.
 //
+// The policy lives in the Worker's own plain vars, so there is nothing to store
+// and nothing to authenticate: the operator edits wrangler.toml (or the vars in
+// the dashboard) and redeploys. That keeps this Worker stateless — it holds no
+// record of anything, which is the whole point of a public deployer that other
+// people's Cloudflare tokens pass through.
+//
 // A package is third-party code that runs against the visitor's own Cloudflare
-// account, so the allowlist starts enabled. Turning it off makes this a deployer
-// for any repository on GitHub — an operator can want that, but it has to be a
-// deliberate choice rather than the default.
+// account, so the allowlist starts enabled: an unset ALLOWLIST_ENABLED means on.
+// Turning it off makes this a deployer for any repository on GitHub — an operator
+// can want that, but it has to be a deliberate `"false"`.
 
 import { parseSource, sourceSlug, type SourceRef } from "./package";
-
-export const POLICY_KV_KEY = "deploy-policy";
 
 export const MAX_POLICY_SOURCES = 200;
 
@@ -32,12 +36,6 @@ export interface DeployPolicy {
   allowlistEnabled: boolean;
   /** `owner/repo`, lowercased, de-duplicated. */
   sources: string[];
-  /** ISO timestamp of the last policy write, or an empty string for the seed. */
-  updatedAt: string;
-}
-
-export function emptyPolicy(): DeployPolicy {
-  return { allowlistEnabled: true, sources: [], updatedAt: "" };
 }
 
 /** Returns the canonical `owner/repo`, or null when the entry isn't one. */
@@ -51,32 +49,25 @@ export function isSourceAllowed(policy: DeployPolicy, ref: SourceRef): boolean {
   return policy.sources.includes(sourceSlug(ref).toLowerCase());
 }
 
-/**
- * Accepts whatever the policy page or the `DEFAULT_SOURCES` var sends and
- * returns something safe to store: unknown fields dropped, entries that aren't
- * `owner/repo` dropped, list capped.
- */
-export function sanitizePolicy(input: unknown, updatedAt: string): DeployPolicy {
-  const raw = (input && typeof input === "object" ? input : {}) as Partial<DeployPolicy>;
-  const entries = Array.isArray(raw.sources) ? raw.sources : [];
+/** Comma or whitespace separated `owner/repo` list, as the var carries it. */
+export function parseSourceList(value: string): string[] {
   const sources: string[] = [];
-  for (const entry of entries) {
-    if (typeof entry !== "string") continue;
+  for (const entry of value.split(/[,\s]+/)) {
     const normalized = normalizeSourceEntry(entry);
     if (normalized && !sources.includes(normalized)) sources.push(normalized);
     if (sources.length >= MAX_POLICY_SOURCES) break;
   }
-  return {
-    allowlistEnabled: raw.allowlistEnabled !== false,
-    sources,
-    updatedAt,
-  };
+  return sources;
 }
 
-/** Comma or whitespace separated `owner/repo` list, as the seed var carries it. */
-export function parseSourceList(value: string): string[] {
-  return value
-    .split(/[,\s]+/)
-    .map((entry) => normalizeSourceEntry(entry))
-    .filter((entry): entry is string => !!entry);
+/**
+ * Reads the policy out of the Worker's vars. Both are plain strings because
+ * that is all a var can be: anything other than the exact string `"false"`
+ * leaves the allowlist on, so a typo fails closed.
+ */
+export function policyFromVars(vars: { ALLOWLIST_ENABLED?: string; ALLOWED_SOURCES?: string }): DeployPolicy {
+  return {
+    allowlistEnabled: (vars.ALLOWLIST_ENABLED || "").trim().toLowerCase() !== "false",
+    sources: parseSourceList(vars.ALLOWED_SOURCES || ""),
+  };
 }

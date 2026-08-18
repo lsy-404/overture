@@ -1,0 +1,49 @@
+# Overture — wrangler config template
+# ---------------------------------------------------------------------------
+# This is the public, committable template. The real wrangler.toml carries a
+# private account_id and is excluded via .gitignore.
+#
+# First-time setup:
+#   cp wrangler.toml.example wrangler.toml
+#   npm run build && npm run deploy
+#
+# One Worker serves the built wizard (dist/) and the routes it talks to:
+# /cf, /r2, /github, /policy. See CONTRACT.md for what each one does. It stores
+# nothing: no KV, no database, no logs.
+#
+# ALLOWED_ORIGINS is a comma-separated, exact-match allowlist of *other*
+# origins permitted to call this Worker's relay routes cross-origin. The
+# wizard's own same-origin calls don't need it.
+#
+# The deploy policy is these two vars and nothing else — edit them here (or in
+# the dashboard) and redeploy. The policy page in the wizard shows what is in
+# effect but cannot change it, so there is no admin password to leak.
+#
+#   ALLOWLIST_ENABLED  anything other than "false" keeps the allowlist on, so a
+#                      typo fails closed. "false" lets a visitor deploy a package
+#                      from any GitHub repository they name.
+#   ALLOWED_SOURCES    comma-separated owner/repo entries this instance accepts.
+# ---------------------------------------------------------------------------
+name = "overture"
+main = "worker/index.ts"
+compatibility_date = "2025-05-24"
+compatibility_flags = ["nodejs_compat"]
+account_id = "<YOUR_CLOUDFLARE_ACCOUNT_ID>"
+
+# The production custom domain is configured once in the Cloudflare dashboard.
+# Do not declare it here: normal releases only update this Worker and must not
+# require permission to edit Zone routes.
+
+[assets]
+directory = "dist"
+binding = "ASSETS"
+
+[vars]
+ALLOWED_ORIGINS = ""
+ALLOWLIST_ENABLED = "true"
+ALLOWED_SOURCES = "wuyilingwei/edgesonic"
+
+# Off on purpose. This Worker relays other people's Cloudflare API traffic, so it
+# keeps no record of it — see the no-logging invariant in CLAUDE.md.
+[observability]
+enabled = false

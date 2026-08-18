@@ -274,19 +274,6 @@ code {
   font-size: 0.85rem;
 }
 
-.screenshot-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 160px;
-  border: 1px dashed var(--card-stroke);
-  border-radius: var(--radius-lg);
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  background: var(--card-bg-secondary);
-  margin: 12px 0;
-}
-
 .guide-card {
   border: 1px solid var(--card-stroke);
   border-radius: var(--radius-lg);
@@ -464,6 +451,10 @@ code {
   background: var(--SystemFillColorSuccessBrush);
 }
 
+.status-dot-skipped {
+  background: var(--SystemFillColorCautionBrush);
+}
+
 .status-dot-failed {
   background: var(--SystemFillColorCriticalBrush);
 }
@@ -490,10 +481,6 @@ code {
   padding-bottom: 10px !important;
 }
 
-.tos-scroll {
-  margin: 8px 0 0;
-}
-
 .credential-row {
   display: flex;
   align-items: center;
@@ -513,35 +500,103 @@ code {
   word-break: break-all;
 }
 
-.tos-section {
-  margin-bottom: 14px;
+/* Verbatim third-party text — terms, licences, deploy logs. The pane takes what
+   height the fixed-height card has left and is the only thing that scrolls. */
+.text-pane {
+  flex: 1;
+  /* Below this the pane stops shrinking and the card scrolls instead — a few
+     visible lines beat a sliver on a short window. */
+  min-height: 140px;
+  overflow: auto;
+  margin-top: 12px;
+  padding: 16px;
+  background: var(--card-bg-secondary);
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-lg);
 }
 
-.tos-section:last-child {
-  margin-bottom: 0;
+.text-pane pre,
+.log-pane pre {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.tos-section h4 {
+.log-pane {
+  max-height: 220px;
+  overflow: auto;
+  padding: 12px 14px;
+  background: var(--card-bg-secondary);
+  border: 1px solid var(--card-stroke);
+  border-radius: var(--radius-lg);
+}
+
+.pane-tabs {
+  flex: none;
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--stroke-divider);
+}
+
+.pane-tab {
+  border: none;
+  background: none;
+  padding: 8px 12px;
   font-size: 0.85rem;
-  margin: 0 0 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+
+.pane-tab:hover {
   color: var(--text-primary);
 }
 
-.tos-section p {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin: 0;
+.pane-tab.active {
+  color: var(--text-primary);
+  font-weight: 600;
+  border-bottom-color: var(--accent-base);
 }
 
-.tos-section ul {
-  font-size: 0.85rem;
+.inline-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   color: var(--text-secondary);
+  padding: 20px 0;
+}
+
+.section-heading {
+  font-size: 0.95rem;
+  margin: 24px 0 8px;
+  color: var(--text-primary);
+}
+
+.plain-list {
   margin: 0;
   padding-left: 20px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
 }
 
-.tos-section li + li {
-  margin-top: 4px;
+.plain-list li + li {
+  margin-top: 6px;
+}
+
+.tone-ok {
+  color: var(--SystemFillColorSuccessBrush);
+}
+
+.tone-warn {
+  color: var(--SystemFillColorCautionBrush);
+}
+
+.tone-bad {
+  color: var(--SystemFillColorCriticalBrush);
 }
 
 /* Step navigation slide, direction-aware (App.vue picks the name by step delta).
