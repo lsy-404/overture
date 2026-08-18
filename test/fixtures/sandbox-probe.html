@@ -1,0 +1,145 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Regression fixture for the capability bridge's isolation properties. Open it
+  from any static server rooted at the repository:
+
+      python3 -m http.server 8899
+      open http://localhost:8899/test/fixtures/sandbox-probe.html
+
+  It asserts, in a real browser, the four things src/lib/sandbox/host.ts relies
+  on: a module loads inside an opaque-origin frame, that frame cannot read the
+  host document, a rejected capability surfaces as a thrown error in the recipe,
+  and the ready/run timeouts actually fire.
+-->
+<meta charset="utf-8" />
+<title>Overture sandbox probe</title>
+<style>
+  body { font: 13px ui-monospace, monospace; padding: 16px; }
+  pre { line-height: 1.7; }
+</style>
+<h1>Overture sandbox probe</h1>
+<pre id="out"></pre>
+<script>
+  const out = document.getElementById("out");
+  let failures = 0;
+  function say(name, ok, detail) {
+    if (!ok) failures++;
+    out.textContent += (ok ? "PASS  " : "FAIL  ") + name + (detail ? "   " + detail : "") + "\n";
+  }
+
+  // Mirrors the load strategy of GUEST_BOOTSTRAP in src/lib/sandbox/guest.ts.
+  const BOOTSTRAP = `
+    (function () {
+      var isolation = "unknown";
+      try { void parent.document.title; isolation = "leaked"; }
+      catch (error) { isolation = "isolated:" + (error && error.name); }
+      function post(message) { parent.postMessage(message, "*"); }
+      window.addEventListener("message", function (event) {
+        if (event.source !== parent) return;
+        var data = event.data;
+        if (!data || data.kind !== "start") return;
+        run(data);
+      });
+      async function load(source) {
+        var url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+        try { return (await import(url)).deploy; } finally { URL.revokeObjectURL(url); }
+      }
+      async function run(data) {
+        var mode = "";
+        var deploy = null;
+        var trouble = "";
+        try { deploy = await load(data.script); mode = "blob-import"; }
+        catch (error) { trouble = String((error && error.message) || error); }
+        if (!deploy) {
+          try {
+            deploy = new Function(data.script.replace(/^[ \\t]*export[ \\t]+/gm, "") + "\\nreturn deploy;")();
+            mode = "new-function";
+          } catch (error) { trouble += " | " + String((error && error.message) || error); }
+        }
+        if (!deploy) { post({ kind: "failed", message: "no deploy export: " + trouble, isolation: isolation }); return; }
+        var logs = [];
+        try {
+          await deploy({
+            log: function (line) { logs.push(line); return Promise.resolve(); },
+            denied: function () { return Promise.reject(new Error("capability \\"kv\\" is not declared")); },
+            forever: function () { return new Promise(function () {}); },
+          });
+          post({ kind: "finished", mode: mode, isolation: isolation, logs: logs });
+        } catch (error) {
+          post({ kind: "failed", mode: mode, isolation: isolation, message: String((error && error.message) || error) });
+        }
+      }
+      post({ kind: "ready", isolation: isolation });
+    })();
+  `;
+
+  const CSP = "default-src 'none'; script-src 'unsafe-inline' blob:; connect-src https:";
+
+  function openFrame(bootstrap) {
+    const frame = document.createElement("iframe");
+    frame.setAttribute("sandbox", "allow-scripts");
+    frame.style.display = "none";
+    frame.srcdoc =
+      '<!doctype html><meta http-equiv="Content-Security-Policy" content="' + CSP + '">' +
+      "<script>" + bootstrap + "</scr" + "ipt>";
+    document.body.appendChild(frame);
+    return frame;
+  }
+
+  /** Runs one script in a fresh frame and resolves with the guest's outcome. */
+  function attempt(script, options) {
+    const settings = options || {};
+    return new Promise((resolve) => {
+      const frame = openFrame(settings.bootstrap === undefined ? BOOTSTRAP : settings.bootstrap);
+      let ready = false;
+      const done = (value) => {
+        clearTimeout(readyTimer);
+        clearTimeout(runTimer);
+        window.removeEventListener("message", onMessage);
+        frame.remove();
+        resolve(value);
+      };
+      const readyTimer = setTimeout(() => done({ kind: "ready-timeout" }), settings.readyMs || 4000);
+      const runTimer = setTimeout(() => done({ kind: "run-timeout", ready }), settings.runMs || 8000);
+      function onMessage(event) {
+        if (event.source !== frame.contentWindow) return;
+        const data = event.data;
+        if (!data || typeof data !== "object") return;
+        if (data.kind === "ready") {
+          ready = true;
+          clearTimeout(readyTimer);
+          frame.contentWindow.postMessage({ kind: "start", script }, "*");
+          return;
+        }
+        done(data);
+      }
+      window.addEventListener("message", onMessage);
+    });
+  }
+
+  (async function main() {
+    const plain = await attempt('export async function deploy(ctx) { await ctx.log("one"); await ctx.log("two"); }');
+    say("hidden frame runs and announces itself", plain.kind === "finished", JSON.stringify(plain));
+    say("module loads inside an opaque origin", plain.kind === "finished" && !!plain.mode, "mode=" + plain.mode);
+    say("guest cannot read the host document", String(plain.isolation).startsWith("isolated:"), plain.isolation);
+    say("capability calls reach the host", plain.kind === "finished" && String(plain.logs) === "one,two", JSON.stringify(plain.logs));
+
+    const denied = await attempt("export async function deploy(ctx) { await ctx.denied(); }");
+    say(
+      "a rejected capability throws inside the recipe",
+      denied.kind === "failed" && /not declared/.test(String(denied.message)),
+      JSON.stringify(denied),
+    );
+
+    const silent = await attempt("export async function deploy() {}", { bootstrap: "", readyMs: 1200 });
+    say("a frame that never reports ready is abandoned", silent.kind === "ready-timeout", JSON.stringify(silent));
+
+    const hung = await attempt("export async function deploy(ctx) { await ctx.forever(); }", { runMs: 1500 });
+    say("a hung run hits the run budget", hung.kind === "run-timeout" && hung.ready === true, JSON.stringify(hung));
+
+    out.textContent += "\n" + (failures === 0 ? "all probes passed" : failures + " probe(s) failed") + "\n";
+    document.title = failures === 0 ? "probe: ok" : "probe: " + failures + " failed";
+  })();
+</script>

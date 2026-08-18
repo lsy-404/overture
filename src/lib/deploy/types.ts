@@ -19,6 +19,15 @@ export type { DeployMode };
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
 
+/**
+ * Checklist lines Overture owns rather than the recipe: fetching the data
+ * package, and probing the deployed URL afterwards. The `@` prefix cannot
+ * collide with a recipe step id, which the validator restricts to lowercase
+ * alphanumerics.
+ */
+export const HOST_STEP_DOWNLOAD = "@download";
+export const HOST_STEP_HEALTH = "@health";
+
 export interface StepState {
   /** Matches a RecipeStep id. */
   id: string;

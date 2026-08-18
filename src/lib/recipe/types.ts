@@ -13,9 +13,12 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// The shape of `recipe.json`, the one file that turns a release package into
-// something this wizard can deploy. Everything the UI needs before any code
-// runs lives here; the actual work lives in the package's `recipe.js`.
+// The shape of `overture.json`, the install configuration — the small release
+// asset that turns a repository into something this wizard can deploy.
+// Everything the UI needs in order to ask the user anything lives here,
+// including the licence and terms text, so the wizard never has to pull the
+// multi-megabyte data package just to show a permission table. The work itself
+// lives in the data package's `recipe.js`.
 //
 // docs/RECIPE.md is the human-facing version of this file. Keep them in step.
 
@@ -47,16 +50,25 @@ export type DeployMode = "fresh" | "overwrite";
  */
 export type Interpolated = string;
 
+/** The data package this configuration installs. */
+export interface PackageRef {
+  /** Must be the fixed artifact name; a configuration cannot point elsewhere. */
+  artifact: string;
+  /** Lowercase hex SHA-256 of the artifact bytes. */
+  sha256: string;
+  bytes?: number;
+}
+
 export interface RecipeLicense {
   /** SPDX identifier, shown beside the text. */
   id: string;
-  /** Package-relative path to the full licence text. Displayed verbatim. */
-  file: string;
+  /** The full licence text, inline. Displayed verbatim, never rendered as markup. */
+  text: string;
 }
 
 export interface RecipeTerms {
-  /** Locale tag → package-relative path. `*` is the fallback. */
-  files: Record<string, string>;
+  /** Locale tag → the terms text, inline. `*` is the fallback. */
+  texts: Record<string, string>;
   /** When true the user must tick acceptance before continuing. */
   required: boolean;
 }
@@ -223,10 +235,11 @@ export interface Recipe {
   name: string;
   summary: Localized;
   homepage?: string;
-  /** Package-relative image path shown in the wizard header. */
-  icon?: string;
-  /** Must equal the package manifest's version. */
+  /** Must agree with the release tag this configuration was published on. */
   version: string;
+  tag: string;
+  buildTime: string;
+  package: PackageRef;
   license: RecipeLicense;
   terms?: RecipeTerms;
   permissions: RecipePermission[];
@@ -244,13 +257,12 @@ export interface Recipe {
   done?: { links?: RecipeDoneLink[]; notes?: Localized };
 }
 
-// Limits the validator enforces. A package is data from a third-party
+// Limits the validator enforces. A configuration is data from a third-party
 // repository, so every unbounded field is a denial-of-service surface.
 export const RECIPE_LIMITS = {
-  maxJsonBytes: 256 * 1024,
   maxScriptBytes: 512 * 1024,
-  maxTermsBytes: 512 * 1024,
-  maxLicenseBytes: 1024 * 1024,
+  maxTermsChars: 200_000,
+  maxLicenseChars: 400_000,
   maxPermissions: 40,
   maxChecks: 20,
   maxResources: 12,

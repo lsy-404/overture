@@ -1,0 +1,25 @@
+# --- 私有 / 本地文件（公开仓库不应上传）---
+# 真实 wrangler 配置含 account_id / KV namespace id / 域名等私有标识。
+# 只提交 wrangler.toml.example 模板。
+wrangler.toml
+# wrangler 本地状态与机密
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+
+# --- 构建产物 / 依赖 ---
+node_modules/
+dist/
+
+# --- 杂项 ---
+*.log
+.DS_Store
+
+# --- 解除本机全局 gitignore 的过度匹配 ---
+# 全局规则会吞掉仓库根目录下的 .gitignore 本身、/test、以及任何 wrangler.* 文件——
+# 后两条在本仓库分别是要提交的测试套件和公开模板，必须显式找回。
+!/.gitignore
+!/test
+!/wrangler.toml.example

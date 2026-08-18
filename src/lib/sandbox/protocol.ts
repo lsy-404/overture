@@ -26,6 +26,11 @@
 // deploying account's own token, the recipe declares a host secret and calls
 // `secrets.putHostValue` — the host reads the value from its own state and
 // pushes it, so the script names a credential it can never see.
+//
+// There is deliberately no logging channel. This is a public deployer running
+// against strangers' Cloudflare accounts, so nothing narrates what a deployment
+// did — the only diagnostic a recipe can produce is a failure attached to the
+// step it happened in, which is what the user needs to recover and nothing more.
 
 import type { Capability, Recipe } from "../recipe/types";
 import type { DeployMode, LiveScriptFacts, ResultCredential } from "../deploy/types";
@@ -68,7 +73,6 @@ export interface GuestContext {
 export const METHOD_GATES: Record<string, Capability | null> = {
   "step.set": null,
   "step.progress": null,
-  "log.write": null,
   "result.set": null,
   "pkg.file": null,
   "pkg.text": null,
@@ -108,8 +112,6 @@ export interface RecipeContext {
   step(id: string, status: "running" | "success" | "skipped" | "failed", detail?: string): Promise<void>;
   /** 0–1 within the given step. */
   progress(id: string, fraction: number): Promise<void>;
-  /** One line in the execution log. Never pass anything secret. */
-  log(message: string): Promise<void>;
   /** Values the done page shows the user. Merged across calls. */
   result(patch: { url?: string; credentials?: ResultCredential[]; notes?: string[] }): Promise<void>;
 
@@ -237,7 +239,7 @@ export const BRIDGE_LIMITS = {
   maxPrivilegedCalls: 500,
   /** Argument payload of one call. */
   maxCallBytes: 4 * 1024 * 1024,
-  maxLogLines: 500,
-  maxLogLineChars: 500,
+  /** Failure text and step detail, truncated rather than rejected. */
+  maxErrorChars: 500,
   maxSqlChars: 2 * 1024 * 1024,
 } as const;

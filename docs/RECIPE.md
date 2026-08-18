@@ -3,49 +3,22 @@
 Overture deploys whatever a release tells it to deploy. To become deployable, a repository publishes
 two fixed-name assets on a GitHub release:
 
-| Asset | What it is |
-|---|---|
-| `overture.tar.gz` | the deploy package (gzipped tar, ≤ 24 MiB) |
-| `overture-manifest.json` | integrity and version header for that package |
+| Asset | What it is | Size |
+|---|---|---|
+| `overture.json` | the **install configuration** — everything the wizard needs to ask the user anything | kilobytes |
+| `overture.tar.gz` | the **install data package** — the bytes that get deployed | up to 24 MiB |
+
+They are separate on purpose. The wizard fetches the configuration as soon as a version is picked, and
+renders the terms, the licence, the permission table and the resource-naming form off it alone. The data
+package is only fetched once the user presses deploy, as the first line of the execution checklist.
 
 Nothing else about the repository matters. Overture reads only these two assets.
 
-## `overture-manifest.json`
+## `overture.json` — install configuration
 
-```json
-{
-  "schema": 1,
-  "tag": "v1.3.2",
-  "version": "1.3.2",
-  "buildTime": "2026-08-18T10:00:00Z",
-  "artifact": "overture.tar.gz",
-  "artifactSha256": "<64 hex chars>"
-}
-```
-
-`artifact` must be exactly `overture.tar.gz`, and the digest must match the asset — Overture refuses a
-package whose bytes disagree with the manifest, and refuses a manifest whose `version` disagrees with
-the release tag.
-
-## Inside the package
-
-```
-recipe.json            required — static metadata (below)
-recipe.js              required — ESM module exporting deploy(ctx)
-LICENSE                the licence text recipe.json points at
-terms/zh-CN.md         terms of service, per locale, optional
-worker/index.js        the Worker's ESM entry
-assets-manifest.json   Cloudflare asset manifest, if the app ships static assets
-assets/**              those assets, plus an optional assets/_headers
-migrations/*.sql       whatever SQL recipe.js runs
-```
-
-Paths are package-relative and may not escape the package. Only `recipe.json` and `recipe.js` have
-fixed names; everything else is named by `recipe.json`.
-
-## `recipe.json`
-
-The full type is `src/lib/recipe/types.ts` — that file is normative, this section is the tour.
+The full type is `src/lib/recipe/types.ts` — that file is normative, this section is the tour. The
+licence and terms text are inline here rather than in the package, because they have to be readable
+before anything is downloaded.
 
 ```jsonc
 {
@@ -54,10 +27,17 @@ The full type is `src/lib/recipe/types.ts` — that file is normative, this sect
   "name": "EdgeSonic",
   "summary": { "en": "Subsonic-compatible music server on Workers", "zh-CN": "运行在 Workers 上的 Subsonic 兼容音乐服务" },
   "homepage": "https://github.com/wuyilingwei/edgesonic",
-  "version": "1.3.2",
 
-  "license": { "id": "AGPL-3.0-or-later", "file": "LICENSE" },
-  "terms": { "files": { "zh-CN": "terms/zh-CN.md", "*": "terms/en.md" }, "required": true },
+  "version": "1.3.2",
+  "tag": "v1.3.2",
+  "buildTime": "2026-08-18T10:00:00Z",
+
+  // The data package this configuration installs. `artifact` must be the fixed
+  // name; the digest is checked against the bytes before anything is unpacked.
+  "package": { "artifact": "overture.tar.gz", "sha256": "<64 hex chars>", "bytes": 3145728 },
+
+  "license": { "id": "AGPL-3.0-or-later", "text": "                    GNU AFFERO GENERAL PUBLIC LICENSE\n…" },
+  "terms": { "required": true, "texts": { "zh-CN": "…", "*": "…" } },
 
   // Drives the API Token table on the credentials page. Holding any one group
   // in `groups` satisfies the row. Only "required" rows block the deploy.
@@ -83,6 +63,7 @@ The full type is `src/lib/recipe/types.ts` — that file is normative, this sect
       "required": true, "s3Keys": "optional", "label": { "en": "Music storage" } }
   ],
 
+  // Paths here are resolved inside the data package, at deploy time.
   "worker": {
     "defaultName": "edgesonic",
     "module": "worker/index.js",
@@ -115,7 +96,8 @@ The full type is `src/lib/recipe/types.ts` — that file is normative, this sect
       "reason": { "en": "Self-update and transcoding call the account's own API" } }
   ],
 
-  // The execution checklist. recipe.js drives the transitions.
+  // The execution checklist. recipe.js drives the transitions. Overture prepends
+  // its own line for fetching the package, and appends one for the health probe.
   "steps": [
     { "id": "storage", "label": { "en": "Provision storage" } },
     { "id": "schema", "label": { "en": "Apply database schema" } },
@@ -134,12 +116,25 @@ The full type is `src/lib/recipe/types.ts` — that file is normative, this sect
 
 `${uuid}` is generated once per deployment, so two vars using it get the same value.
 
+## `overture.tar.gz` — install data package
+
+```
+recipe.js              required — ESM module exporting deploy(ctx)
+worker/index.js        the Worker's ESM entry
+assets-manifest.json   Cloudflare asset manifest, if the app ships static assets
+assets/**              those assets, plus an optional assets/_headers
+migrations/*.sql       whatever SQL recipe.js runs
+```
+
+`recipe.js` is the only fixed name; everything else is named by `overture.json`. Paths are
+package-relative and may not escape the package. The archive's digest must match `package.sha256`.
+
 ## `recipe.js`
 
 ```js
 export async function deploy(ctx) {
   await ctx.step("storage", "running");
-  const { databaseId } = await ctx.d1.provision("db");   // eslint-disable-line no-unused-vars
+  await ctx.d1.provision("db");
   await ctx.r2.provision("music");
   await ctx.step("storage", "success");
 
@@ -163,17 +158,25 @@ The full context surface is `RecipeContext` in `src/lib/sandbox/protocol.ts`.
 
 It runs in an `<iframe sandbox="allow-scripts">`: an opaque origin with no access to the wizard's DOM,
 storage or variables. It cannot read the Cloudflare API token, the R2 key pair, or any host state — the
-only things it receives are its own `recipe.json`, the names and choices the user made, and facts about
+only things it receives are its own configuration, the names and choices the user made, and facts about
 the live Worker (`ctx.ctx.live`).
 
-Bindings are built by the host from `recipe.json`, not by the script, so a script cannot bind a
-resource its recipe never declared. Undeclared capabilities are rejected. Calls are budgeted and timed
-out (`BRIDGE_LIMITS`).
+Bindings are built by the host from `overture.json`, not by the script, so a script cannot bind a
+resource its configuration never declared. Undeclared capabilities are rejected. Calls are budgeted and
+timed out (`BRIDGE_LIMITS`).
 
 What a script *can* do is everything its declared capabilities allow inside the deploying account —
 which is why the operator's policy page keeps a source allowlist, enabled by default.
 
+### There is no log
+
+A recipe cannot narrate. There is no `ctx.log`, and Overture writes no deployment record anywhere — it
+is a public deployer working inside strangers' accounts, and keeping a trail of who installed what is
+not its business. The step checklist is live UI state in the user's own browser and is gone when the tab
+closes.
+
 ### Failure
 
-Throw. The message reaches the user attached to whichever step was last set `running`. For a step the
-recipe legitimately skips, report `skipped` rather than throwing.
+Throw. The message reaches the user attached to whichever step was last set `running`, truncated to
+`BRIDGE_LIMITS.maxErrorChars`. For a step the recipe legitimately skips, report `skipped` rather than
+throwing. Make the message say what to fix — it is the only diagnostic anyone will get.

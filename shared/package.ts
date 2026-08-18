@@ -17,21 +17,25 @@
 // straight from api.github.com, billing the visitor's own rate limit) and the
 // Worker (which streams the asset bytes and re-checks their origin). Keep this
 // file free of Worker and DOM globals.
+//
+// Two assets, deliberately separate:
+//
+//   overture.json     the install configuration — identity, licence and terms
+//                     text, the permission table, account checks, the storage
+//                     and Worker declaration, the questions to ask, and the
+//                     digest of the package below. Kilobytes.
+//   overture.tar.gz   the install data package — recipe.js, the Worker module,
+//                     static assets, SQL. Megabytes.
+//
+// The wizard needs the whole configuration before it can ask the user anything,
+// and needs the package only once they press deploy. Keeping them apart means
+// terms, permissions and resource names all render off one small fetch.
 
+export const PACKAGE_CONFIG_NAME = "overture.json";
 export const PACKAGE_ARTIFACT_NAME = "overture.tar.gz";
-export const PACKAGE_MANIFEST_NAME = "overture-manifest.json";
 
+export const MAX_CONFIG_BYTES = 1024 * 1024;
 export const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
-export const MAX_MANIFEST_BYTES = 256 * 1024;
-
-export interface PackageManifest {
-  schema: 1;
-  tag: string;
-  version: string;
-  buildTime: string;
-  artifact: string;
-  artifactSha256: string;
-}
 
 export interface GithubAsset {
   name?: string;
@@ -100,7 +104,7 @@ export function assetOf(release: GithubRelease, name: string, ref: SourceRef): G
 }
 
 export function isDeployable(release: GithubRelease, ref: SourceRef): boolean {
-  return !!assetOf(release, PACKAGE_ARTIFACT_NAME, ref) && !!assetOf(release, PACKAGE_MANIFEST_NAME, ref);
+  return !!assetOf(release, PACKAGE_CONFIG_NAME, ref) && !!assetOf(release, PACKAGE_ARTIFACT_NAME, ref);
 }
 
 /** Tags are compared with the leading `v` ignored — nothing else is normalised. */

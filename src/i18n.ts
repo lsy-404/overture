@@ -20,7 +20,7 @@ import en from "./locales/en.json";
 export const SUPPORTED_LOCALES = ["zh-CN", "en"] as const;
 export type AppLocale = (typeof SUPPORTED_LOCALES)[number];
 
-const LANG_KEY = "edgesonic_installer_lang";
+const LANG_KEY = "overture_lang";
 
 function initialLocale(): AppLocale {
   const saved = localStorage.getItem(LANG_KEY);

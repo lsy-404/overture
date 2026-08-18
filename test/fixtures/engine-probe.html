@@ -1,0 +1,21 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Drives the real deploy engine (src/lib/engine + src/lib/sandbox + the deploy
+  primitives) in a browser, with only `fetch` faked, and asserts the boundary
+  properties the sandbox exists to provide. Needs a dev server, because it
+  imports the app's own TypeScript:
+
+      npm run dev
+      open http://localhost:5174/test/fixtures/engine-probe.html
+-->
+<meta charset="utf-8" />
+<title>Overture engine probe</title>
+<style>
+  body { font: 13px ui-monospace, monospace; padding: 16px; }
+  pre { line-height: 1.7; white-space: pre-wrap; }
+</style>
+<h1>Overture engine probe</h1>
+<pre id="out">running…</pre>
+<script type="module" src="./engine-probe.ts"></script>
