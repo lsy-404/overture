@@ -159,10 +159,33 @@ export const GUEST_BOOTSTRAP = `
     };
   }
 
-  // A Blob URL is the only module specifier an opaque origin can resolve, and
-  // the frame's CSP allows exactly that one scheme for scripts.
+  // The frame's CSP admits scripts from a nonce this code cannot hand out and
+  // from blob: — so the only way to run code here is a Blob URL, and this is the
+  // only place one is ever made. Taking the minting function away the moment it
+  // has been used closes the last route from "bytes the recipe fetched" to
+  // "code this frame executes": with no createObjectURL, no eval, no
+  // 'unsafe-inline' and no remote module specifier, the package is the only
+  // thing that can run.
+  function seal() {
+    var deny = function () {
+      throw new Error("this sandbox runs only the code that arrived in the package");
+    };
+    try {
+      URL.createObjectURL = deny;
+    } catch (error) {
+      /* frozen by the engine is just as good */
+    }
+    try {
+      if (typeof webkitURL !== "undefined" && webkitURL !== URL) webkitURL.createObjectURL = deny;
+    } catch (error) {
+      /* same */
+    }
+  }
+
   function load(source) {
     var url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+    // Before the import, so nothing the module does can reach the real one.
+    seal();
     return import(url).finally(function () {
       URL.revokeObjectURL(url);
     });

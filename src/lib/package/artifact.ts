@@ -34,11 +34,17 @@ export interface DataPackage {
 
 export type ByteProgress = (loaded: number, total: number) => void;
 
-async function downloadArtifact(url: string, ref: SourceRef, onProgress?: ByteProgress): Promise<Uint8Array> {
+async function downloadArtifact(
+  url: string,
+  ref: SourceRef,
+  onProgress?: ByteProgress,
+  signal?: AbortSignal,
+): Promise<Uint8Array> {
   let response: Response;
   try {
-    response = await fetchGithubReleaseAsset(url, ref);
-  } catch {
+    response = await fetchGithubReleaseAsset(url, ref, signal);
+  } catch (error) {
+    if (signal?.aborted) throw error;
     throw new Error("Install data package download could not reach the relay");
   }
   if (!response.ok) throw new Error(`Install data package download failed (HTTP ${response.status})`);
@@ -93,11 +99,12 @@ export async function loadDataPackage(
   release: GithubRelease,
   recipe: Recipe,
   onProgress?: ByteProgress,
+  signal?: AbortSignal,
 ): Promise<DataPackage> {
   const asset = assetOf(release, PACKAGE_ARTIFACT_NAME, ref);
   if (!asset?.browser_download_url) throw new Error(`Selected release carries no ${PACKAGE_ARTIFACT_NAME}`);
 
-  const bytes = await downloadArtifact(asset.browser_download_url, ref, onProgress);
+  const bytes = await downloadArtifact(asset.browser_download_url, ref, onProgress, signal);
 
   const digest = await sha256Hex(bytes);
   if (digest.toLowerCase() !== recipe.package.sha256.toLowerCase()) {

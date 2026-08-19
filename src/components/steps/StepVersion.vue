@@ -7,8 +7,11 @@ import { usePolicy } from "../../stores/policy";
 import { parseSource, sourceSlug, type SourceRef } from "../../../shared/package";
 import { fetchReleases } from "../../lib/github";
 import { loadInstallConfig } from "../../lib/package/config";
+import { loadDataPackage } from "../../lib/package/artifact";
+import { analyzePackage } from "../../lib/analyze/analyze";
 import { localized } from "../../lib/recipe/types";
-import { WinButton, WinCheckBox, WinInfoBar, WinProgressRing } from "../../vendor/winui";
+import PackageReport from "../PackageReport.vue";
+import { WinButton, WinCheckBox, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -34,6 +37,8 @@ function selectSource(next: SourceRef, pinned = false) {
     wizard.releases = [];
     wizard.selectedTag = "";
     wizard.config = null;
+    wizard.dataPackage = null;
+    wizard.analysis = null;
   }
   wizard.source = next;
   wizard.sourcePinned = pinned;
@@ -108,19 +113,81 @@ const configError = ref("");
 /** The loaded configuration belongs to the release the user currently has selected. */
 const ready = computed(() => !!wizard.config && wizard.config.tag === wizard.selectedTag);
 
+// A release switched mid-download must not have the previous one's package —
+// or, worse, the previous one's analysis — adopted on top of it. The package
+// runs to megabytes, so the abandoned download is cancelled rather than left to
+// finish into nothing.
+let generation = 0;
+let inflight: AbortController | null = null;
+
+function supersede(): number {
+  inflight?.abort();
+  inflight = null;
+  return ++generation;
+}
+
 async function loadConfig() {
   const src = wizard.source;
   const release = wizard.selectedRelease();
   if (!src || !release) return;
+  const current = supersede();
   configLoading.value = true;
   configError.value = "";
   try {
     const loaded = await loadInstallConfig(src, release, locale.value);
+    if (current !== generation) return;
     wizard.adoptConfig(loaded);
   } catch (e) {
+    if (current !== generation) return;
     configError.value = e instanceof Error ? e.message : String(e);
+    return;
   } finally {
-    configLoading.value = false;
+    if (current === generation) configLoading.value = false;
+  }
+  await loadPackage(current);
+}
+
+// ---- data package & analysis -------------------------------------------------
+
+const packageLoading = ref(false);
+const packageError = ref("");
+const packageProgress = ref(0);
+
+/**
+ * The package is fetched here rather than at deploy time so its recipe.js can be
+ * read before the user is asked for anything. Its digest is checked against the
+ * configuration on the way in, so a mismatch is caught while backing out still
+ * costs nothing.
+ */
+async function loadPackage(current?: number) {
+  const generationOf = current ?? supersede();
+  const src = wizard.source;
+  const release = wizard.selectedRelease();
+  const recipe = wizard.recipe;
+  if (!src || !release || !recipe) return;
+  const controller = new AbortController();
+  inflight = controller;
+  packageLoading.value = true;
+  packageError.value = "";
+  packageProgress.value = 0;
+  try {
+    const loaded = await loadDataPackage(
+      src,
+      release,
+      recipe,
+      (bytes, total) => {
+        if (generationOf === generation) packageProgress.value = total ? bytes / total : 0;
+      },
+      controller.signal,
+    );
+    if (generationOf !== generation) return;
+    wizard.adoptPackage(loaded, analyzePackage(recipe, loaded.script));
+  } catch (e) {
+    if (generationOf !== generation) return;
+    packageError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    if (inflight === controller) inflight = null;
+    if (generationOf === generation) packageLoading.value = false;
   }
 }
 
@@ -157,7 +224,9 @@ watch(ready, (value) => {
   if (hasTerms.value) void nextTick(checkTermsRead);
 });
 
-const canContinue = computed(() => ready.value && (!mustAccept.value || wizard.termsAccepted));
+// The analysis is the point of this step now: the package has to be in hand and
+// read before the wizard will ask the user for a credential.
+const canContinue = computed(() => ready.value && !!wizard.analysis && (!mustAccept.value || wizard.termsAccepted));
 
 // ---- bootstrap --------------------------------------------------------------
 
@@ -306,6 +375,18 @@ onMounted(async () => {
             {{ localized(wizard.recipe.summary, locale) }}
           </p>
 
+          <div v-if="packageLoading" class="inline-status analysis-status">
+            <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+            <span>{{ t("analyze.loading") }}</span>
+            <WinProgressBar v-if="packageProgress > 0" :Value="packageProgress * 100" style="flex: 1 1 120px" />
+          </div>
+          <WinInfoBar v-else-if="packageError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+            <strong>{{ t("analyze.failed") }}</strong>
+            <p style="margin: 6px 0 0">{{ packageError }}</p>
+            <WinButton style="margin-top: 10px" @Click="loadPackage()">{{ t("common.retry") }}</WinButton>
+          </WinInfoBar>
+          <PackageReport v-else-if="wizard.analysis" :analysis="wizard.analysis" />
+
           <div class="pane-tabs">
             <button v-if="hasTerms" type="button" class="pane-tab" :class="{ active: pane === 'terms' }" @click="pane = 'terms'">
               {{ t("version.termsTab") }}
@@ -369,5 +450,10 @@ onMounted(async () => {
 
 .accept-hint {
   margin: 14px 0 0;
+}
+
+.analysis-status {
+  flex-wrap: wrap;
+  margin: 16px 0;
 }
 </style>

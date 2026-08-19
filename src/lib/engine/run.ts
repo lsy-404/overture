@@ -13,15 +13,17 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// One deployment, end to end: fetch the data package the install configuration
-// already committed to, assemble what the sandbox is allowed to know, let the
-// package's recipe.js drive its own checklist, then do the two things a recipe
-// must not be trusted to do for itself — push the host secrets it declared
-// required, and check that what it deployed answers.
+// One deployment, end to end: assemble what the sandbox is allowed to know, let
+// the package's recipe.js drive its own checklist, then do the two things a
+// recipe must not be trusted to do for itself — push the host secrets it
+// declared required, and check that what it deployed answers.
+//
+// The data package arrives already fetched, checked against the configuration's
+// digest, and read by the analyser: by the time anything here runs, the user has
+// been shown what this script is written to do and said yes to it.
 
 import {
   DeployError,
-  HOST_STEP_DOWNLOAD,
   HOST_STEP_HEALTH,
   type DeployCredentials,
   type DeployResult,
@@ -31,8 +33,7 @@ import {
 } from "../deploy/types";
 import { probeReachable } from "../deploy/health";
 import type { LoadedConfig } from "../package/config";
-import { loadDataPackage } from "../package/artifact";
-import type { GithubRelease, SourceRef } from "../../../shared/package";
+import type { DataPackage } from "../package/artifact";
 import { BRIDGE_PROTOCOL, type GuestContext } from "../sandbox/protocol";
 import { runSandbox } from "../sandbox/host";
 import { createCapabilityHost } from "./capabilities";
@@ -42,9 +43,8 @@ function messageOf(error: unknown): string {
 }
 
 export async function runRecipe(input: {
-  ref: SourceRef;
-  release: GithubRelease;
   config: LoadedConfig;
+  dataPackage: DataPackage;
   creds: DeployCredentials;
   target: DeployTarget;
   live: LiveScriptFacts;
@@ -52,23 +52,10 @@ export async function runRecipe(input: {
   onStep: (id: string, status: StepStatus, detail?: string) => void;
   onProgress: (id: string, fraction: number) => void;
 }): Promise<DeployResult> {
-  const { ref, release, config, creds, target, live, locale } = input;
+  const { config, dataPackage, creds, target, live, locale } = input;
   const recipe = config.recipe;
   // One id for the whole deployment, so two vars using ${uuid} agree.
   const deploymentUuid = crypto.randomUUID();
-
-  input.onStep(HOST_STEP_DOWNLOAD, "running");
-  let dataPackage;
-  try {
-    dataPackage = await loadDataPackage(ref, release, recipe, (loaded, total) =>
-      input.onProgress(HOST_STEP_DOWNLOAD, total ? loaded / total : 0),
-    );
-  } catch (error) {
-    const message = messageOf(error);
-    input.onStep(HOST_STEP_DOWNLOAD, "failed", message);
-    throw new DeployError(HOST_STEP_DOWNLOAD, message);
-  }
-  input.onStep(HOST_STEP_DOWNLOAD, "success");
 
   const host = createCapabilityHost({
     pkg: { recipe, files: dataPackage.files, tag: config.tag },
