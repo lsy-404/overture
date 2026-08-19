@@ -65,6 +65,59 @@
     "acceptOptional": "这份条款仅供了解，包本身没有要求你勾选同意。",
     "noTerms": "这个包没有声明服务条款，只有上面的许可证适用。"
   },
+  "analyze": {
+    "title": "这个包会做什么",
+    "loading": "正在下载并解读安装包…",
+    "failed": "安装包读不出来",
+    "summaryClean": "没有需要提醒的地方。",
+    "summaryFindings": "继续之前先看下面几条。",
+    "certain": "脚本被完整读过一遍，下面列出的就是它能碰到的全部。",
+    "uncertainScan": "这个脚本有一部分行为是运行时才定下来的，所以下面列的是能读出来的部分，不代表没有别的事情发生。",
+    "severity": {
+      "critical": "严重",
+      "warning": "警告",
+      "note": "提示"
+    },
+    "orSeparator": " 或 ",
+    "viaHost": "Overture 自己",
+    "permissionsTitle": "需要的 Cloudflare 权限",
+    "permissionsIntro": "由下面这些端点推出来的，不是照抄包自己的说法。",
+    "permissionDashboard": "仪表盘上勾：{labels}",
+    "permissionsNone": "没有——这里没有哪一项需要单独的权限。",
+    "endpointsTitle": "会打到的 Cloudflare 端点（{count} 个）",
+    "checksTitle": "包要求的账户预检",
+    "checkKnown": "在允许列表内",
+    "checkUnknown": "不是本部署会转发的端点——这条预检不可能通过",
+    "checkMalformed": "不是可用的 API 路径——这条预检跑不起来",
+    "networkTitle": "脚本自己会联系的地址",
+    "networkIntro": "这些请求不走能力桥。脚本拿不到你的凭证，但它自己算出来的东西可以从这里出去。",
+    "networkVia": "经由 {via}",
+    "networkPartial": "（地址在运行时才拼完整）",
+    "networkNone": "没有发现。",
+    "networkOpaque": "有 {count} 处网络调用的地址是运行时拼出来的，读不出它们会去哪。",
+    "findings": {
+      "scriptUnparsed": "recipe.js 不是能解析的 JavaScript，因此关于它的任何结论都无从谈起：{detail}",
+      "undeclaredCapability": "脚本调用了 {methods}，但 recipe.json 没有声明「{capability}」能力。这些调用会在部署进行到一半时被拒绝。",
+      "unusedCapability": "recipe.json 要了「{capability}」能力，脚本里却没有用到。",
+      "unusedCapabilityUncertain": "recipe.json 要了「{capability}」能力，没找到用处——不过这个脚本有一部分行为是读不出来的。",
+      "malformedCheckPath": "「{check}」预检写的路径向导不会发出去：{path}",
+      "unknownCheckEndpoint": "「{check}」预检指向 {path}，这不是本部署会转发的端点，请求会被拒绝而不是打到 Cloudflare。",
+      "checkTokenUnresolved": "「{check}」预检里还留着占位符 {token}，没有任何东西会替换它，它会被原样发出去。",
+      "ownNetwork": "脚本会自己联系 {count} 个地址：{hosts}",
+      "opaqueNetwork": "脚本有 {count} 处网络调用的地址是运行时拼出来的，读不出它们会去哪。",
+      "dynamicCode": "脚本试图在运行时把数据变成代码（eval、new Function、动态 import 或 Blob URL）。沙箱不允许这样做——它只运行随包一起送来的代码——这些调用会直接抛错。",
+      "computedAccess": "脚本有用计算属性名取值的地方，可能存在这次静态阅读没能归到某个能力上的调用。",
+      "hostSecretCredential": "被部署的应用会拿到你的 {source}，以 Workers Secret「{name}」的形式保存，只要它还在线就一直持有。",
+      "hostSecretAccountId": "被部署的应用会拿到你的 Cloudflare 账户 ID，以 Workers Secret「{name}」的形式保存。",
+      "passwordInVar": "「{input}」的值被写进了普通 Worker 变量 {var}，能进仪表盘的人都读得到。"
+    },
+    "uncertain": {
+      "unrecorded": "Cloudflare 没有为这个调用登记任何权限——这是它们 schema 里的缺口，不等于官方说明「不需要权限」。",
+      "noDashboardRow": "这个权限组只存在于 Cloudflare 的 API schema，两张权限表里一行都没有，仪表盘上可能根本找不到对应的勾选项。",
+      "writeAssumed": "Cloudflare 在这里也列了只读组，但 recipe 要执行的语句需要写权限。",
+      "zoneMayBeNeeded": "绑自定义域会连带动到 zone 的 DNS 和证书，可能还需要 zone 级的权限。"
+    }
+  },
   "credentials": {
     "title": "Cloudflare 凭证",
     "subtitle": "下表是这个包索要的权限，只有标记为必需的行会阻止部署。",
@@ -169,6 +222,8 @@
     "domainLabel": "自定义域名",
     "emptyValue": "—",
     "optionsTitle": "选项",
+    "alertsTitle": "包分析提出的问题",
+    "alertsIntro": "选包时已经列过一次，这里再提醒一遍。",
     "capabilitiesTitle": "这个包被允许做的事",
     "capabilitiesIntro": "{app} 的部署脚本在沙箱里运行，在你的账号上只能做到下面这些，别的一概做不到。",
     "capabilitiesNone": "没有任何一项——这个包的脚本完全接触不到你的账号。",
@@ -203,7 +258,6 @@
     "failedAt": "失败步骤：{step}",
     "retryFromHere": "重试会从头再跑一遍整个部署，已经建好的资源会被复用。",
     "hostSteps": {
-      "download": "获取并校验部署包",
       "health": "检查部署是否响应"
     },
     "status": {

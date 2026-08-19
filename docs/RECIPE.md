@@ -41,8 +41,10 @@ before anything is downloaded.
 
   // Drives the API Token table on the credentials page. Holding any one group
   // in `groups` satisfies the row. Only "required" rows block the deploy.
+  // Use the API spelling: a token's own policies read back as "Write", and
+  // "Edit" is only what the dashboard prints on the same checkbox.
   "permissions": [
-    { "key": "scripts", "requirement": "required", "groups": ["Workers Scripts Write", "Workers Scripts Edit"],
+    { "key": "scripts", "requirement": "required", "groups": ["Workers Scripts Write"],
       "scope": "account", "level": "write",
       "label": { "en": "Workers Scripts" }, "scenario": { "en": "Upload and deploy the Worker" } }
   ],
@@ -167,6 +169,29 @@ timed out (`BRIDGE_LIMITS`).
 
 What a script *can* do is everything its declared capabilities allow inside the deploying account —
 which is why the operator's policy page keeps a source allowlist, enabled by default.
+
+The frame's CSP allows outbound `https` requests, so a script may fetch its own CORS-enabled resources.
+Nothing it can reach carries a credential, but anything it has computed can leave that way.
+
+What it may not do is *run* any of it. The frame executes the bootstrap (allowed by its own hash) and
+the package's `recipe.js` (imported from the one Blob URL the bootstrap mints before removing
+`URL.createObjectURL`), and nothing else: no `eval`, no `new Function`, no WebAssembly, no
+`import("https://…")`, no script element appended at run time. A package ships the code it runs. If your
+recipe needs a library, bundle it into `recipe.js` — fetching one at deploy time will throw.
+
+### The package is read before it runs
+
+Once a release is picked, Overture fetches the data package, checks its digest, and reads `recipe.js`
+without executing it. The user is shown, before being asked for anything: the Cloudflare endpoints the
+declared capabilities reach and the token permissions those need, every `checks` path that is not an
+endpoint the relay will forward, every address the script contacts on its own, and every disagreement
+between what `overture.json` declares and what the script is written to call.
+
+Two things follow for a package author. Declare the capabilities the script actually uses and no more —
+a capability that is declared and never called is shown as such, and one that is called but not declared
+is shown as a call that will be refused mid-deployment. And keep the script readable: `eval`, a computed
+method name, or a URL assembled at run time all make the report say that this package hides part of what
+it does, which is what a reader will act on.
 
 ### There is no log
 

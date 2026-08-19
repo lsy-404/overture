@@ -14,6 +14,12 @@ These are not style preferences. A change that breaks one of them is a vulnerabi
   `allow-same-origin`), and reaches the outside world only through the capability bridge.
 - Every capability call is gated on the recipe having declared that capability, and every Cloudflare
   path is gated again by the Worker relay's allowlist. Neither gate may be widened to a prefix match.
+- **The sandbox runs only the code that arrived in the package.** The frame's CSP admits the guest
+  bootstrap by its own hash — never a nonce, which would be inherited by everything the recipe module
+  imports — and `blob:` for the single import of `recipe.js`, after which the bootstrap removes
+  `URL.createObjectURL`. No `'unsafe-inline'`, no `'unsafe-eval'`, no remote script source. A recipe may
+  still fetch data; it may never turn fetched bytes into code. `test/fixtures/*-probe.html` is where this
+  is proven in a real browser, since no unit test can.
 - The relay must never become a general-purpose proxy, and must never log Authorization headers or
   request/response bodies.
 - **No logging, anywhere.** This is a public deployer pointed at strangers' Cloudflare accounts, so it

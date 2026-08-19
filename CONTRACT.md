@@ -96,8 +96,14 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | GET | `/zones` | Resolve the zone behind a custom domain the user typed |
 | GET | `/zones/{zoneId}/settings/image_resizing` | Are image transformations enabled on that zone |
 
-`worker/cfAllowlist.ts` is the executable copy of this table. The two must be edited together, and an
+`shared/cfAllowlist.ts` is the executable copy of this table. The two must be edited together, and an
 entry belongs here only if some recipe step genuinely needs it — the table is a budget, not a convenience.
+
+It sits in `shared/` because the relay is not its only reader. The wizard's package analyser resolves a
+package's declared capabilities and `checks` paths against the same table, before the user is asked for a
+token, to tell them which of these endpoints a deployment will reach and which paths the package named
+that this table does not cover. A second copy would eventually disagree with this one, and the
+disagreement would be the wizard promising one thing while the relay does another.
 
 ## 3. R2 key-pair verification — `POST /r2/verify-keys`
 

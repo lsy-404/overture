@@ -53,7 +53,9 @@ interface CfEnvelope<T> {
 async function fetchRelay(url: string, init: RequestInit): Promise<Response> {
   try {
     return await fetch(url, init);
-  } catch {
+  } catch (error) {
+    // A caller that walked away is not a relay that is down.
+    if (init.signal?.aborted) throw error;
     throw new CfApiError(
       `Couldn't reach the deploy relay at ${url.replace(/\/(cf|r2|github)\/.*$/, "")} — check your connection or that the relay is deployed.`,
       0,
@@ -67,10 +69,11 @@ async function fetchRelay(url: string, init: RequestInit): Promise<Response> {
  * a release download of that repository, and that the repository passes the
  * operator's deploy policy.
  */
-export async function fetchGithubReleaseAsset(url: string, ref: SourceRef): Promise<Response> {
+export async function fetchGithubReleaseAsset(url: string, ref: SourceRef, signal?: AbortSignal): Promise<Response> {
   const query = `src=${encodeURIComponent(sourceSlug(ref))}&url=${encodeURIComponent(url)}`;
   return fetchRelay(`${relayBase()}/github/release-asset?${query}`, {
     headers: { Accept: "application/octet-stream" },
+    signal,
   });
 }
 

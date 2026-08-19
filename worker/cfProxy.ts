@@ -14,7 +14,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import type { Context } from "hono";
-import { isPathAllowed } from "./cfAllowlist";
+import { isPathAllowed } from "../shared/cfAllowlist";
 import { applyCorsHeaders, jsonResponse } from "./cors";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
 

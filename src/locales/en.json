@@ -65,6 +65,59 @@
     "acceptOptional": "These terms are provided for information; the package does not require your acceptance.",
     "noTerms": "This package declares no terms of service — only the licence above applies."
   },
+  "analyze": {
+    "title": "What this package will do",
+    "loading": "Fetching and reading the package…",
+    "failed": "The package could not be read",
+    "summaryClean": "Nothing here needed flagging.",
+    "summaryFindings": "Read the points below before you go on.",
+    "certain": "The script was read end to end, so the lists below are everything it can reach.",
+    "uncertainScan": "The script decides part of what it does while running, so the lists below are what could be read — not a promise that nothing else happens.",
+    "severity": {
+      "critical": "Serious",
+      "warning": "Warning",
+      "note": "Note"
+    },
+    "orSeparator": " or ",
+    "viaHost": "Overture itself",
+    "permissionsTitle": "Cloudflare permissions this needs",
+    "permissionsIntro": "Worked out from the endpoints below, not from what the package says about itself.",
+    "permissionDashboard": "on the dashboard: {labels}",
+    "permissionsNone": "None — nothing here needs a permission of its own.",
+    "endpointsTitle": "Cloudflare endpoints it can reach ({count})",
+    "checksTitle": "Account checks the package asks for",
+    "checkKnown": "a listed endpoint",
+    "checkUnknown": "not an endpoint this deployment relays — the check cannot pass",
+    "checkMalformed": "not a usable API path — the check cannot run",
+    "networkTitle": "Addresses the script contacts itself",
+    "networkIntro": "These go out without passing the capability bridge. The script never holds your credentials, but anything it has worked out can leave this way.",
+    "networkVia": "via {via}",
+    "networkPartial": "(address finished at runtime)",
+    "networkNone": "None found.",
+    "networkOpaque": "{count} network call(s) build their address while running, so where they go could not be read.",
+    "findings": {
+      "scriptUnparsed": "recipe.js is not parseable JavaScript, so nothing about it could be read: {detail}",
+      "undeclaredCapability": "The script calls {methods}, but recipe.json never declares the “{capability}” capability. Those calls are refused part-way through the deployment.",
+      "unusedCapability": "recipe.json asks for the “{capability}” capability and the script never uses it.",
+      "unusedCapabilityUncertain": "recipe.json asks for the “{capability}” capability and no use of it was found — though this script hides part of what it does.",
+      "malformedCheckPath": "The “{check}” check names a path the wizard will not send: {path}",
+      "unknownCheckEndpoint": "The “{check}” check points at {path}, which is not an endpoint this deployment relays. It will be refused rather than reach Cloudflare.",
+      "checkTokenUnresolved": "The “{check}” check still carries the placeholder {token}, which nothing fills in — it is sent as written.",
+      "ownNetwork": "The script contacts {count} address(es) of its own: {hosts}",
+      "opaqueNetwork": "{count} of the script's network calls build their address while running, so where they go could not be read.",
+      "dynamicCode": "The script tries to turn data into code while running (eval, new Function, a dynamic import, or a Blob URL). The sandbox refuses that — it runs only what arrived in the package — so those calls will throw.",
+      "computedAccess": "The script reaches some properties by computed name, so it may make a call this read could not attribute.",
+      "hostSecretCredential": "The deployed app is handed your {source} as the Workers Secret {name}, and holds it for as long as it stays deployed.",
+      "hostSecretAccountId": "The deployed app is handed your Cloudflare account id as the Workers Secret {name}.",
+      "passwordInVar": "The value of “{input}” is written into the plain Worker variable {var}, where anyone with dashboard access can read it."
+    },
+    "uncertain": {
+      "unrecorded": "Cloudflare records no permission against this call — a gap in their schema rather than a documented “none needed”.",
+      "noDashboardRow": "This group is in Cloudflare's API schema but has no row in their permission tables, so there may be no checkbox to tick for it.",
+      "writeAssumed": "Cloudflare also lists the read-only group here, but the statements a recipe runs need write access.",
+      "zoneMayBeNeeded": "Attaching a custom domain also touches the zone's DNS and certificate, so a zone-level permission may be needed as well."
+    }
+  },
   "credentials": {
     "title": "Cloudflare credentials",
     "subtitle": "The permissions below are the ones this package asks for. Only the required rows block the deployment.",
@@ -169,6 +222,8 @@
     "domainLabel": "Custom domain",
     "emptyValue": "—",
     "optionsTitle": "Options",
+    "alertsTitle": "Raised by the package analysis",
+    "alertsIntro": "Shown when you picked this package, repeated here.",
     "capabilitiesTitle": "What this package is allowed to do",
     "capabilitiesIntro": "{app}'s deploy script runs sandboxed and can reach exactly the following, on your account, and nothing else.",
     "capabilitiesNone": "Nothing — this package's script has no account access at all.",
@@ -203,7 +258,6 @@
     "failedAt": "Failed at step: {step}",
     "retryFromHere": "Retrying restarts the whole deployment. Anything already created is reused.",
     "hostSteps": {
-      "download": "Fetch and verify the deploy package",
       "health": "Check that the deployment answers"
     },
     "status": {

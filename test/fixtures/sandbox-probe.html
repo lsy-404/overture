@@ -8,10 +8,11 @@
       python3 -m http.server 8899
       open http://localhost:8899/test/fixtures/sandbox-probe.html
 
-  It asserts, in a real browser, the four things src/lib/sandbox/host.ts relies
-  on: a module loads inside an opaque-origin frame, that frame cannot read the
-  host document, a rejected capability surfaces as a thrown error in the recipe,
-  and the ready/run timeouts actually fire.
+  It asserts, in a real browser, what src/lib/sandbox/host.ts relies on: a module
+  loads inside an opaque-origin frame, that frame cannot read the host document,
+  a rejected capability surfaces as a thrown error in the recipe, the ready/run
+  timeouts fire, and — the part no unit test can prove — the frame's CSP really
+  does stop a recipe from running any code that did not arrive in its package.
 -->
 <meta charset="utf-8" />
 <title>Overture sandbox probe</title>
@@ -44,6 +45,8 @@
       });
       async function load(source) {
         var url = URL.createObjectURL(new Blob([source], { type: "text/javascript" }));
+        // Mirrors guest.ts: the minting function goes away once it has been used.
+        URL.createObjectURL = function () { throw new Error("sealed"); };
         try { return (await import(url)).deploy; } finally { URL.revokeObjectURL(url); }
       }
       async function run(data) {
@@ -75,24 +78,36 @@
     })();
   `;
 
-  const CSP = "default-src 'none'; script-src 'unsafe-inline' blob:; connect-src https:";
+  // Mirrors frameCsp() in src/lib/sandbox/host.ts. No 'unsafe-inline' and no
+  // 'unsafe-eval': the bootstrap runs because its hash is named, the recipe runs
+  // from the one blob: URL the bootstrap mints, and nothing else runs at all.
+  //
+  // It has to be a hash rather than a nonce. A nonce is inherited down a module
+  // graph, so the bootstrap's nonce would reach the recipe module and then
+  // whatever that module imported — this probe is where that was caught.
+  const csp = (hash) => "default-src 'none'; script-src 'sha256-" + hash + "' blob:; connect-src https:";
 
-  function openFrame(bootstrap) {
+  async function sha256Base64(text) {
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+    return btoa(String.fromCharCode.apply(null, Array.from(new Uint8Array(digest))));
+  }
+
+  async function openFrame(bootstrap) {
     const frame = document.createElement("iframe");
     frame.setAttribute("sandbox", "allow-scripts");
     frame.style.display = "none";
     frame.srcdoc =
-      '<!doctype html><meta http-equiv="Content-Security-Policy" content="' + CSP + '">' +
+      '<!doctype html><meta http-equiv="Content-Security-Policy" content="' + csp(await sha256Base64(bootstrap)) + '">' +
       "<script>" + bootstrap + "</scr" + "ipt>";
     document.body.appendChild(frame);
     return frame;
   }
 
   /** Runs one script in a fresh frame and resolves with the guest's outcome. */
-  function attempt(script, options) {
+  async function attempt(script, options) {
     const settings = options || {};
+    const frame = await openFrame(settings.bootstrap === undefined ? BOOTSTRAP : settings.bootstrap);
     return new Promise((resolve) => {
-      const frame = openFrame(settings.bootstrap === undefined ? BOOTSTRAP : settings.bootstrap);
       let ready = false;
       const done = (value) => {
         clearTimeout(readyTimer);
@@ -138,6 +153,32 @@
 
     const hung = await attempt("export async function deploy(ctx) { await ctx.forever(); }", { runMs: 1500 });
     say("a hung run hits the run budget", hung.kind === "run-timeout" && hung.ready === true, JSON.stringify(hung));
+
+    // Every route a recipe could take from "bytes I fetched" to "code that runs
+    // here". Each one has to come back refused.
+    const ESCAPES = `export async function deploy(ctx) {
+      try { URL.createObjectURL(new Blob(["x"])); await ctx.log("blob:minted"); }
+      catch (error) { await ctx.log("blob:refused"); }
+      try { (0, eval)("1"); await ctx.log("eval:ran"); }
+      catch (error) { await ctx.log("eval:refused"); }
+      try { new Function("return 1")(); await ctx.log("function:ran"); }
+      catch (error) { await ctx.log("function:refused"); }
+      try { await import("https://esm.sh/nanoid@5"); await ctx.log("remote:imported"); }
+      catch (error) { await ctx.log("remote:refused"); }
+      try {
+        const element = document.createElement("script");
+        element.textContent = "window.__injected = true;";
+        document.head.appendChild(element);
+        await ctx.log(window.__injected ? "inline:ran" : "inline:refused");
+      } catch (error) { await ctx.log("inline:refused"); }
+    }`;
+    const escapes = await attempt(ESCAPES);
+    const outcomes = String((escapes.logs || []).join(","));
+    say("a recipe cannot mint another Blob URL", /blob:refused/.test(outcomes), outcomes);
+    say("eval is unavailable", /eval:refused/.test(outcomes), outcomes);
+    say("new Function is unavailable", /function:refused/.test(outcomes), outcomes);
+    say("a remote module cannot be imported", /remote:refused/.test(outcomes), outcomes);
+    say("an injected inline script does not run", /inline:refused/.test(outcomes), outcomes);
 
     out.textContent += "\n" + (failures === 0 ? "all probes passed" : failures + " probe(s) failed") + "\n";
     document.title = failures === 0 ? "probe: ok" : "probe: " + failures + " failed";

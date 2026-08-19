@@ -35,8 +35,32 @@ import { GUEST_BOOTSTRAP } from "./guest";
  * `connect-src https:` is deliberate: a recipe may fetch its own CORS-enabled
  * resources. No credential is in this frame, so what it can reach is not a
  * disclosure surface — and `default-src 'none'` keeps everything else out.
+ *
+ * What it may not do is turn any of those bytes into code. There is no
+ * `'unsafe-inline'`, so a fetched string cannot be appended as a script element;
+ * no `'unsafe-eval'`, so `eval`, `new Function` and WebAssembly are out; and no
+ * remote scheme, so a module cannot be imported from a URL. The bootstrap runs
+ * because its own hash is named here. `blob:` is here for exactly one import —
+ * the package's own recipe.js — and the bootstrap removes the only function
+ * that can mint a Blob URL as soon as it has used it. The code that runs in this
+ * frame is the code the user was shown, and nothing else.
+ *
+ * The allowance is a hash and not a nonce on purpose, and the browser probe in
+ * test/fixtures is what found the difference: a nonce is inherited down a module
+ * graph, so the bootstrap's nonce would pass to the recipe module and from there
+ * to whatever that module chose to import — `import("https://…")` loads. A hash
+ * authorises one script and nothing downstream of it.
  */
-const FRAME_CSP = "default-src 'none'; script-src 'unsafe-inline' blob:; connect-src https:";
+function frameCsp(hash: string): string {
+  return `default-src 'none'; script-src 'sha256-${hash}' blob:; connect-src https:`;
+}
+
+async function bootstrapHash(): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(GUEST_BOOTSTRAP));
+  let binary = "";
+  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+  return btoa(binary);
+}
 
 export interface SandboxInput {
   /** Only its `capabilities` are consulted here; the guest gets the whole recipe. */
@@ -99,10 +123,10 @@ function payloadBytes(value: unknown, limit: number): number {
   return total;
 }
 
-function frameHtml(): string {
+async function frameHtml(): Promise<string> {
   return (
     '<!doctype html><html><head><meta charset="utf-8">' +
-    `<meta http-equiv="Content-Security-Policy" content="${FRAME_CSP}">` +
+    `<meta http-equiv="Content-Security-Policy" content="${frameCsp(await bootstrapHash())}">` +
     // Split so this string cannot close the script element it ends up inside.
     `</head><body><script>${GUEST_BOOTSTRAP}</scr` +
     "ipt></body></html>"
@@ -114,7 +138,10 @@ function frameHtml(): string {
  * Resolves — never rejects — with what happened; the frame, the listener and
  * every timer are gone by then either way.
  */
-export function runSandbox(input: SandboxInput): Promise<SandboxOutcome> {
+export async function runSandbox(input: SandboxInput): Promise<SandboxOutcome> {
+  // Computed before the frame exists: the policy names the bootstrap's hash, so
+  // the two cannot be assembled out of order.
+  const html = await frameHtml();
   return new Promise<SandboxOutcome>((resolve) => {
     const granted = new Set<Capability>(input.recipe.capabilities || []);
     const timers = new Set<number>();
@@ -136,7 +163,7 @@ export function runSandbox(input: SandboxInput): Promise<SandboxOutcome> {
     // Off-screen and zero-sized rather than `hidden`/`display:none`, which
     // invite renderer throttling of a frame that has real work to do.
     frame.style.cssText = "position:fixed;left:-9999px;top:0;width:0;height:0;border:0;opacity:0;pointer-events:none";
-    frame.srcdoc = frameHtml();
+    frame.srcdoc = html;
 
     const after = (ms: number, run: () => void): number => {
       const timer = window.setTimeout(() => {

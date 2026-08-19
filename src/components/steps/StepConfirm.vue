@@ -24,6 +24,8 @@ onUnmounted(() => clearInterval(lockTimer));
 
 const recipe = computed(() => wizard.recipe);
 const capabilities = computed(() => recipe.value?.capabilities ?? []);
+/** The full report was shown when the package was picked; only what bites repeats here. */
+const alerts = computed(() => (wizard.analysis?.findings ?? []).filter((finding) => finding.severity !== "note"));
 const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
@@ -92,6 +94,23 @@ function start() {
           </dd>
         </div>
       </dl>
+    </template>
+
+    <template v-if="alerts.length > 0">
+      <h3 class="section-heading">{{ t("confirm.alertsTitle") }}</h3>
+      <WinInfoBar
+        :IsOpen="true"
+        :Severity="alerts.some((finding) => finding.severity === 'critical') ? 'Error' : 'Warning'"
+        :IsClosable="false"
+        :IsIconVisible="false"
+      >
+        <strong>{{ t("confirm.alertsIntro") }}</strong>
+        <ul style="margin: 8px 0 0; padding-left: 20px">
+          <li v-for="(finding, index) in alerts" :key="`${finding.code}-${index}`">
+            {{ t(`analyze.findings.${finding.code}`, finding.values || {}) }}
+          </li>
+        </ul>
+      </WinInfoBar>
     </template>
 
     <h3 class="section-heading">{{ t("confirm.capabilitiesTitle") }}</h3>

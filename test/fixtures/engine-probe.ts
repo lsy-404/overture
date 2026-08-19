@@ -19,7 +19,8 @@ import { runRecipe } from "../../src/lib/engine/run";
 import { DeployError, type DeployTarget, type LiveScriptFacts, type StepStatus } from "../../src/lib/deploy/types";
 import { BRIDGE_LIMITS } from "../../src/lib/sandbox/protocol";
 import type { Recipe } from "../../src/lib/recipe/types";
-import type { LoadedPackage } from "../../src/lib/package/load";
+import type { LoadedConfig } from "../../src/lib/package/config";
+import type { DataPackage } from "../../src/lib/package/artifact";
 
 const API_TOKEN = "TOKEN-cf-0123456789abcdefghij";
 const ACCOUNT_ID = "0123456789abcdef0123456789abcdef";
@@ -134,21 +135,17 @@ function baseRecipe(): Recipe {
   } as Recipe;
 }
 
-function loaded(recipe: Recipe, script: string): LoadedPackage {
+function config(recipe: Recipe): LoadedConfig {
+  return { ref: { owner: "probe", repo: "probe" }, tag: "v1.0.0", recipe, licenseText: "licence", termsText: "" };
+}
+
+function dataPackage(script: string): DataPackage {
   const files = new Map<string, Uint8Array>();
   files.set("worker/index.js", encoder.encode("export default { fetch: () => new Response('ok') };"));
   files.set("assets-manifest.json", encoder.encode(JSON.stringify({ "/index.html": { hash: "a".repeat(32), size: 5 } })));
   files.set("assets/index.html", encoder.encode("hello"));
   files.set("migrations/schema.sql", encoder.encode("CREATE TABLE IF NOT EXISTS probe (id INTEGER);"));
-  return {
-    ref: { owner: "probe", repo: "probe" },
-    tag: "v1.0.0",
-    recipe,
-    files,
-    script,
-    licenseText: "licence",
-    termsText: "",
-  } as unknown as LoadedPackage;
+  return { files, script };
 }
 
 function target(overrides: Partial<DeployTarget> = {}): DeployTarget {
@@ -175,24 +172,22 @@ interface RunOutcome {
   version: string;
   credentials: Array<{ label: string; value: string; secret?: boolean }>;
   steps: string[];
-  logs: string[];
 }
 
 async function run(recipe: Recipe, script: string, overrides: Partial<DeployTarget> = {}): Promise<RunOutcome> {
   const steps: string[] = [];
-  const logs: string[] = [];
   try {
     const result = await runRecipe({
-      pkg: loaded(recipe, script),
+      config: config(recipe),
+      dataPackage: dataPackage(script),
       creds: { accountId: ACCOUNT_ID, apiToken: API_TOKEN, r2AccessKeyId: "", r2SecretAccessKey: "" },
       target: target(overrides),
       live,
       locale: "en",
       onStep: (id: string, status: StepStatus, detail?: string) => steps.push(`${id}:${status}${detail ? `:${detail}` : ""}`),
       onProgress: () => {},
-      onLog: (line: string) => logs.push(line),
     });
-    return { ok: true, message: "", step: "", notes: result.notes, url: result.url, version: result.version, credentials: result.credentials, steps, logs };
+    return { ok: true, message: "", step: "", notes: result.notes, url: result.url, version: result.version, credentials: result.credentials, steps };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return {
@@ -204,7 +199,6 @@ async function run(recipe: Recipe, script: string, overrides: Partial<DeployTarg
       version: "",
       credentials: [],
       steps,
-      logs,
     };
   }
 }
@@ -399,8 +393,32 @@ async function main(): Promise<void> {
   const swept = await run(baseRecipe(), `export async function deploy(ctx) { await ctx.step("prepare", "success"); }`);
   say(
     "a required host secret is pushed by the host",
-    swept.ok && secretsPushed.get("CF_API_TOKEN") === API_TOKEN && swept.logs.some((line) => line.includes("CF_API_TOKEN")),
-    swept.logs.join(" | "),
+    swept.ok && secretsPushed.get("CF_API_TOKEN") === API_TOKEN,
+    String(secretsPushed.has("CF_API_TOKEN")),
+  );
+
+  // 11b. The frame runs the package and nothing else. Every route from bytes the
+  // recipe can obtain to code this frame would execute, tried in turn.
+  const escapes = await run(
+    baseRecipe(),
+    reporting(`
+      try { URL.createObjectURL(new Blob(["x"])); notes.push("blob=MINTED"); } catch (e) { notes.push("blob=blocked"); }
+      try { (0, eval)("1"); notes.push("eval=RAN"); } catch (e) { notes.push("eval=blocked"); }
+      try { new Function("return 1")(); notes.push("function=RAN"); } catch (e) { notes.push("function=blocked"); }
+      try { await import("https://esm.sh/nanoid@5"); notes.push("remote=IMPORTED"); } catch (e) { notes.push("remote=blocked"); }
+      try {
+        const element = document.createElement("script");
+        element.textContent = "window.__injected = true;";
+        document.head.appendChild(element);
+        notes.push(window.__injected ? "inline=RAN" : "inline=blocked");
+      } catch (e) { notes.push("inline=blocked"); }
+    `),
+  );
+  const attempted = escapes.notes.join(" ");
+  say(
+    "a recipe cannot run code that did not arrive in its package",
+    escapes.ok && !/MINTED|RAN|IMPORTED/.test(attempted),
+    attempted,
   );
 
   // 12. The two timers, exercised by shrinking the budgets the shipping code

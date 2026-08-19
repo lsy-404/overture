@@ -4,7 +4,7 @@ import { onMounted, ref, toRaw } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { runRecipe } from "../../lib/engine/run";
-import { DeployError, HOST_STEP_DOWNLOAD, HOST_STEP_HEALTH } from "../../lib/deploy/types";
+import { DeployError, HOST_STEP_HEALTH } from "../../lib/deploy/types";
 import { localized } from "../../lib/recipe/types";
 import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
 
@@ -20,17 +20,15 @@ const running = ref(false);
 // Host-owned lines are named by Overture; everything else is a recipe step and
 // carries its own localised label.
 function labelFor(id: string): string {
-  if (id === HOST_STEP_DOWNLOAD) return t("deploy.hostSteps.download");
   if (id === HOST_STEP_HEALTH) return t("deploy.hostSteps.health");
   const step = (wizard.recipe?.steps ?? []).find((entry) => entry.id === id);
   return step ? localized(step.label, locale.value) : id;
 }
 
 async function start() {
-  const source = wizard.source;
-  const release = wizard.selectedRelease();
   const config = wizard.config;
-  if (!source || !release || !config) {
+  const dataPackage = wizard.dataPackage;
+  if (!config || !dataPackage) {
     wizard.deployFailed = true;
     wizard.failedMessage = t("deploy.configMissing");
     return;
@@ -39,9 +37,8 @@ async function start() {
   running.value = true;
   try {
     const result = await runRecipe({
-      ref: source,
-      release,
       config,
+      dataPackage: toRaw(dataPackage),
       creds: { ...wizard.credentials },
       target: wizard.buildTarget(),
       live: toRaw(wizard.live),

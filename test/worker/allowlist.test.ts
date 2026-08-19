@@ -20,7 +20,7 @@
 // The rule table below is written out independently of the implementation, so a
 // path quietly added to or dropped from the allowlist shows up here.
 
-import { isPathAllowed } from "../../worker/cfAllowlist";
+import { isPathAllowed } from "../../shared/cfAllowlist";
 
 const ACCOUNT = "0123456789abcdef0123456789abcdef";
 const SCRIPT = "my-worker";

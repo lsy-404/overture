@@ -17,9 +17,10 @@ import { defineStore } from "pinia";
 import { computed, markRaw, ref, watch } from "vue";
 import type { GithubRelease, SourceRef } from "../../shared/package";
 import type { LoadedConfig } from "../lib/package/config";
+import type { DataPackage } from "../lib/package/artifact";
+import type { PackageAnalysis } from "../lib/analyze/analyze";
 import type { Recipe, RecipeResource } from "../lib/recipe/types";
 import {
-  HOST_STEP_DOWNLOAD,
   HOST_STEP_HEALTH,
   type DeployCredentials,
   type DeployMode,
@@ -82,6 +83,18 @@ export const useWizard = defineStore("wizard", () => {
   const selectedTag = ref("");
   const config = ref<LoadedConfig | null>(null);
   const recipe = computed<Recipe | null>(() => config.value?.recipe ?? null);
+
+  // The data package is fetched as soon as a release is picked rather than at
+  // deploy time: the analysis below reads its recipe.js, and a report the user
+  // only sees after pressing deploy would be a report about a decision already
+  // made.
+  const dataPackage = ref<DataPackage | null>(null);
+  const analysis = ref<PackageAnalysis | null>(null);
+
+  function adoptPackage(loaded: DataPackage, report: PackageAnalysis) {
+    dataPackage.value = markRaw(loaded);
+    analysis.value = markRaw(report);
+  }
 
   /** The install configuration's own licence and terms text, already resolved. */
   const licenseText = computed(() => config.value?.licenseText || "");
@@ -188,10 +201,11 @@ export const useWizard = defineStore("wizard", () => {
 
   /** Fills every target field from the recipe's own defaults. */
   function adoptConfig(loaded: LoadedConfig) {
-    // Raw, not reactive: nothing here needs to be structured-cloned into the
-    // sandbox ahead of time — the data package is fetched at deploy time — but
-    // the recipe object is large and read-only once loaded.
+    // Raw, not reactive: the recipe object is large and read-only once loaded,
+    // and a reactive proxy of it would be cloned into the sandbox message.
     config.value = markRaw(loaded);
+    dataPackage.value = null;
+    analysis.value = null;
     termsAccepted.value = false;
     workerName.value = loaded.recipe.worker.defaultName;
     touchedResources.value = {};
@@ -267,14 +281,13 @@ export const useWizard = defineStore("wizard", () => {
   const failedMessage = ref("");
 
   /**
-   * The execution checklist, in the order it is always shown: the host's own
-   * package download, then the recipe's own steps, then the host's health probe
-   * when the recipe declares one.
+   * The execution checklist, in the order it is always shown: the recipe's own
+   * steps, then the host's health probe when the recipe declares one.
    */
   const checklist = computed<Array<{ id: string; weight: number }>>(() => {
     const current = recipe.value;
     if (!current) return [];
-    const entries: Array<{ id: string; weight: number }> = [{ id: HOST_STEP_DOWNLOAD, weight: 1 }];
+    const entries: Array<{ id: string; weight: number }> = [];
     for (const step of current.steps) {
       entries.push({ id: step.id, weight: step.weight && step.weight > 0 ? step.weight : 1 });
     }
@@ -339,6 +352,9 @@ export const useWizard = defineStore("wizard", () => {
     selectedTag,
     config,
     recipe,
+    dataPackage,
+    analysis,
+    adoptPackage,
     licenseText,
     termsText,
     selectedRelease,
