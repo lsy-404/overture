@@ -47,12 +47,18 @@ const CF_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
 const CF_REVOKE_URL = "https://dash.cloudflare.com/oauth2/revoke";
 const CF_ACCOUNTS_URL = "https://api.cloudflare.com/client/v4/accounts";
 
-const OV_STATE_COOKIE = "ov_state";
+// Both cookies carry the __Host- prefix: host-only, so a sibling host on the
+// same registrable domain (an attacker-controlled package deployed to
+// music.example.com against an Overture on deploy.example.com) cannot toss a
+// cookie of either name up to the parent domain. That is what stops a login-CSRF
+// fixation, so ov_state needs it as much as ov_session — and __Host- forces
+// Path=/, which is why the state cookie is no longer scoped to /oauth.
+const OV_STATE_COOKIE = "__Host-ov_state";
 const OV_SESSION_COOKIE = "__Host-ov_session";
 // SameSite=Lax on ov_state only: it has to survive the top-level, cross-site
 // navigation that Cloudflare's own consent-page redirect back to
 // /oauth/callback performs. ov_session has no such requirement and stays Strict.
-const STATE_COOKIE_SAME_SITE = "Lax" as const;
+const STATE_COOKIE_OPTS = { path: "/", sameSite: "Lax" as const };
 const SESSION_COOKIE_OPTS = { path: "/", sameSite: "Strict" as const };
 
 function now(): number {
@@ -101,8 +107,7 @@ export async function handleOauthAuthorize(c: RelayContext): Promise<Response> {
   headers.append(
     "Set-Cookie",
     serializeCookie(OV_STATE_COOKIE, cookieValue, {
-      path: "/oauth",
-      sameSite: STATE_COOKIE_SAME_SITE,
+      ...STATE_COOKIE_OPTS,
       maxAgeSeconds: STATE_COOKIE_MAX_AGE_SECONDS,
     }),
   );
@@ -150,7 +155,7 @@ interface AccountsEnvelope {
 // account list has to happen in this one request: the authorization code is
 // short-lived enough that any intermediate UI step invalidates it.
 export async function handleOauthCallback(c: RelayContext): Promise<Response> {
-  const clearState = expireCookie(OV_STATE_COOKIE, { path: "/oauth", sameSite: STATE_COOKIE_SAME_SITE });
+  const clearState = expireCookie(OV_STATE_COOKIE, STATE_COOKIE_OPTS);
   const url = new URL(c.req.url);
 
   if (url.searchParams.get("error")) {
