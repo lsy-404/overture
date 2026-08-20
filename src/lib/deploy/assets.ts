@@ -13,13 +13,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Cloudflare's two-phase asset protocol: open a session with the manifest, then
-// upload only the buckets of hashes it asks for. The completion call is
-// authorized with the session's own JWT rather than the user's API token — the
-// relay forwards whatever bearer it is handed, so that JWT is simply passed as
-// the `token` argument for that one call.
+// Cloudflare's two-phase asset protocol: open a session with the manifest,
+// then upload only the buckets of hashes it asks for. Opening the session is
+// an ordinary session-cookie call; the completion call is authorized with the
+// session's own short-lived JWT instead — the one relay call that carries an
+// explicit `Authorization` header, since that JWT was never a secret the SPA
+// had to be kept from seeing.
 
-import { callCfJson, callCfMultipart } from "../relay";
+import { callCfJson, callCfMultipartBearer } from "../relay";
 
 const MAX_ASSET_BYTES = 16 * 1024 * 1024;
 
@@ -31,7 +32,6 @@ interface AssetEntry {
 export type AssetManifest = Record<string, AssetEntry>;
 
 export interface UploadAssetsInput {
-  token: string;
   accountId: string;
   script: string;
   /** Package files, keyed by package-relative path. */
@@ -82,7 +82,7 @@ function assetContentType(assetPath: string): string {
 
 /** Returns the completion JWT the version upload has to carry. */
 export async function uploadAssets(input: UploadAssetsInput): Promise<string> {
-  const { token, accountId, script, files, manifest, assetsDir, onProgress, signal } = input;
+  const { accountId, script, files, manifest, assetsDir, onProgress, signal } = input;
   const hashes = new Map<string, { path: string; entry: AssetEntry }>();
   let totalBytes = 0;
   for (const [assetPath, entry] of Object.entries(manifest)) {
@@ -97,7 +97,6 @@ export async function uploadAssets(input: UploadAssetsInput): Promise<string> {
   if (totalBytes > MAX_ASSET_BYTES) throw new Error("Static assets exceed the upload size limit");
 
   const session = await callCfJson<{ jwt?: string; buckets?: string[][] }>(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/assets-upload-session`,
     { method: "POST", body: JSON.stringify({ manifest }), signal },
     "Workers Scripts Write",
@@ -121,7 +120,7 @@ export async function uploadAssets(input: UploadAssetsInput): Promise<string> {
       if (!bytes) throw new Error(`Asset disappeared during upload: ${found.path}`);
       form.append(hash, new File([base64Bytes(bytes)], hash, { type: assetContentType(found.path) }));
     }
-    const result = await callCfMultipart<{ jwt?: string }>(
+    const result = await callCfMultipartBearer<{ jwt?: string }>(
       completionJwt,
       `/accounts/${accountId}/workers/assets/upload?base64=true`,
       form,

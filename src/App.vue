@@ -3,11 +3,13 @@
 import { computed, ref, watch, type Component } from "vue";
 import { usePolicy } from "./stores/policy";
 import { STEPS, TOTAL_STEPS, useWizard } from "./stores/wizard";
+import { revokeOAuthSession } from "./lib/relay";
 import WizardShell from "./components/WizardShell.vue";
 import PolicyPage from "./components/PolicyPage.vue";
 import StepTos from "./components/steps/StepTos.vue";
-import StepVersion from "./components/steps/StepVersion.vue";
-import StepCredentials from "./components/steps/StepCredentials.vue";
+import StepRepository from "./components/steps/StepRepository.vue";
+import StepLicense from "./components/steps/StepLicense.vue";
+import StepAuthorize from "./components/steps/StepAuthorize.vue";
 import StepTarget from "./components/steps/StepTarget.vue";
 import StepConfirm from "./components/steps/StepConfirm.vue";
 import StepDeploy from "./components/steps/StepDeploy.vue";
@@ -18,13 +20,22 @@ const policy = usePolicy();
 
 const PAGES: Record<number, Component> = {
   [STEPS.tos]: StepTos,
-  [STEPS.version]: StepVersion,
-  [STEPS.credentials]: StepCredentials,
+  [STEPS.repository]: StepRepository,
+  [STEPS.license]: StepLicense,
+  [STEPS.authorize]: StepAuthorize,
   [STEPS.target]: StepTarget,
   [STEPS.confirm]: StepConfirm,
   [STEPS.deploy]: StepDeploy,
   [STEPS.done]: StepDone,
 };
+
+// A session nobody explicitly signed out of is still cleaned up here: closing
+// or navigating away from the tab is the one moment `sendBeacon` would be the
+// usual tool, except it cannot carry the `Overture-Relay` header this route
+// requires — `keepalive` is what lets the request survive the unload anyway.
+window.addEventListener("pagehide", () => {
+  if (wizard.authorized) void revokeOAuthSession({ keepalive: true });
+});
 
 const current = computed(() => (policy.view === "policy" ? PolicyPage : PAGES[wizard.step] || StepTos));
 const pageKey = computed(() => (policy.view === "policy" ? "policy" : `step-${wizard.step}`));

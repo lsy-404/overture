@@ -19,10 +19,9 @@ import { callCfJson } from "../relay";
 // after the traffic switch — restoring the crons read from the live script, or
 // setting whatever the recipe asked for. Nothing to write means nothing to do:
 // the upload already left the script scheduleless.
-export async function setCron(token: string, accountId: string, script: string, crons: string[], signal?: AbortSignal): Promise<void> {
+export async function setCron(accountId: string, script: string, crons: string[], signal?: AbortSignal): Promise<void> {
   if (crons.length === 0) return;
   await callCfJson(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/schedules`,
     { method: "PUT", body: JSON.stringify(crons.map((cron) => ({ cron }))), signal },
     "Workers Scripts Write",

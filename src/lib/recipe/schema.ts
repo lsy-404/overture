@@ -76,7 +76,7 @@ const DEPLOY_MODES = ["fresh", "overwrite"] as const;
 const PERMISSION_SCOPES = ["account", "zone", "allBuckets"] as const;
 const PERMISSION_LEVELS = ["read", "write", "readWrite"] as const;
 const CONTAINER_MODES = ["ask", "always", "never"] as const;
-const HOST_SECRET_SOURCES = ["accountId", "apiToken", "r2AccessKeyId", "r2SecretAccessKey"] as const;
+const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey"] as const;
 
 // Derived from the bridge itself, so a capability the host cannot gate can never
 // be declared.

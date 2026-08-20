@@ -30,9 +30,8 @@ interface KvNamespace {
   title?: string;
 }
 
-export async function listNamespaces(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
+export async function listNamespaces(accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
   const namespaces = await callCfJson<KvNamespace[]>(
-    token,
     `/accounts/${accountId}/storage/kv/namespaces?per_page=100`,
     signal ? { signal } : undefined,
     CONTEXT,
@@ -42,9 +41,8 @@ export async function listNamespaces(token: string, accountId: string, signal?: 
     .map((namespace) => ({ name: namespace.title as string, id: namespace.id as string }));
 }
 
-export async function createNamespace(token: string, accountId: string, title: string, signal?: AbortSignal): Promise<string> {
+export async function createNamespace(accountId: string, title: string, signal?: AbortSignal): Promise<string> {
   const created = await callCfJson<KvNamespace>(
-    token,
     `/accounts/${accountId}/storage/kv/namespaces`,
     { method: "POST", body: JSON.stringify({ title }), signal },
     CONTEXT,

@@ -108,3 +108,26 @@ export function scopesForEndpoints(endpointIds: readonly string[]): string[] {
   }
   return [...out].sort();
 }
+
+export interface ScopeDeviation {
+  /** Derived needs the self-report never asked for — Cloudflare will refuse this call mid-deployment. */
+  underReported: string[];
+  /** Self-reported scopes the derived set never accounts for — visible, not blocking. */
+  overReported: string[];
+}
+
+/**
+ * Compares what a recipe's `permissions[].oauthScopes` actually asked Cloudflare
+ * for against what the endpoints its declared capabilities reach would need on
+ * their own. The two are not the same computation on purpose — one is what an
+ * author typed, the other is read off the code — so a gap between them is worth
+ * naming rather than silently trusting the author's list.
+ */
+export function scopeDeviation(reportedScopes: readonly string[], derivedScopes: readonly string[]): ScopeDeviation {
+  const reported = new Set(reportedScopes);
+  const derived = new Set(derivedScopes);
+  return {
+    underReported: derivedScopes.filter((scope) => !reported.has(scope)).sort(),
+    overReported: reportedScopes.filter((scope) => !derived.has(scope)).sort(),
+  };
+}
