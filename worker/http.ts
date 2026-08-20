@@ -13,17 +13,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Read-only: the policy is computed from the Worker's own vars on every
-// request. Nothing is stored, nothing is written, and there is no admin
-// token — an operator changes the policy by editing wrangler config and
-// redeploying.
+// The SPA and this Worker are always the same origin — there is no separately
+// hosted frontend fork to grant cross-origin access to, so there is no CORS
+// layer here at all (no Access-Control-* headers, no OPTIONS handling). A
+// cross-site caller that tries anyway gets a plain 404 or a same-origin-only
+// rejection from a route's own check, never a permissive header.
 
 import type { Context } from "hono";
-import { policyFromVars } from "../shared/policy";
-import { jsonResponse } from "./http";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
-export function handleGetPolicy(c: RelayContext): Response {
-  return jsonResponse(c, 200, policyFromVars(c.env));
+export function jsonResponse(c: RelayContext, status: number, body: unknown): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 }

@@ -37,6 +37,13 @@ export interface EndpointRule {
   id: string;
   method: string;
   segments: Segment[];
+  /**
+   * This one entry does not carry the session's Cloudflare token: the asset
+   * upload session itself hands back a short-lived JWT, and the caller sends
+   * that JWT as its own `Authorization` header instead. The relay must never
+   * fall back between the two — see worker/cfProxy.ts.
+   */
+  passthroughAuth?: boolean;
 }
 
 export const CF_ENDPOINTS: readonly EndpointRule[] = [
@@ -63,7 +70,12 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "worker.secretPut", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "secrets"] },
   { id: "worker.scheduleRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
   { id: "worker.scheduleWrite", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
-  { id: "worker.assetUpload", method: "POST", segments: ["accounts", null, "workers", "assets", "upload"] },
+  {
+    id: "worker.assetUpload",
+    method: "POST",
+    segments: ["accounts", null, "workers", "assets", "upload"],
+    passthroughAuth: true,
+  },
   { id: "worker.domainList", method: "GET", segments: ["accounts", null, "workers", "domains"] },
   { id: "worker.domainAttach", method: "PUT", segments: ["accounts", null, "workers", "domains"] },
   { id: "images.stats", method: "GET", segments: ["accounts", null, "images", "v1", "stats"] },

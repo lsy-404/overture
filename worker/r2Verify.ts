@@ -15,7 +15,7 @@
 
 import { AwsClient } from "aws4fetch";
 import type { Context } from "hono";
-import { jsonResponse } from "./cors";
+import { jsonResponse } from "./http";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
 
 type RelayContext = Context<{ Bindings: Env }>;
@@ -56,6 +56,13 @@ function describeStatus(status: number): string {
 }
 
 export async function handleVerifyR2Keys(c: RelayContext): Promise<Response> {
+  // A cross-site <form enctype="text/plain"> sends no custom header and no
+  // preflight, so it would otherwise reach this far even past the csrf gate's
+  // header check; requiring the real content type closes that off too.
+  if (!(c.req.header("Content-Type") || "").toLowerCase().includes("application/json")) {
+    return jsonResponse(c, 400, { ok: false, error: "Expected Content-Type: application/json" });
+  }
+
   let raw: ArrayBuffer;
   try {
     raw = await readBodyWithLimit(c.req.raw, MAX_BODY_BYTES);

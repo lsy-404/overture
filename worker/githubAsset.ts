@@ -21,7 +21,7 @@
 import type { Context } from "hono";
 import { isReleaseAssetUrl, MAX_ARTIFACT_BYTES, parseSource } from "../shared/package";
 import { isSourceAllowed, policyFromVars } from "../shared/policy";
-import { applyCorsHeaders, jsonResponse } from "./cors";
+import { jsonResponse } from "./http";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
@@ -69,6 +69,5 @@ export async function handleGithubAsset(c: RelayContext): Promise<Response> {
     "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
   });
   if (length > 0) headers.set("Content-Length", String(length));
-  applyCorsHeaders(c, headers);
   return new Response(upstream.body, { status: 200, headers });
 }
