@@ -49,11 +49,10 @@ export const METHOD_ENDPOINTS: Record<string, string[]> = {
 };
 
 /**
- * Endpoints the wizard itself calls, whatever the package declares: proving the
- * token, naming the account, and reading the live script before replacing it.
+ * Endpoints the wizard itself calls, whatever the package declares: naming the
+ * account, and reading the live script before replacing it.
  */
 export const HOST_ENDPOINTS: readonly string[] = [
-  "token.verify",
   "account.read",
   "worker.scriptList",
   "worker.scriptRead",
