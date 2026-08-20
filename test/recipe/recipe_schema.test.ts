@@ -126,6 +126,35 @@ const checks: Array<[string, boolean, string?]> = [
       rejects(tweak((r) => (r.resources = [resource("db", binding)]))))],
   ["a legal binding name is accepted", accepts(tweak((r) => (r.resources = [resource("db", "_DB_2")])))],
 
+  // A match declaration decides which existing resource a deployment writes
+  // into, so an unusable one has to be a rejected package rather than a rule
+  // that silently never fires.
+  ["a resource match declaration is accepted",
+    accepts(tweak((r) => ((r.resources as Json[])[0].match = { names: ["${worker}-old", "legacy-db"], patterns: ["^acme-db-\\d+$"] })))
+    && accepts(tweak((r) => ((r.resources as Json[])[0].match = { names: ["legacy-db"] })))
+    && accepts(tweak((r) => ((r.resources as Json[])[0].match = { patterns: ["^x$"] }))),
+    errorsOf(tweak((r) => ((r.resources as Json[])[0].match = { names: ["legacy-db"] }))).join("; ")],
+
+  ["an empty match declaration is rejected",
+    rejects(tweak((r) => ((r.resources as Json[])[0].match = {})))
+    && rejects(tweak((r) => ((r.resources as Json[])[0].match = { names: [], patterns: [] })))],
+
+  ["a match pattern that is not a regular expression is rejected",
+    rejects(tweak((r) => ((r.resources as Json[])[0].match = { patterns: ["a("] })))
+    && rejects(tweak((r) => ((r.resources as Json[])[0].match = { patterns: ["x".repeat(RECIPE_LIMITS.maxPatternChars + 1)] })))],
+
+  ["a match name that could not be a Cloudflare name is rejected",
+    ["Upper", "has space", "a/b"].every((name) =>
+      rejects(tweak((r) => ((r.resources as Json[])[0].match = { names: [name] }))))],
+
+  ["too many match entries are rejected",
+    rejects(tweak((r) => ((r.resources as Json[])[0].match = {
+      names: Array.from({ length: RECIPE_LIMITS.maxMatchNames + 1 }, (_, index) => `old-${index}`),
+    })))
+    && rejects(tweak((r) => ((r.resources as Json[])[0].match = {
+      patterns: Array.from({ length: RECIPE_LIMITS.maxMatchPatterns + 1 }, (_, index) => `^old-${index}$`),
+    })))],
+
   ["duplicate resource ids are rejected",
     rejects(tweak((r) => (r.resources = [resource("db", "DB"), resource("db", "OTHER")])))],
   ["duplicate step ids are rejected", rejects(tweak((r) => (r.steps = [step("upload"), step("upload")])))],

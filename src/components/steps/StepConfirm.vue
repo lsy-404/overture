@@ -30,10 +30,19 @@ const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
 
+/** The names this deployment will really use — an adopted resource keeps its own. */
 const resourceSummary = computed(() =>
   (recipe.value?.resources ?? [])
-    .map((resource) => wizard.resourceNames[resource.id])
+    .map((resource) => wizard.effectiveResourceNames[resource.id])
     .filter((name) => !!name)
+    .join(", "),
+);
+
+/** Existing resources this deployment writes into rather than creates. */
+const adoptedSummary = computed(() =>
+  (recipe.value?.resources ?? [])
+    .map((resource) => wizard.adoptions[resource.id]?.name)
+    .filter((name): name is string => !!name)
     .join(", "),
 );
 
@@ -71,6 +80,10 @@ function start() {
       <div v-if="resourceSummary" class="kv-row">
         <dt>{{ t("confirm.resourcesLabel") }}</dt>
         <dd>{{ resourceSummary }}</dd>
+      </div>
+      <div v-if="adoptedSummary" class="kv-row">
+        <dt>{{ t("confirm.adoptedLabel") }}</dt>
+        <dd class="tone-warn">{{ adoptedSummary }}</dd>
       </div>
       <div v-if="(recipe?.worker.containers || []).length > 0" class="kv-row">
         <dt>{{ t("confirm.containersLabel") }}</dt>

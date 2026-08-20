@@ -18,11 +18,11 @@
 // live script's own state because a version upload clears schedules and a full
 // rebuild deletes the script outright.
 
-import type { DeployCredentials, LiveScriptFacts } from "./types";
+import type { DeployCredentials, ExistingResource, LiveScriptFacts } from "./types";
 import { callCfJson } from "../relay";
-import { listDatabaseNames } from "./d1";
-import { listBucketNames } from "./r2";
-import { listNamespaceTitles } from "./kv";
+import { listDatabases } from "./d1";
+import { listBuckets } from "./r2";
+import { listNamespaces } from "./kv";
 import { listCustomDomains } from "./domains";
 import { listScriptNames, readCrons } from "./workerVersion";
 
@@ -30,15 +30,22 @@ interface ScriptSettings {
   bindings?: Array<{ type?: string; name?: string; text?: string; class_name?: string }>;
 }
 
-export async function listExistingNames(creds: DeployCredentials, kind: "d1" | "r2" | "kv"): Promise<string[]> {
+/**
+ * Everything of one kind the account holds, names and ids together. Read once on
+ * the options page and carried from there: it is what the match declarations are
+ * resolved against, and what a provision call adopts instead of creating. There
+ * is deliberately no per-name lookup anywhere else — one reading of the account,
+ * and every answer comes out of it.
+ */
+export async function listExistingResources(creds: DeployCredentials, kind: "d1" | "r2" | "kv"): Promise<ExistingResource[]> {
   const { apiToken, accountId } = creds;
   switch (kind) {
     case "d1":
-      return listDatabaseNames(apiToken, accountId);
+      return listDatabases(apiToken, accountId);
     case "r2":
-      return listBucketNames(apiToken, accountId);
+      return listBuckets(apiToken, accountId);
     case "kv":
-      return listNamespaceTitles(apiToken, accountId);
+      return listNamespaces(apiToken, accountId);
   }
 }
 

@@ -26,10 +26,12 @@ import {
   type DeployMode,
   type DeployResult,
   type DeployTarget,
+  type ExistingResource,
   type LiveScriptFacts,
   type StepState,
   type StepStatus,
 } from "../lib/deploy/types";
+import { matchResource, type ResourceMatch } from "../lib/deploy/match";
 
 /** Wizard page numbers, in the order the user walks them. */
 export const STEPS = {
@@ -197,7 +199,110 @@ export const useWizard = defineStore("wizard", () => {
 
   function touchResource(id: string) {
     touchedResources.value[id] = true;
+    // Editing the name is a new question, so an answer given to the old one
+    // stops applying rather than quietly outliving what it was about.
+    delete adoptChoice.value[id];
   }
+
+  // ---- what the account already holds -------------------------------------
+
+  /** Resource kind → everything of that kind in the account; null when unreadable. */
+  const inventory = ref<Record<string, ExistingResource[] | null>>({});
+  /**
+   * Resource id → the user's answer when the recipe's pattern matched more than
+   * one thing. The name of the resource to adopt, or "" for "create a new one".
+   */
+  const adoptChoice = ref<Record<string, string>>({});
+
+  /** Resource id → what the recipe's match declaration resolves to right now. */
+  const resourceMatches = computed<Record<string, ResourceMatch>>(() => {
+    const out: Record<string, ResourceMatch> = {};
+    for (const resource of recipe.value?.resources ?? []) {
+      const existing = inventory.value[resource.kind];
+      const name = (resourceNames.value[resource.id] ?? "").trim();
+      // An empty field is the user skipping an optional resource. Matching it
+      // anyway would bind the very thing they asked to leave out — and would do
+      // it on a line of the page that reads "skipped".
+      //
+      // An unreadable listing is not an empty account either: with nothing to
+      // match against there is no answer, and the options page blocks rather
+      // than letting this fall through to "create".
+      if (!name || !existing) {
+        out[resource.id] = { outcome: "create" };
+        continue;
+      }
+      out[resource.id] = matchResource({ resource, chosenName: name, existing, interpolate });
+    }
+    return out;
+  });
+
+  /** Resource id → the existing resource this deployment will write into. */
+  const adoptions = computed<Record<string, ExistingResource>>(() => {
+    const out: Record<string, ExistingResource> = {};
+    for (const resource of recipe.value?.resources ?? []) {
+      const match = resourceMatches.value[resource.id];
+      const chosen = adoptChoice.value[resource.id];
+      if (chosen !== undefined) {
+        const entry = (inventory.value[resource.kind] || []).find((candidate) => candidate.name === chosen);
+        if (entry) out[resource.id] = entry;
+        continue;
+      }
+      if (match?.outcome === "adopt" && match.adopt) out[resource.id] = match.adopt;
+    }
+    return out;
+  });
+
+  /**
+   * A pattern that matched several resources is the one case the wizard will not
+   * settle on its own, because settling it wrong means writing into data that
+   * belongs to something else.
+   */
+  const undecidedResources = computed(() =>
+    (recipe.value?.resources ?? [])
+      .filter((resource) => resourceMatches.value[resource.id]?.outcome === "ambiguous")
+      .filter((resource) => adoptChoice.value[resource.id] === undefined)
+      .map((resource) => resource.id),
+  );
+
+  function chooseAdoption(resourceId: string, name: string) {
+    adoptChoice.value[resourceId] = name;
+  }
+
+  function clearAdoption(resourceId: string) {
+    delete adoptChoice.value[resourceId];
+  }
+
+  /**
+   * The name this deployment actually uses for a resource: an adopted one keeps
+   * its own name, whatever the field says. Everything downstream reads this —
+   * the bindings, the `${resource:id}` vars, what the sandbox is told, and the
+   * review page — so there is one name per resource rather than two that can
+   * disagree about which thing is being written into.
+   */
+  const effectiveResourceNames = computed<Record<string, string>>(() => {
+    const out: Record<string, string> = {};
+    for (const resource of recipe.value?.resources ?? []) {
+      const adopted = adoptions.value[resource.id];
+      out[resource.id] = adopted ? adopted.name : (resourceNames.value[resource.id] ?? "").trim();
+    }
+    return out;
+  });
+
+  /**
+   * Resources set to create under a name the account already holds. Provisioning
+   * no longer looks before it creates, so Cloudflare would refuse this halfway
+   * through a deployment; it is the options page's job to catch it.
+   */
+  const collidingResources = computed(() =>
+    (recipe.value?.resources ?? [])
+      .filter((resource) => {
+        const existing = inventory.value[resource.kind];
+        const name = (resourceNames.value[resource.id] ?? "").trim();
+        if (!existing || !name || adoptions.value[resource.id]) return false;
+        return existing.some((entry) => entry.name === name);
+      })
+      .map((resource) => resource.id),
+  );
 
   /** Fills every target field from the recipe's own defaults. */
   function adoptConfig(loaded: LoadedConfig) {
@@ -211,6 +316,8 @@ export const useWizard = defineStore("wizard", () => {
     touchedResources.value = {};
     resourceNames.value = {};
     syncResourceDefaults();
+    inventory.value = {};
+    adoptChoice.value = {};
     inputs.value = {};
     for (const input of loaded.recipe.inputs ?? []) {
       inputs.value[input.id] = input.default ?? (input.kind === "toggle" ? false : "");
@@ -253,10 +360,7 @@ export const useWizard = defineStore("wizard", () => {
   });
 
   function buildTarget(): DeployTarget {
-    const names: Record<string, string> = {};
-    for (const resource of recipe.value?.resources ?? []) {
-      names[resource.id] = (resourceNames.value[resource.id] ?? "").trim();
-    }
+    const names: Record<string, string> = { ...effectiveResourceNames.value };
     const values: Record<string, string | boolean> = {};
     for (const input of activeInputs.value) {
       const value = inputs.value[input.id];
@@ -266,6 +370,7 @@ export const useWizard = defineStore("wizard", () => {
       mode: mode.value,
       workerName: workerName.value.trim(),
       resourceNames: names,
+      adopted: { ...adoptions.value },
       inputs: values,
       declareContainers: declareContainers.value,
       fullRebuild: mode.value === "overwrite" && fullRebuild.value,
@@ -370,6 +475,14 @@ export const useWizard = defineStore("wizard", () => {
     resourceNames,
     touchResource,
     defaultResourceName,
+    inventory,
+    resourceMatches,
+    adoptions,
+    effectiveResourceNames,
+    undecidedResources,
+    collidingResources,
+    chooseAdoption,
+    clearAdoption,
     inputs,
     activeInputs,
     domainValue,

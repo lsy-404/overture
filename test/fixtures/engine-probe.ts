@@ -153,6 +153,7 @@ function target(overrides: Partial<DeployTarget> = {}): DeployTarget {
     mode: "fresh",
     workerName: "probe-worker",
     resourceNames: { db: "probe-db", bucket: "probe-store", cache: "probe-cache" },
+    adopted: {},
     inputs: { adminUser: "admin" },
     declareContainers: [],
     fullRebuild: false,
@@ -395,6 +396,35 @@ async function main(): Promise<void> {
     "a required host secret is pushed by the host",
     swept.ok && secretsPushed.get("CF_API_TOKEN") === API_TOKEN,
     String(secretsPushed.has("CF_API_TOKEN")),
+  );
+
+  // 11a. An adopted resource is bound by its own id, and no create call goes out
+  // for it — the options page already settled which one this deployment writes
+  // into.
+  const beforeAdopt = requests.length;
+  const adopted = await run(
+    baseRecipe(),
+    reporting(`
+      const { databaseId } = await ctx.d1.provision("db");
+      notes.push("db=" + databaseId);
+      notes.push("ctxName=" + ctx.ctx.resourceNames.db);
+    `),
+    { adopted: { db: { name: "legacy-probe-db", id: "d1-uuid-legacy" } } },
+  );
+  const createCalls = requests
+    .slice(beforeAdopt)
+    .filter((entry) => entry.startsWith("POST") && entry.includes("/d1/database"));
+  say(
+    "an adopted resource is used as-is, with nothing created",
+    adopted.ok && adopted.notes.join(" ").includes("db=d1-uuid-legacy") && createCalls.length === 0,
+    `${adopted.notes.join(" ")} | ${createCalls.length} create call(s)`,
+  );
+  // The name the script is told it got has to be the one the Worker is bound to,
+  // or a var built from ${resource:db} addresses a database nobody deployed.
+  say(
+    "the adopted resource's own name is what the script is told",
+    adopted.notes.join(" ").includes("ctxName=legacy-probe-db"),
+    adopted.notes.join(" "),
   );
 
   // 11b. The frame runs the package and nothing else. Every route from bytes the

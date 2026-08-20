@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
-import { listExistingNames, readLiveFacts } from "../../lib/deploy/inventory";
+import { listExistingResources, readLiveFacts } from "../../lib/deploy/inventory";
 import { localized, RECIPE_LIMITS, type RecipeInput, type RecipeResource, type ResourceKind } from "../../lib/recipe/types";
-import { WinButton, WinCheckBox, WinProgressRing } from "../../vendor/winui";
+import { WinButton, WinCheckBox, WinInfoBar, WinProgressRing } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -15,8 +15,6 @@ const wizard = useWizard();
 const resources = computed(() => wizard.recipe?.resources ?? []);
 const askContainers = computed(() => (wizard.recipe?.worker.containers ?? []).filter((container) => container.mode === "ask"));
 
-/** Names already in the account, per resource kind. null when unreadable. */
-const existing = reactive<Record<string, string[] | null>>({});
 const scanning = ref(true);
 
 const liveChecking = ref(false);
@@ -57,35 +55,63 @@ onUnmounted(() => {
 // Everything this page states about the account is fetched once behind a cover,
 // so the Worker and storage answers land together instead of rewriting the form
 // under the user as each one arrives.
-onMounted(async () => {
-  const kinds = [...new Set(resources.value.map((resource) => resource.kind))];
+const kinds = computed(() => [...new Set(resources.value.map((resource) => resource.kind))]);
+
+/** Kinds whose listing failed. Nothing on this page can be said about them. */
+const unreadableKinds = computed(() => kinds.value.filter((kind) => wizard.inventory[kind] === null));
+
+// One reading of the account per kind, kept for the whole step: the match
+// declarations resolve against it, and the deployment adopts out of it rather
+// than asking Cloudflare the same question again later.
+//
+// `alive` because a read started before the user stepped back can otherwise
+// land after they return with different credentials, writing another account's
+// inventory into this one.
+let alive = true;
+onUnmounted(() => {
+  alive = false;
+});
+
+async function readInventory() {
+  scanning.value = true;
+  for (const kind of kinds.value) delete wizard.inventory[kind];
   await Promise.all([
-    ...kinds.map(async (kind: ResourceKind) => {
-      existing[kind] = await listExistingNames({ ...wizard.credentials }, kind).catch(() => null);
+    ...kinds.value.map(async (kind: ResourceKind) => {
+      const entries = await listExistingResources({ ...wizard.credentials }, kind).catch(() => null);
+      if (alive) wizard.inventory[kind] = entries;
     }),
     readLive(),
   ]);
-  scanning.value = false;
-});
-
-type NameState = "exists" | "absent" | "unknown";
-
-function nameState(resource: RecipeResource): NameState {
-  const names = existing[resource.kind];
-  if (!names) return "unknown";
-  return names.includes((wizard.resourceNames[resource.id] ?? "").trim()) ? "exists" : "absent";
+  if (alive) scanning.value = false;
 }
+
+onMounted(() => void readInventory());
 
 function nameValid(value: string): boolean {
   return RECIPE_LIMITS.namePattern.test(value.trim());
 }
 
+function matchOf(resource: RecipeResource) {
+  return wizard.resourceMatches[resource.id];
+}
+
 /** What to say under one resource's name field. */
-function resourceStatus(resource: RecipeResource): "invalid" | "skipped" | NameState {
+type ResourceStatus = "invalid" | "skipped" | "unknown" | "adopt" | "ambiguous" | "collides" | "create";
+
+function resourceStatus(resource: RecipeResource): ResourceStatus {
   const name = (wizard.resourceNames[resource.id] ?? "").trim();
   if (!name) return resource.required ? "invalid" : "skipped";
   if (!nameValid(name)) return "invalid";
-  return nameState(resource);
+  if (!wizard.inventory[resource.kind]) return "unknown";
+  if (wizard.adoptions[resource.id]) return "adopt";
+  if (wizard.undecidedResources.includes(resource.id)) return "ambiguous";
+  if (wizard.collidingResources.includes(resource.id)) return "collides";
+  return "create";
+}
+
+/** The candidates one pattern turned up, plus the standing option of a new one. */
+function candidatesOf(resource: RecipeResource) {
+  return matchOf(resource)?.candidates ?? [];
 }
 
 function onResourceInput(resource: RecipeResource) {
@@ -96,6 +122,15 @@ const workerNameValid = computed(() => nameValid(wizard.workerName));
 
 const resourcesOk = computed(() => {
   if (scanning.value || !workerNameValid.value) return false;
+  // An unresolved match is the one thing this page will not decide for the user:
+  // picking wrong writes this deployment into somebody else's data.
+  if (wizard.undecidedResources.length > 0) return false;
+  // Provisioning no longer looks before it creates, so a name already taken has
+  // to be settled here rather than failing part-way through the deployment.
+  if (wizard.collidingResources.length > 0) return false;
+  // Without the account's inventory this page cannot say what will happen, and
+  // guessing "it must be new" is how an upgrade lands on an empty database.
+  if (unreadableKinds.value.length > 0) return false;
   for (const resource of resources.value) {
     const name = (wizard.resourceNames[resource.id] ?? "").trim();
     if (!name && !resource.required) continue;
@@ -160,6 +195,18 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
     </div>
 
     <template v-else>
+      <WinInfoBar
+        v-if="unreadableKinds.length > 0"
+        :IsOpen="true"
+        Severity="Error"
+        :IsClosable="false"
+        :IsIconVisible="false"
+      >
+        <strong>{{ t("target.inventoryFailedTitle") }}</strong>
+        <p style="margin: 6px 0 0">{{ t("target.inventoryFailedBody") }}</p>
+        <WinButton style="margin-top: 10px" @Click="readInventory">{{ t("common.retry") }}</WinButton>
+      </WinInfoBar>
+
       <div class="field">
         <label for="workerName">{{ t("target.workerName") }}</label>
         <input id="workerName" v-model.trim="wizard.workerName" type="text" spellcheck="false" @blur="readLive" />
@@ -201,13 +248,68 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
         <p class="field-help">{{ t("target.bindingNote", { binding: resource.binding }) }}</p>
         <p v-if="resourceStatus(resource) === 'invalid'" class="field-help tone-bad">{{ t("target.nameInvalid") }}</p>
         <p v-else-if="resourceStatus(resource) === 'skipped'" class="field-help">{{ t("target.nameSkipped") }}</p>
-        <p v-else-if="resourceStatus(resource) === 'unknown'" class="field-help tone-warn">
-          {{ t("target.nameUnknown", { name: wizard.resourceNames[resource.id] }) }}
+        <p v-else-if="resourceStatus(resource) === 'unknown'" class="field-help tone-bad">
+          {{ t("target.inventoryUnreadable") }}
         </p>
-        <p v-else-if="resourceStatus(resource) === 'exists'" class="field-help" :class="wizard.mode === 'fresh' ? 'tone-warn' : 'tone-ok'">
-          {{ t("target.nameExists", { name: wizard.resourceNames[resource.id] }) }}
-        </p>
-        <p v-else class="field-help">{{ t("target.nameAbsent", { name: wizard.resourceNames[resource.id] }) }}</p>
+
+        <template v-else-if="resourceStatus(resource) === 'collides'">
+          <p class="field-help tone-bad">{{ t("target.nameTaken", { name: wizard.resourceNames[resource.id] }) }}</p>
+          <button type="button" class="link-button" @click="wizard.clearAdoption(resource.id)">
+            {{ t("target.nameTakenAdopt") }}
+          </button>
+        </template>
+
+        <!-- Writing into something that already holds data is the part of this
+             page a user must not have to infer. -->
+        <template v-else-if="resourceStatus(resource) === 'adopt'">
+          <p class="field-help" :class="wizard.mode === 'fresh' ? 'tone-warn' : 'tone-ok'">
+            {{ t("target.willAdopt", { name: wizard.adoptions[resource.id].name }) }}
+          </p>
+          <p v-if="matchOf(resource)?.via === 'declared'" class="field-help">
+            {{ t("target.adoptViaDeclared") }}
+          </p>
+          <p v-else-if="matchOf(resource)?.via === 'pattern'" class="field-help">
+            {{ t("target.adoptViaPattern", { pattern: matchOf(resource)?.matched }) }}
+          </p>
+          <button type="button" class="link-button" @click="wizard.chooseAdoption(resource.id, '')">
+            {{ t("target.adoptInsteadCreate") }}
+          </button>
+        </template>
+
+        <template v-else-if="resourceStatus(resource) === 'ambiguous'">
+          <p class="field-help tone-warn">
+            {{ t("target.ambiguousTitle", { pattern: matchOf(resource)?.matched, count: candidatesOf(resource).length }) }}
+          </p>
+          <p class="field-help">{{ t("target.ambiguousHelp") }}</p>
+          <div class="candidate-list">
+            <button
+              v-for="candidate in candidatesOf(resource)"
+              :key="candidate.id"
+              type="button"
+              class="card-option"
+              @click="wizard.chooseAdoption(resource.id, candidate.name)"
+            >
+              <h3>{{ candidate.name }}</h3>
+              <p>{{ t("target.ambiguousUse") }}</p>
+            </button>
+            <button type="button" class="card-option" @click="wizard.chooseAdoption(resource.id, '')">
+              <h3>{{ wizard.resourceNames[resource.id] }}</h3>
+              <p>{{ t("target.ambiguousCreate") }}</p>
+            </button>
+          </div>
+        </template>
+
+        <template v-else>
+          <p class="field-help">{{ t("target.willCreate", { name: wizard.resourceNames[resource.id] }) }}</p>
+          <button
+            v-if="matchOf(resource)?.outcome === 'ambiguous' || matchOf(resource)?.outcome === 'adopt'"
+            type="button"
+            class="link-button"
+            @click="wizard.clearAdoption(resource.id)"
+          >
+            {{ t("target.adoptReconsider") }}
+          </button>
+        </template>
       </div>
 
       <div v-if="askContainers.length > 0" class="guide-card">
@@ -302,5 +404,21 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
 .password-row input {
   flex: 1;
   min-width: 0;
+}
+
+.candidate-list {
+  margin-top: 8px;
+}
+
+.link-button {
+  margin-top: 4px;
+  padding: 0;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-size: 12px;
+  color: var(--AccentTextFillColorPrimaryBrush, inherit);
+  text-decoration: underline;
+  cursor: pointer;
 }
 </style>

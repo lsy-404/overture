@@ -132,7 +132,29 @@ const policyWarnings = Object.entries(policyCopy).filter(
 );
 const policyWarningKeys = policyWarnings.map(([key]) => key);
 
+// Every t("…") with a literal key, across the whole UI. Keys built from a
+// template literal are the component's own business and are skipped.
+const usedKeys = [
+  ...new Set(
+    vueFiles.flatMap((file) => [...read(file).matchAll(/\bt\("([A-Za-z0-9_.]+)"/g)].map((match) => match[1])),
+  ),
+];
+const danglingKeys = usedKeys.filter((key) => !enKeys.includes(key));
+
+/** `{name}` placeholders, which have to agree or one locale renders a literal brace. */
+function placeholders(text: string): string[] {
+  return [...text.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((match) => match[1]).sort();
+}
+const enFlat = flatten(en);
+const zhFlat = flatten(zh);
+const placeholderMismatches = Object.keys(enFlat)
+  .filter((key) => zhFlat[key] !== undefined)
+  .filter((key) => placeholders(enFlat[key]).join(",") !== placeholders(zhFlat[key]).join(","));
+
 const checks: Array<[string, boolean, string?]> = [
+  ["every message key a component asks for exists", danglingKeys.length === 0, danglingKeys.join(", ")],
+  ["the two locales interpolate the same values", placeholderMismatches.length === 0, placeholderMismatches.join(", ")],
+
   ["both locale files parse as JSON objects", !!en && !!zh,
     `${en ? "" : "en.json unparseable "}${zh ? "" : "zh-CN.json unparseable"}`],
   ["the locale key sets are identical", enKeys.length > 0 && onlyEn.length === 0 && onlyZh.length === 0,

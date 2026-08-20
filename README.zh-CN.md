@@ -2,16 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-一个通用的 Cloudflare Workers 部署向导，完全运行在浏览器里。只需一个 Cloudflare API Token，无需本地工具链、无需 Node.js、无需命令行，就能把 GitHub release 部署到 Cloudflare Workers。
+一个通用的 Cloudflare Workers 部署向导，完全运行在浏览器里。用 Cloudflare 账号登录即可，无需本地工具链、无需 Node.js、无需命令行，就能把 GitHub release 部署到 Cloudflare Workers。
 
 ## 怎么用
 
-1. 准备一个 Cloudflare API Token，具有 Workers Scripts 写入权限。
-2. 访问 `https://<你的-overture-主机>/?src=<owner>/<repo>`（把 `<owner>/<repo>` 替换为实际的 GitHub 仓库地址）。
-3. 跟着向导走：粘贴 Token、审查权限、命名资源、确认部署。
-4. 剩下的交给 Overture —— 自动创建 D1 数据库、R2 存储桶、KV 命名空间，并部署 Worker。
+1. 访问 `https://<你的-overture-主机>/?src=<owner>/<repo>`（把 `<owner>/<repo>` 替换为实际的 GitHub 仓库地址）。
+2. 检查这个包会做什么：它需要的权限、会访问的端点、会创建的资源。
+3. 向导提示时用 Cloudflare 账号登录授权，它只会申请这个包声明的权限。
+4. 命名资源并确认，Overture 负责其余一切：D1 数据库、R2 存储桶、KV 命名空间和 Worker 脚本本身。
 
-向导会实时跟踪进度，失败时自动回滚。
+向导会逐步展示进度。部署失败后可以重试，已经创建好的资源会被复用而不是重复创建。
 
 ## 给应用开发者：让你的项目可以被部署
 
@@ -61,7 +61,7 @@ Overture 本身也是一个 Cloudflare Worker。要运行自己的实例：
 
 Overture 的设计目标是最小化被攻击包造成的影响：
 
-- **凭证只存在浏览器里。** 你的 Cloudflare API Token 与 R2 密钥永远不会离开宿主帧 —— 不会被发送到 recipe 沙箱、不会被记日志、不会被持久化存储、不会出现在 URL 里。
+- **凭证只存在浏览器里。** Cloudflare 签发的 OAuth Token 与 R2 密钥永远不会离开宿主帧 —— 不会被发送到 recipe 沙箱、不会被记日志、不会被持久化存储、不会出现在 URL 里。
 
 - **Recipe 运行在沙箱 iframe 里。** 每个 `recipe.js` 都在一个不透明源的 iframe 里运行（`sandbox="allow-scripts"`）—— 没有 DOM 访问权限、没有同源策略、没有本地存储。它读不到你的凭证，也干扰不了向导的 UI。
 

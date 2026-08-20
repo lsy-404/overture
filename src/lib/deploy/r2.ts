@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import type { ExistingResource } from "./types";
 import { callCfJson } from "../relay";
 
 const CONTEXT = "Workers R2 Storage Write";
@@ -25,20 +26,20 @@ interface R2ListResult {
   buckets?: R2Bucket[];
 }
 
-export async function listBucketNames(token: string, accountId: string, signal?: AbortSignal): Promise<string[]> {
+/** A bucket has no id of its own; its name is what a binding carries. */
+export async function listBuckets(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
   const result = await callCfJson<R2ListResult>(
     token,
     `/accounts/${accountId}/r2/buckets`,
     signal ? { signal } : undefined,
     CONTEXT,
   );
-  return (result.buckets || []).map((bucket) => bucket.name || "").filter(Boolean);
+  return (result.buckets || [])
+    .filter((bucket) => bucket.name)
+    .map((bucket) => ({ name: bucket.name as string, id: bucket.name as string }));
 }
 
-/** Creating a bucket that already exists is an error, so the name is claimed by listing first. */
-export async function getOrCreateBucket(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<void> {
-  const names = await listBucketNames(token, accountId, signal);
-  if (names.includes(name)) return;
+export async function createBucket(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<void> {
   await callCfJson(
     token,
     `/accounts/${accountId}/r2/buckets`,

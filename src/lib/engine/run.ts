@@ -34,6 +34,7 @@ import {
 import { probeReachable } from "../deploy/health";
 import type { LoadedConfig } from "../package/config";
 import type { DataPackage } from "../package/artifact";
+import { effectiveResourceNames } from "../deploy/match";
 import { BRIDGE_PROTOCOL, type GuestContext } from "../sandbox/protocol";
 import { runSandbox } from "../sandbox/host";
 import { createCapabilityHost } from "./capabilities";
@@ -74,7 +75,9 @@ export async function runRecipe(input: {
     recipe,
     mode: target.mode,
     workerName: target.workerName,
-    resourceNames: { ...target.resourceNames },
+    // An adopted resource keeps its own name here too: what the script is told
+    // it got has to be the thing the Worker is actually bound to.
+    resourceNames: effectiveResourceNames(target),
     inputs: { ...target.inputs },
     live,
     declareContainers: [...target.declareContainers],

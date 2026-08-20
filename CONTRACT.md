@@ -71,12 +71,12 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | GET | `/accounts/{accountId}/tokens/verify` | Is the pasted API token live and scoped to this account |
 | GET | `/accounts/{accountId}/tokens/{tokenId}` | Read the token's policies for the permission audit the recipe asks for |
 | GET | `/accounts/{accountId}` | Account name and plan, shown on the target step |
-| GET | `/accounts/{accountId}/r2/buckets` | Is R2 enabled, and which buckets already exist |
+| GET | `/accounts/{accountId}/r2/buckets` | Is R2 enabled, and which buckets the recipe's resources could match |
 | POST | `/accounts/{accountId}/r2/buckets` | Create a bucket the recipe declared |
-| GET | `/accounts/{accountId}/d1/database` | List D1 databases (existing-name detection) |
+| GET | `/accounts/{accountId}/d1/database` | Read the account's D1 databases once, to match the recipe's resources against |
 | POST | `/accounts/{accountId}/d1/database` | Create a D1 database the recipe declared |
 | POST | `/accounts/{accountId}/d1/database/{dbId}/query` | Run the recipe's SQL steps (schema, seed rows) |
-| GET | `/accounts/{accountId}/storage/kv/namespaces` | List KV namespaces (existing-name detection) |
+| GET | `/accounts/{accountId}/storage/kv/namespaces` | Read the account's KV namespaces once, to match the recipe's resources against |
 | POST | `/accounts/{accountId}/storage/kv/namespaces` | Create a KV namespace the recipe declared |
 | GET | `/accounts/{accountId}/workers/scripts` | Does the chosen Worker name already exist (fresh vs overwrite) |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}` | Script metadata for an overwrite |

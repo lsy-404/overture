@@ -22,14 +22,16 @@
 
 import { CF_ENDPOINTS, type EndpointRule } from "../../../shared/cfAllowlist";
 import { METHOD_GATES } from "../sandbox/protocol";
-import type { Capability } from "../recipe/types";
+import type { Capability, Recipe, ResourceKind } from "../recipe/types";
 
 /** Bridge method → the endpoint ids one call of it can reach. */
 export const METHOD_ENDPOINTS: Record<string, string[]> = {
-  "d1.provision": ["d1.databaseList", "d1.databaseCreate"],
+  // Provisioning only ever creates: whether there was something to adopt was
+  // settled on the options page, out of the inventory the host read there.
+  "d1.provision": ["d1.databaseCreate"],
   "d1.query": ["d1.query"],
-  "r2.provision": ["r2.bucketList", "r2.bucketCreate"],
-  "kv.provision": ["kv.namespaceList", "kv.namespaceCreate"],
+  "r2.provision": ["r2.bucketCreate"],
+  "kv.provision": ["kv.namespaceCreate"],
   "secrets.put": ["worker.secretPut"],
   "secrets.putHostValue": ["worker.secretPut"],
   "worker.deleteScript": ["worker.scriptDelete"],
@@ -59,6 +61,29 @@ export const HOST_ENDPOINTS: readonly string[] = [
   "worker.settingsRead",
   "worker.deploymentList",
 ];
+
+/** Reading what the account already holds, so a resource can be matched to it. */
+const KIND_INVENTORY: Record<ResourceKind, string> = {
+  d1: "d1.databaseList",
+  r2: "r2.bucketList",
+  kv: "kv.namespaceList",
+};
+
+/**
+ * The host's own endpoints for one recipe. Listing a kind is unconditional once
+ * the recipe declares a resource of it — the options page has to know what is
+ * already there before it can say what this deployment will write into — so the
+ * read it needs belongs to the wizard's baseline rather than to a capability the
+ * package may or may not ask for.
+ */
+export function hostEndpointsFor(recipe: Recipe): string[] {
+  const out = [...HOST_ENDPOINTS];
+  for (const resource of recipe.resources) {
+    const id = KIND_INVENTORY[resource.kind];
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
 
 const BY_ID = new Map<string, EndpointRule>(CF_ENDPOINTS.map((rule) => [rule.id, rule]));
 

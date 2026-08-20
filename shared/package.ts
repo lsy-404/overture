@@ -79,6 +79,29 @@ export function sourceSlug(ref: SourceRef): string {
 }
 
 /**
+ * Accepts what a visitor who has never heard of "owner/repo" would actually
+ * paste — a full GitHub URL, with or without a scheme, a trailing slash, a
+ * `.git` suffix, or extra path segments (`/releases`, `/tree/main`, …) — and
+ * reduces it to the same shape `parseSource` expects before handing off to it.
+ * `?src=` keeps using `parseSource` directly: that value is already exact.
+ */
+export function parseSourceLoose(value: string): SourceRef | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const looksLikeUrl = trimmed.includes("://") || /^(www\.)?github\.com\//i.test(trimmed);
+  if (!looksLikeUrl) return parseSource(trimmed);
+  try {
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    if (!/^(www\.)?github\.com$/i.test(url.hostname)) return null;
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments.length < 2) return null;
+    return parseSource(`${segments[0]}/${segments[1].replace(/\.git$/i, "")}`);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Only accept assets served from this source's own release downloads. Both the
  * SPA and the relay rely on it: a release body is attacker-controlled text, so
  * the download URL has to be checked against the repository the user actually
