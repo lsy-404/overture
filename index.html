@@ -5,6 +5,37 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="dark light" />
     <meta name="description" content="A browser-based installer for Cloudflare Workers apps. Sign in with your Cloudflare account — no local tools required." />
+    <!--
+      This host page's own CSP, not the sandboxed recipe frame's (that one is
+      set per-run in src/lib/sandbox/host.ts). Inventory behind each directive:
+        script-src  'self' for the built (or, in `npm run dev`, Vite-served)
+                    module bundle; blob: and the GUEST_BOOTSTRAP script's own
+                    hash are here for a reason that has nothing to do with this
+                    page's own scripts — a `srcdoc` sandboxed iframe inherits
+                    its creator's CSP as one of the policies it must also
+                    satisfy, so without these two the sandbox's own, separately
+                    declared policy would still be vetoed by this one and the
+                    deploy engine would silently stop working. Verified against
+                    a real inheriting frame, not assumed from the spec text.
+                    The hash must be recomputed if guest.ts's GUEST_BOOTSTRAP
+                    ever changes; test/sandbox/csp_hash.test.ts fails loudly
+                    if the two drift apart.
+        style-src   'self' plus 'unsafe-inline' for Vue's `:style`/`style=`
+                    bindings and the vendored WinUI components' inline theme
+                    tokens — no inline <script>, only inline style attributes.
+        connect-src 'self' for the relay, plus https: broad rather than a host
+                    list: api.github.com (release listing), the deployed app's
+                    own domain (post-deploy health probe), and any public host
+                    a recipe's `probe.reachable` capability names are all
+                    legitimate destinations decided at runtime, not build time.
+        img-src     'self' plus data: for inline icon/theme assets.
+        No 'unsafe-eval', no remote script origin, no frame-ancestors needed
+        (this page is never meant to be framed).
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' blob: 'sha256-1DzAjYeUYwB2uFADqn5hNQw9Tur+Jb2q98tkmm/meio='; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self' https:; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'"
+    />
     <title>Overture</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
   </head>

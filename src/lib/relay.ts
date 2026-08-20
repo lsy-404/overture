@@ -16,10 +16,22 @@
 // Every Cloudflare call goes through this deployment's own Worker routes
 // (`/cf/*`, `/r2/verify-keys`, `/github/release-asset`): api.cloudflare.com
 // sends no CORS headers, so a direct browser call fails regardless of whether
-// the token is valid. The relay allow-lists paths — an endpoint nobody listed
-// on purpose is refused there, not here.
+// the session is valid. The relay allow-lists paths — an endpoint nobody
+// listed on purpose is refused there, not here.
+//
+// This SPA never holds a Cloudflare credential: `/cf/*` authorizes every call
+// from the `ov_session` HttpOnly cookie the OAuth callback wrote, which
+// JavaScript here cannot read either way. `credentials: "same-origin"` is what
+// carries that cookie; `Overture-Relay: 1` is what a form post or a cross-site
+// `<img>` cannot forge, since neither can set a custom header. Both go on every
+// call that touches the session, per the relay's CSRF gate.
 
 import { sourceSlug, type SourceRef } from "../../shared/package";
+import { formatScopeParam, parseScopeParam } from "../../shared/oauthScopes";
+
+/** Every call that reads or writes the session cookie carries this — the
+ *  relay's second CSRF gate, alongside `SameSite` and the Origin check. */
+const RELAY_HEADER = { "Overture-Relay": "1" } as const;
 
 export class CfApiError extends Error {
   constructor(
@@ -77,23 +89,14 @@ export async function fetchGithubReleaseAsset(url: string, ref: SourceRef, signa
   });
 }
 
-/**
- * Calls `/cf/<path>` with the given bearer token. `token` isn't always the
- * account API token — the asset-upload completion call reuses this helper with
- * the short-lived JWT the upload session returns, since the relay forwards
- * whatever bearer it is handed.
- */
-export async function callCfJson<T>(
-  token: string,
-  path: string,
-  init?: RequestInit,
-  context?: string,
-): Promise<T> {
+/** Calls `/cf/<path>`, authorized by the `ov_session` cookie. */
+export async function callCfJson<T>(path: string, init?: RequestInit, context?: string): Promise<T> {
   const response = await fetchRelay(`${relayBase()}/cf${path}`, {
     ...init,
+    credentials: "same-origin",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...RELAY_HEADER,
       ...((init?.headers as Record<string, string>) || {}),
     },
   });
@@ -111,12 +114,13 @@ export async function callCfJson<T>(
 }
 
 /** Script deletion answers with an empty body, which `response.json()` can't parse. */
-export async function callCfNoContent(token: string, path: string, init?: RequestInit, context?: string): Promise<void> {
+export async function callCfNoContent(path: string, init?: RequestInit, context?: string): Promise<void> {
   const response = await fetchRelay(`${relayBase()}/cf${path}`, {
     ...init,
+    credentials: "same-origin",
     headers: {
-      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...RELAY_HEADER,
       ...((init?.headers as Record<string, string>) || {}),
     },
   });
@@ -135,9 +139,37 @@ export async function callCfNoContent(token: string, path: string, init?: Reques
   }
 }
 
-/** Multipart variant for the Worker version upload and the asset-upload completion call. */
-export async function callCfMultipart<T>(
-  token: string,
+/** Multipart variant for the Worker version upload, authorized by the session cookie. */
+export async function callCfMultipart<T>(path: string, form: FormData, context?: string, signal?: AbortSignal): Promise<T> {
+  const response = await fetchRelay(`${relayBase()}/cf${path}`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: RELAY_HEADER,
+    body: form,
+    signal,
+  });
+  let body: CfEnvelope<T>;
+  try {
+    body = (await response.json()) as CfEnvelope<T>;
+  } catch {
+    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${response.status})`, response.status, undefined, context);
+  }
+  if (!response.ok || !body.success) {
+    const first = body.errors?.[0];
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+  }
+  return body.result as T;
+}
+
+/**
+ * The one relay call the session cookie never authorizes: completing an asset
+ * upload carries the short-lived JWT Cloudflare's own upload session issued,
+ * which the relay's `passthroughAuth` rule forwards instead of reading
+ * `ov_session` — the same exception `worker.assetUpload` names on the Worker
+ * side. Nowhere else in this file sends an `Authorization` header.
+ */
+export async function callCfMultipartBearer<T>(
+  bearerToken: string,
   path: string,
   form: FormData,
   context?: string,
@@ -145,7 +177,7 @@ export async function callCfMultipart<T>(
 ): Promise<T> {
   const response = await fetchRelay(`${relayBase()}/cf${path}`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${bearerToken}`, ...RELAY_HEADER },
     body: form,
     signal,
   });
@@ -182,7 +214,8 @@ export async function verifyR2Keys(params: R2VerifyParams): Promise<R2VerifyResu
   try {
     response = await fetch(`${base}/r2/verify-keys`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", ...RELAY_HEADER },
       body: JSON.stringify(params),
     });
   } catch {
@@ -192,5 +225,117 @@ export async function verifyR2Keys(params: R2VerifyParams): Promise<R2VerifyResu
     return (await response.json()) as R2VerifyResult;
   } catch {
     return { ok: false, status: response.status, message: "The relay returned a non-JSON response" };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// OAuth session
+// ---------------------------------------------------------------------------
+//
+// The SPA never sees a Cloudflare credential, only what these three routes
+// choose to reveal about the `ov_session` cookie they read and write. The
+// authorize step is a plain URL a click handler navigates a popup to — it is
+// never `fetch`ed — because the callback that lands there sets the cookie via
+// a real top-level navigation, which a fetch cannot do.
+
+export interface OAuthAccount {
+  id: string;
+  name: string;
+}
+
+export interface OAuthSessionState {
+  authorized: boolean;
+  /** Every scope the consent screen actually granted. */
+  scope: string[];
+  /** Every account the grant covers; empty until authorized. */
+  accounts: OAuthAccount[];
+  /** The account this deployment will act as, once chosen. */
+  accountId: string | null;
+  /** `recipe.package.sha256` this session's scope was requested for. */
+  pkg: string | null;
+  /** Epoch milliseconds the session cookie stops being honoured. */
+  expiresAt: number | null;
+}
+
+function parseOAuthSession(body: unknown): OAuthSessionState {
+  const raw = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
+  const accounts = Array.isArray(raw.accounts)
+    ? raw.accounts
+        .filter((entry): entry is Record<string, unknown> => !!entry && typeof entry === "object")
+        .map((entry) => ({ id: String(entry.id ?? "").trim(), name: String(entry.name ?? "") }))
+        .filter((entry) => entry.id.length > 0)
+    : [];
+  return {
+    authorized: raw.authorized === true,
+    scope: typeof raw.scope === "string" ? parseScopeParam(raw.scope) : [],
+    accounts,
+    accountId: typeof raw.accountId === "string" && raw.accountId ? raw.accountId : null,
+    pkg: typeof raw.pkg === "string" && raw.pkg ? raw.pkg : null,
+    expiresAt: typeof raw.expiresAt === "number" && Number.isFinite(raw.expiresAt) ? raw.expiresAt : null,
+  };
+}
+
+async function readOAuthSessionResponse(response: Response, fallback: string): Promise<OAuthSessionState> {
+  let body: unknown;
+  try {
+    body = await response.json();
+  } catch {
+    throw new CfApiError(`The relay returned a non-JSON response (HTTP ${response.status})`, response.status);
+  }
+  if (!response.ok) {
+    const first = (body as { errors?: Array<{ code?: number; message?: string }> } | null)?.errors?.[0];
+    throw new CfApiError(first?.message || `${fallback} (HTTP ${response.status})`, response.status, first?.code);
+  }
+  return parseOAuthSession(body);
+}
+
+/**
+ * The URL the "Sign in with Cloudflare" button opens a popup to. Never
+ * `fetch`ed here — `window.open(oauthAuthorizeUrl(...))` has to run inside the
+ * button's own synchronous click handler, or the popup blocker wins.
+ */
+export function oauthAuthorizeUrl(scope: readonly string[], pkg: string): string {
+  const query = `scope=${encodeURIComponent(formatScopeParam(scope))}&pkg=${encodeURIComponent(pkg)}`;
+  return `${relayBase()}/oauth/authorize?${query}`;
+}
+
+/** Reads what the session cookie currently holds. Never returns a token. */
+export async function fetchOAuthSession(): Promise<OAuthSessionState> {
+  const response = await fetchRelay(`${relayBase()}/oauth/session`, {
+    credentials: "same-origin",
+    headers: { Accept: "application/json", ...RELAY_HEADER },
+  });
+  return readOAuthSessionResponse(response, "Couldn't read the sign-in session");
+}
+
+/** Picks which of the granted accounts this deployment acts as. */
+export async function selectOAuthAccount(accountId: string): Promise<OAuthSessionState> {
+  const response = await fetchRelay(`${relayBase()}/oauth/session`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...RELAY_HEADER },
+    body: JSON.stringify({ accountId }),
+  });
+  return readOAuthSessionResponse(response, "Couldn't switch accounts");
+}
+
+/**
+ * Ends the session: revokes the grant at Cloudflare and clears the cookie.
+ * Best-effort — a session that fails to revoke still expires within the hour.
+ * `keepalive` is for the one caller that fires this from `pagehide`, where
+ * `sendBeacon` would be the usual choice except it cannot set a custom header,
+ * and this call needs `Overture-Relay` like every other one that touches the
+ * session cookie.
+ */
+export async function revokeOAuthSession(options?: { keepalive?: boolean }): Promise<void> {
+  try {
+    await fetch(`${relayBase()}/oauth/revoke`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: RELAY_HEADER,
+      keepalive: options?.keepalive === true,
+    });
+  } catch {
+    // Nothing to recover to — the tab is closing or the relay is unreachable.
   }
 }

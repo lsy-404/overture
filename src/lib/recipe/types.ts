@@ -226,7 +226,11 @@ export type Capability =
   | "domains"
   | "probe";
 
-export type HostSecretSource = "accountId" | "apiToken" | "r2AccessKeyId" | "r2SecretAccessKey";
+// No "apiToken": the session credential is a cookie the recipe's Worker could
+// never read back even if the host offered it, so a recipe cannot declare a
+// host secret sourced from it — only the account id and the R2 S3 key pair,
+// which stay in the host regardless of the OAuth session, may be handed over.
+export type HostSecretSource = "accountId" | "r2AccessKeyId" | "r2SecretAccessKey";
 
 /**
  * A Workers Secret whose *value* comes from the host, not the recipe — the way

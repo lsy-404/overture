@@ -13,19 +13,19 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// The credentials page as a checklist rather than a first-failure stop: a
-// half-configured token should tell the user exactly which row to go back and
-// fix. Rows are reported as they resolve, so the table fills in progressively.
+// The authorize page as a checklist rather than a first-failure stop: a
+// half-satisfied account should tell the user exactly which row to go back
+// and fix. Rows are reported as they resolve, so the table fills in
+// progressively.
 //
-// Row keys: "token" for the credential itself, one per `recipe.checks` entry
-// (its `id`), and "r2Keys" when the recipe asks for an R2 S3 key pair. `detail`
-// carries Cloudflare's own wording; the caller supplies the localized row labels.
+// Row keys: one per `recipe.checks` entry (its `id`), and "r2Keys" when the
+// recipe asks for an R2 S3 key pair. `detail` carries Cloudflare's own
+// wording; the caller supplies the localized row labels.
 //
-// The authority table is not checked here. Which authorities were granted is
-// settled at the consent screen, and a credential issued that way cannot read
-// its own policies back — the endpoint answers 401 — so there is nothing to
-// compare against. What still decides whether a deployment may run is the
-// account probes below, which ask the account directly.
+// Whether the session itself is valid is not this module's question — it is
+// settled by whether `/oauth/session` reports `authorized`, before this ever
+// runs. What still decides whether a deployment may proceed is the account
+// probes below, which ask the account directly.
 
 import type { Recipe } from "../recipe/types";
 import type { DeployCredentials } from "../deploy/types";
@@ -38,8 +38,6 @@ export interface CredentialCheck {
   detail?: string;
 }
 
-const TOKEN_CONTEXT = "an active Account API Token";
-
 /** A check path is recipe-supplied text, so it is shaped before it reaches the relay. */
 function checkPath(template: string, accountId: string): string | null {
   const path = template.replace(/\$\{accountId\}/g, accountId);
@@ -47,22 +45,13 @@ function checkPath(template: string, accountId: string): string | null {
   return path;
 }
 
-export async function verifyCredentials(
+export async function verifyAccount(
   creds: DeployCredentials,
   recipe: Recipe,
   report: (check: CredentialCheck) => void,
 ): Promise<{ ok: boolean }> {
-  const { accountId, apiToken } = creds;
+  const { accountId } = creds;
   let ok = true;
-
-  report({ key: "token", status: "checking" });
-  try {
-    await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, TOKEN_CONTEXT);
-    report({ key: "token", status: "ok" });
-  } catch (error) {
-    report({ key: "token", status: "error", detail: describeCfError(error, TOKEN_CONTEXT).message });
-    return { ok: false };
-  }
 
   for (const check of recipe.checks || []) {
     const path = checkPath(check.path, accountId);
@@ -73,7 +62,7 @@ export async function verifyCredentials(
     }
     report({ key: check.id, status: "checking" });
     try {
-      await callCfJson(apiToken, path, undefined, check.id);
+      await callCfJson(path, undefined, check.id);
       report({ key: check.id, status: "ok" });
     } catch (error) {
       const described = describeCfError(error, check.id);
@@ -82,9 +71,9 @@ export async function verifyCredentials(
     }
   }
 
-  // R2 access keys are S3 credentials of their own: neither the token's policies
-  // nor any probe above says anything about them. Verified account-wide rather
-  // than per bucket, since the buckets don't exist yet.
+  // R2 access keys are S3 credentials of their own: nothing above says
+  // anything about them. Verified account-wide rather than per bucket, since
+  // the buckets don't exist yet.
   const keyed = recipe.resources.filter((resource) => resource.kind === "r2" && resource.s3Keys);
   if (keyed.length > 0) {
     const required = keyed.some((resource) => resource.s3Keys === "required");

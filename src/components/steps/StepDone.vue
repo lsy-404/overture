@@ -4,6 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { localized } from "../../lib/recipe/types";
+import { revokeOAuthSession } from "../../lib/relay";
 import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
@@ -66,6 +67,9 @@ function maskedValue(value: string): string {
 
 function finish() {
   if (clearCredentials.value) wizard.clearCredentials(true);
+  // The deployment is done, so the grant has nothing left to authorize —
+  // best-effort, the reload right after doesn't wait on it.
+  if (wizard.authorized) void revokeOAuthSession();
   location.reload();
 }
 </script>

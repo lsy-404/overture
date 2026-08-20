@@ -70,7 +70,7 @@ function scopeList(scopes: string[]): string {
       <ul class="plain-list">
         <li v-for="check in analysis.checks" :key="check.id">
           <code>{{ check.path }}</code>
-          <span :class="`requirement-${check.requirement}`">({{ t(`credentials.requirements.${check.requirement}`) }})</span>
+          <span :class="`requirement-${check.requirement}`">({{ t(`authorize.requirements.${check.requirement}`) }})</span>
           <span v-if="check.malformed" class="field-help tone-bad"> — {{ t("analyze.checkMalformed") }}</span>
           <span v-else-if="!check.endpoint" class="field-help tone-bad"> — {{ t("analyze.checkUnknown") }}</span>
           <span v-else class="field-help tone-ok"> — {{ t("analyze.checkKnown") }}</span>

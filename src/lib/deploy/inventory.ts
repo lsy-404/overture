@@ -38,27 +38,26 @@ interface ScriptSettings {
  * and every answer comes out of it.
  */
 export async function listExistingResources(creds: DeployCredentials, kind: "d1" | "r2" | "kv"): Promise<ExistingResource[]> {
-  const { apiToken, accountId } = creds;
+  const { accountId } = creds;
   switch (kind) {
     case "d1":
-      return listDatabases(apiToken, accountId);
+      return listDatabases(accountId);
     case "r2":
-      return listBuckets(apiToken, accountId);
+      return listBuckets(accountId);
     case "kv":
-      return listNamespaces(apiToken, accountId);
+      return listNamespaces(accountId);
   }
 }
 
 export async function readLiveFacts(creds: DeployCredentials, workerName: string): Promise<LiveScriptFacts> {
-  const { apiToken, accountId } = creds;
+  const { accountId } = creds;
   const empty: LiveScriptFacts = { exists: false, vars: {}, crons: [], customDomains: [], containerClasses: [] };
   if (!workerName) return empty;
 
-  const scripts = await listScriptNames(apiToken, accountId);
+  const scripts = await listScriptNames(accountId);
   if (!scripts.includes(workerName)) return empty;
 
   const settings = await callCfJson<ScriptSettings>(
-    apiToken,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(workerName)}/settings`,
     undefined,
     "Workers Scripts Write",
@@ -79,13 +78,13 @@ export async function readLiveFacts(creds: DeployCredentials, workerName: string
   // domains, and neither should sink the run.
   let crons: string[] = [];
   try {
-    crons = await readCrons(apiToken, accountId, workerName);
+    crons = await readCrons(accountId, workerName);
   } catch {
     crons = [];
   }
   let customDomains: string[] = [];
   try {
-    customDomains = (await listCustomDomains(apiToken, accountId, workerName)).map((domain) => domain.hostname);
+    customDomains = (await listCustomDomains(accountId, workerName)).map((domain) => domain.hostname);
   } catch {
     customDomains = [];
   }

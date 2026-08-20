@@ -182,6 +182,14 @@ const checks: Array<[string, boolean, string?]> = [
     rejects(tweak((r) => (r.hostSecrets = [
       { name: "CF_TOKEN", source: "sessionStorage", requirement: "required", reason: { en: "why" } },
     ])))],
+  // C-1: a recipe cannot declare a host secret sourced from the session
+  // credential — it would let a package's own Worker exfiltrate the OAuth
+  // session, HttpOnly cookie or not, the moment the recipe pushes it as one
+  // of its own Workers Secrets.
+  ["\"apiToken\" as a host secret source is rejected",
+    rejects(tweak((r) => (r.hostSecrets = [
+      { name: "CF_TOKEN", source: "apiToken", requirement: "required", reason: { en: "why" } },
+    ])))],
   ["a known host secret source is accepted",
     accepts(tweak((r) => (r.hostSecrets = [
       { name: "CF_ACCOUNT_ID", source: "accountId", requirement: "required", reason: { en: "why" } },
