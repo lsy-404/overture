@@ -100,7 +100,7 @@ const encoder = new TextEncoder();
 
 function baseRecipe(): Recipe {
   return {
-    schema: 1,
+    schema: 2,
     id: "probe",
     name: "Probe",
     summary: "probe",

@@ -35,7 +35,6 @@ interface Rule {
 const RULES: Rule[] = [
   { method: "GET", segments: ["accounts", null] },
   { method: "GET", segments: ["accounts", null, "tokens", "verify"] },
-  { method: "GET", segments: ["accounts", null, "tokens", null] },
   { method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { method: "POST", segments: ["accounts", null, "r2", "buckets"] },
   { method: "GET", segments: ["accounts", null, "d1", "database"] },
@@ -116,6 +115,8 @@ const unlisted: Call[] = [
   ["GET", ["user", "tokens"]],
   ["GET", ["accounts"]],
   ["POST", ["accounts", ACCOUNT, "tokens"]],
+  // Removed with the token-policy audit: an OAuth credential answers 401 here.
+  ["GET", ["accounts", ACCOUNT, "tokens", ID]],
   ["DELETE", ["accounts", ACCOUNT, "r2", "buckets", "some-bucket"]],
   ["GET", ["zones", ID, "dns_records"]],
   ["POST", ["accounts", ACCOUNT, "workers", "scripts", SCRIPT, "content"]],

@@ -77,11 +77,9 @@
       "warning": "Warning",
       "note": "Note"
     },
-    "orSeparator": " or ",
     "viaHost": "Overture itself",
     "permissionsTitle": "Cloudflare permissions this needs",
     "permissionsIntro": "What this app must be allowed to do in your Cloudflare account.",
-    "permissionDashboard": "Cloudflare calls this “{labels}”",
     "permissionsNone": "None — nothing here needs a permission of its own.",
     "endpointsTitle": "Cloudflare endpoints it can reach ({count})",
     "checksTitle": "Account checks the package asks for",
@@ -112,8 +110,6 @@
       "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones."
     },
     "uncertain": {
-      "unrecorded": "Cloudflare records no permission against this call — a gap in their schema rather than a documented “none needed”.",
-      "noDashboardRow": "Cloudflare's own API schema names this permission, but doesn't document it anywhere else — exactly what it grants isn't fully certain.",
       "writeAssumed": "Cloudflare also lists the read-only group here, but the statements a recipe runs need write access.",
       "zoneMayBeNeeded": "Attaching a custom domain also touches the zone's DNS and certificate, so a zone-level permission may be needed as well."
     }
@@ -152,7 +148,6 @@
       "checking": "Checking…",
       "ok": "OK",
       "missing": "Missing or not enabled",
-      "unknown": "Unknown",
       "error": "Couldn't check"
     },
     "tokenCheck": "Token is valid",

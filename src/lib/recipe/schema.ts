@@ -25,6 +25,7 @@
 // at once.
 
 import { PACKAGE_ARTIFACT_NAME } from "../../../shared/package";
+import { isKnownScope } from "../../../shared/oauthScopes";
 import { METHOD_GATES } from "../sandbox/protocol";
 import {
   RECIPE_LIMITS,
@@ -57,7 +58,7 @@ const MAX_STRING = 4096;
 const MAX_PATH_CHARS = 256;
 const MAX_NAME_CHARS = 128;
 const MAX_LOCALE_ENTRIES = 30;
-const MAX_PERMISSION_GROUPS = 12;
+const MAX_PERMISSION_SCOPES = 24;
 const MAX_COMPAT_FLAGS = 20;
 const MAX_INPUT_OPTIONS = 40;
 const MAX_API_PATH_CHARS = 512;
@@ -351,14 +352,27 @@ function permission(errors: Errors, path: string, value: unknown): RecipePermiss
   if (!raw) return undefined;
   const key = matching(errors, `${path}.key`, raw.key, RECIPE_LIMITS.idPattern, true);
   const requirement = oneOf<Requirement>(errors, `${path}.requirement`, raw.requirement, REQUIREMENTS, true);
-  const groups = stringList(errors, `${path}.groups`, raw.groups, MAX_PERMISSION_GROUPS, true);
+  // A scope outside this deployment's registered ceiling can never be granted,
+  // so a package naming one is rejected here rather than failing at Cloudflare's
+  // consent screen, where the user has nothing to act on.
+  const oauthScopes = items(errors, `${path}.oauthScopes`, raw.oauthScopes, MAX_PERMISSION_SCOPES, true, (entry, itemPath) => {
+    const scope = str(errors, itemPath, entry, true, MAX_NAME_CHARS);
+    if (scope === undefined) return undefined;
+    if (!isKnownScope(scope)) {
+      errors.add(itemPath, "is not a scope this deployment's OAuth client can request");
+      return undefined;
+    }
+    return scope;
+  });
   const label = localized(errors, `${path}.label`, raw.label, true);
   const scenario = localized(errors, `${path}.scenario`, raw.scenario, true);
   const scope = oneOf(errors, `${path}.scope`, raw.scope, PERMISSION_SCOPES, true);
   const level = oneOf(errors, `${path}.level`, raw.level, PERMISSION_LEVELS, true);
-  if (groups && groups.length === 0) errors.add(`${path}.groups`, "must name at least one permission group");
-  if (!key || !requirement || !groups || groups.length === 0 || !label || !scenario || !scope || !level) return undefined;
-  return { key, requirement, groups, label, scenario, scope, level };
+  // An empty list is legitimate: it marks an authority OAuth cannot grant, which
+  // the wizard collects by hand instead.
+  if (oauthScopes) requireUnique(errors, `${path}.oauthScopes`, oauthScopes, (entry) => entry, "scope");
+  if (!key || !requirement || !oauthScopes || !label || !scenario || !scope || !level) return undefined;
+  return { key, requirement, oauthScopes, label, scenario, scope, level };
 }
 
 function check(errors: Errors, path: string, value: unknown): RecipeCheck | undefined {

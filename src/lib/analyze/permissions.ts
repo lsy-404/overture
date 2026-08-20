@@ -16,120 +16,99 @@
 // What an API token has to carry for each relay endpoint, taken from
 // Cloudflare's own API schema rather than from a recipe's say-so.
 //
-// Two things about Cloudflare's naming decide the shape of this file:
+// These are OAuth scopes, in Cloudflare's dotted namespace — the strings that
+// go into an authorize request and that the consent screen renders. They are a
+// different namespace from the Title Case permission groups a classic API token
+// carries, and the two do not map one to one.
 //
-//   - Every endpoint's gate is a disjunction. Holding any one of the names
-//     listed for it is enough; none of them requires two groups together.
-//   - "Write" and "Edit" are the same permission group shown twice. The
-//     dashboard prints "Edit", the API answers "Write", and a token's own
-//     policies always read back in the API spelling. So the names below are the
-//     API spelling, and `dashboardLabel` derives what the user will actually see
-//     on the checkbox they are told to tick.
+// Unlike a classic token, an OAuth credential cannot be asked what it holds:
+// the introspection endpoint answers 401. So nothing here is verified against
+// the live credential — this table says what a deployment will need, which is
+// what the consent screen has to have granted.
 //
 // Where Cloudflare's schema does not settle a question, the entry says so rather
 // than picking an answer: this table is shown to a user as fact.
 
-const ANY_DEPLOY_TOKEN = "any";
 const SESSION_JWT = "jwt";
+/** Carried by the session credential itself; nothing extra is asked for. */
+const SESSION_ISSUED = "session";
 
 export interface EndpointPermission {
-  /** API permission-group names. Holding any one authorises the call. */
-  groups: string[];
+  /** OAuth scopes that authorise the call. All of them are needed, not any one. */
+  scopes: string[];
   /**
-   * No group to ask for: `any` because every token that can deploy at all
-   * already passes, `jwt` because the call carries its own short-lived
-   * credential instead of the API token.
+   * No scope to ask for: `session` because the credential itself already
+   * carries the authority, `jwt` because the call is authorised by a
+   * short-lived token Cloudflare issued for it rather than by the session.
    */
-  ungated?: typeof ANY_DEPLOY_TOKEN | typeof SESSION_JWT;
-  /** Where Cloudflare's schema left the answer incomplete. Shown, not hidden. */
+  ungated?: typeof SESSION_JWT | typeof SESSION_ISSUED;
+  /** Where Cloudflare's own documentation left the answer incomplete. */
   uncertain?: string;
 }
 
 export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
-  // The verify call has no group recorded against it — which is an absent
-  // schema key, not a documented "needs nothing".
-  "token.verify": { groups: [], ungated: ANY_DEPLOY_TOKEN, uncertain: "unrecorded" },
-  "token.read": {
-    groups: ["Account API Tokens Read", "Account API Tokens Write"],
-    uncertain: "noDashboardRow",
-  },
-  // Twenty-nine different groups satisfy this one, so any token that can deploy
-  // already does. Asking a user to add a permission for it would be wrong.
-  "account.read": { groups: [], ungated: ANY_DEPLOY_TOKEN },
-
-  "r2.bucketList": { groups: ["Workers R2 Storage Read", "Workers R2 Storage Write"] },
-  "r2.bucketCreate": { groups: ["Workers R2 Storage Write"] },
-
-  "d1.databaseList": { groups: ["D1 Read", "D1 Write"] },
-  "d1.databaseCreate": { groups: ["D1 Write"] },
-  // The published gate also admits D1 Read, but nothing states what a read-only
-  // token does with the schema statements a recipe runs here.
-  "d1.query": { groups: ["D1 Write"], uncertain: "writeAssumed" },
-
-  "kv.namespaceList": { groups: ["Workers KV Storage Read", "Workers KV Storage Write"] },
-  "kv.namespaceCreate": { groups: ["Workers KV Storage Write"] },
-
-  "worker.scriptList": { groups: ["Workers Scripts Read", "Workers Scripts Write", "Workers Tail Read"] },
-  "worker.scriptRead": { groups: ["Workers Scripts Read", "Workers Scripts Write", "Workers Tail Read"] },
-  "worker.scriptDelete": { groups: ["Workers Scripts Write"] },
-  "worker.settingsRead": { groups: ["Workers Scripts Read", "Workers Scripts Write", "Workers Tail Read"] },
-  "worker.deploymentList": { groups: ["Workers Scripts Read", "Workers Scripts Write", "Workers Tail Read"] },
-  "worker.versionCreate": { groups: ["Workers Scripts Write"] },
-  "worker.deploymentCreate": { groups: ["Workers Scripts Write"] },
-  "worker.assetSession": { groups: ["Workers Scripts Write"] },
-  "worker.secretPut": { groups: ["Workers Scripts Write"] },
-  "worker.scheduleRead": { groups: ["Workers Scripts Read", "Workers Scripts Write"] },
-  "worker.scheduleWrite": { groups: ["Workers Scripts Write"] },
-  // Authorised by the upload session's own JWT, never by the account token.
-  "worker.assetUpload": { groups: [], ungated: SESSION_JWT },
-  "worker.domainList": { groups: ["Workers Scripts Read", "Workers Scripts Write"] },
-  // Attaching a domain also provisions DNS and a certificate on the target zone,
-  // so this may additionally want zone-level Workers Routes Write. Unproven.
-  "worker.domainAttach": { groups: ["Workers Scripts Write"], uncertain: "zoneMayBeNeeded" },
-
-  "images.stats": { groups: ["Images Read", "Images Write"] },
-  "zone.list": { groups: ["Zone Read"] },
-  "zone.imageResizing": { groups: ["Zone Settings Read", "Zone Settings Write"] },
+  "token.verify": { scopes: [], ungated: SESSION_ISSUED },
+  "account.read": { scopes: ["account-settings.read"] },
+  "r2.bucketList": { scopes: ["workers-r2.read"] },
+  "r2.bucketCreate": { scopes: ["workers-r2.write"] },
+  "d1.databaseList": { scopes: ["d1.read"] },
+  "d1.databaseCreate": { scopes: ["d1.write"] },
+  "d1.query": { scopes: ["d1.write"], uncertain: "writeAssumed" },
+  "kv.namespaceList": { scopes: ["workers-kv-storage.read"] },
+  "kv.namespaceCreate": { scopes: ["workers-kv-storage.write"] },
+  "worker.scriptList": { scopes: ["workers-scripts.read"] },
+  "worker.scriptRead": { scopes: ["workers-scripts.read"] },
+  "worker.scriptDelete": { scopes: ["workers-scripts.write"] },
+  "worker.settingsRead": { scopes: ["workers-scripts.read"] },
+  "worker.deploymentList": { scopes: ["workers-scripts.read"] },
+  "worker.versionCreate": { scopes: ["workers-scripts.write", "workers-scripts.bind"] },
+  "worker.deploymentCreate": { scopes: ["workers-scripts.write"] },
+  "worker.assetSession": { scopes: ["workers-scripts.write"] },
+  "worker.secretPut": { scopes: ["workers-scripts.write"] },
+  "worker.scheduleRead": { scopes: ["workers-scripts.read"] },
+  "worker.scheduleWrite": { scopes: ["workers-scripts.write"] },
+  "worker.assetUpload": { scopes: [], ungated: SESSION_JWT },
+  "worker.domainList": { scopes: ["workers-routes.read"] },
+  "worker.domainAttach": { scopes: ["workers-routes.write"], uncertain: "zoneMayBeNeeded" },
+  "images.stats": { scopes: ["images.read"] },
+  "zone.list": { scopes: ["zone.read"] },
+  "zone.imageResizing": { scopes: ["zone-settings.read"] },
 };
 
-/**
- * What the same permission group is called on the dashboard checkbox: "Write"
- * reads as "Edit" there, and the Images groups gain a "Cloudflare " prefix.
- */
-export function dashboardLabel(apiName: string): string {
-  const edited = apiName.replace(/ Write$/, " Edit");
-  return edited.startsWith("Images ") ? `Cloudflare ${edited}` : edited;
-}
-
 export interface PermissionNeed {
-  /** Alternatives — any one of these authorises every endpoint listed below. */
-  groups: string[];
-  /** Endpoint ids that need it. */
+  /** OAuth scopes, all required together. */
+  scopes: string[];
+  /** Endpoint ids that need them. */
   endpoints: string[];
   uncertain?: string;
 }
 
-/**
- * The distinct permission requirements a set of endpoints adds up to. Each entry
- * stays a disjunction of its own: two endpoints only share a row when they
- * accept exactly the same alternatives.
- */
+/** The distinct scope requirements a set of endpoints adds up to. */
 export function permissionsForEndpoints(endpointIds: readonly string[]): PermissionNeed[] {
   const rows = new Map<string, PermissionNeed>();
   for (const id of endpointIds) {
     const permission = ENDPOINT_PERMISSIONS[id];
-    if (!permission || permission.groups.length === 0) continue;
-    const key = permission.groups.join("|");
+    if (!permission || permission.scopes.length === 0) continue;
+    const key = permission.scopes.join("|");
     const existing = rows.get(key);
     if (existing) {
       existing.endpoints.push(id);
       continue;
     }
     rows.set(key, {
-      groups: [...permission.groups],
+      scopes: [...permission.scopes],
       endpoints: [id],
       ...(permission.uncertain === undefined ? {} : { uncertain: permission.uncertain }),
     });
   }
   return [...rows.values()];
+}
+
+/** Every scope a set of endpoints needs, which is what an authorize request asks for. */
+export function scopesForEndpoints(endpointIds: readonly string[]): string[] {
+  const out = new Set<string>();
+  for (const id of endpointIds) {
+    for (const scope of ENDPOINT_PERMISSIONS[id]?.scopes || []) out.add(scope);
+  }
+  return [...out].sort();
 }

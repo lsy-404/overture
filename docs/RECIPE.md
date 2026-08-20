@@ -22,7 +22,7 @@ before anything is downloaded.
 
 ```jsonc
 {
-  "schema": 1,
+  "schema": 2,
   "id": "edgesonic",
   "name": "EdgeSonic",
   "summary": { "en": "Subsonic-compatible music server on Workers", "zh-CN": "运行在 Workers 上的 Subsonic 兼容音乐服务" },
@@ -39,12 +39,16 @@ before anything is downloaded.
   "license": { "id": "AGPL-3.0-or-later", "text": "                    GNU AFFERO GENERAL PUBLIC LICENSE\n…" },
   "terms": { "required": true, "texts": { "zh-CN": "…", "*": "…" } },
 
-  // Drives the API Token table on the credentials page. Holding any one group
-  // in `groups` satisfies the row. Only "required" rows block the deploy.
-  // Use the API spelling: a token's own policies read back as "Write", and
-  // "Edit" is only what the dashboard prints on the same checkbox.
+  // The authority table shown before any credential is asked for. `oauthScopes`
+  // are Cloudflare OAuth scope names — dotted and lowercase, a different
+  // namespace from the Title Case permission groups of classic API tokens — and
+  // a row's scopes are all requested together, not alternatives. Every scope
+  // must be one the deployment's OAuth client is registered to hold
+  // (shared/oauthScopes.ts), or the whole configuration is rejected. An empty
+  // list marks an authority OAuth cannot grant (the R2 S3 key pair), which the
+  // wizard collects by hand. Only "required" rows block the deploy.
   "permissions": [
-    { "key": "scripts", "requirement": "required", "groups": ["Workers Scripts Write"],
+    { "key": "scripts", "requirement": "required", "oauthScopes": ["workers-scripts.write"],
       "scope": "account", "level": "write",
       "label": { "en": "Workers Scripts" }, "scenario": { "en": "Upload and deploy the Worker" } }
   ],
@@ -192,7 +196,7 @@ recipe needs a library, bundle it into `recipe.js` — fetching one at deploy ti
 
 Once a release is picked, Overture fetches the data package, checks its digest, and reads `recipe.js`
 without executing it. The user is shown, before being asked for anything: the Cloudflare endpoints the
-declared capabilities reach and the token permissions those need, every `checks` path that is not an
+declared capabilities reach and the permissions those need, every `checks` path that is not an
 endpoint the relay will forward, every address the script contacts on its own, and every disagreement
 between what `overture.json` declares and what the script is written to call.
 
