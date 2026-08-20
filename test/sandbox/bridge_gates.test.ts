@@ -122,7 +122,12 @@ function contextMethods(): string[] {
 
 const methods = contextMethods();
 const gateKeys = Object.keys(METHOD_GATES);
-const CREDENTIAL_FIELDS = ["apiToken", "accountId", "r2AccessKeyId", "r2SecretAccessKey"];
+// "apiToken" is gone from this list on purpose, not because the field moved
+// elsewhere: the session credential is an HttpOnly cookie this frame never
+// holds as a value in the first place, so there is no string left to check
+// for. What is still checked is that the fields that *do* reach this frame
+// (the account id, the R2 S3 pair) never leak into the sandbox.
+const CREDENTIAL_FIELDS = ["accountId", "r2AccessKeyId", "r2SecretAccessKey"];
 const guestContextBlock = blockAfter(protocolSource, "export interface GuestContext");
 // Anchored on the field, not the imported name, so the import's own braces
 // cannot be mistaken for the literal.

@@ -384,7 +384,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.credentials)">{{ t("common.back") }}</WinButton>
+        <WinButton @Click="wizard.goTo(STEPS.authorize)">{{ t("common.back") }}</WinButton>
         <div class="spacer" />
         <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.confirm)">
           {{ t("common.next") }}

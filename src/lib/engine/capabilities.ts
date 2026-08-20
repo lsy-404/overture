@@ -171,7 +171,6 @@ function randomBase64(byteCount: number): string {
 export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   const { pkg, creds, target } = input;
   const recipe: Recipe = pkg.recipe;
-  const token = creds.apiToken;
   const accountId = creds.accountId;
   const script = target.workerName;
   // A rebuild deleted the live script, so the upload declares the full binding
@@ -200,10 +199,12 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
 
   // Anything that identifies the deploying account or authorises a call on its
   // behalf. Cloudflare echoes request context into its error text, and that
-  // text would otherwise reach the sandbox verbatim.
+  // text would otherwise reach the sandbox verbatim. The session credential
+  // itself is never in this list — it is an HttpOnly cookie this frame cannot
+  // read, so it cannot leak into an error message either.
   const scrub = (message: string): string => {
     let out = message;
-    const secrets = [token, creds.r2SecretAccessKey, creds.r2AccessKeyId, accountId, ...assetSessions.values()];
+    const secrets = [creds.r2SecretAccessKey, creds.r2AccessKeyId, accountId, ...assetSessions.values()];
     for (const secret of secrets) {
       if (typeof secret === "string" && secret.length >= 8) out = out.split(secret).join("[redacted]");
     }
@@ -257,8 +258,6 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     switch (source) {
       case "accountId":
         return accountId;
-      case "apiToken":
-        return token;
       case "r2AccessKeyId":
         return creds.r2AccessKeyId;
       case "r2SecretAccessKey":
@@ -279,7 +278,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
       if (declared.requirement === "required") throw new Error(`this deployment has no value for the required secret ${name}`);
       return;
     }
-    await pushSecret(token, accountId, script, name, secret, signal);
+    await pushSecret(accountId, script, name, secret, signal);
     pushed.add(name);
   };
 
@@ -322,7 +321,6 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
 
     const versionId = await uploadWorkerVersion(
       {
-        token,
         accountId,
         script,
         workerModule: recipe.worker.module,
@@ -347,7 +345,6 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     const parsed: unknown = JSON.parse(fileText(manifestPath));
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) throw new Error("the assets manifest is not an object");
     const jwt = await uploadAssets({
-      token,
       accountId,
       script,
       files: pkg.files,
@@ -457,7 +454,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         return crypto.randomUUID();
 
       case "d1.provision": {
-        const entry = await provision(resourceOf(args[0], "d1"), (name) => createDatabase(token, accountId, name, signal));
+        const entry = await provision(resourceOf(args[0], "d1"), (name) => createDatabase(accountId, name, signal));
         return { databaseId: entry.id };
       }
       case "d1.query": {
@@ -467,24 +464,24 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         // by id, which is what the resource list exists to prevent.
         if (!entry) throw new Error(`resource "${resource.id}" has not been provisioned yet`);
         const sql = text(args[1], "the SQL", BRIDGE_LIMITS.maxSqlChars);
-        return runQuery(token, accountId, entry.id, sql, queryParams(args[2]), signal);
+        return runQuery(accountId, entry.id, sql, queryParams(args[2]), signal);
       }
       case "r2.provision": {
         const entry = await provision(resourceOf(args[0], "r2"), async (name) => {
-          await createBucket(token, accountId, name, signal);
+          await createBucket(accountId, name, signal);
           return name;
         });
         return { bucketName: entry.name };
       }
       case "kv.provision": {
-        const entry = await provision(resourceOf(args[0], "kv"), (name) => createNamespace(token, accountId, name, signal));
+        const entry = await provision(resourceOf(args[0], "kv"), (name) => createNamespace(accountId, name, signal));
         return { namespaceId: entry.id };
       }
 
       case "secrets.put": {
         const name = text(args[0], "the secret name", 64);
         if (!RECIPE_LIMITS.bindingPattern.test(name)) throw new Error(`"${clip(name, 60)}" is not a usable secret name`);
-        await pushSecret(token, accountId, script, name, text(args[1], "the secret value", MAX_SECRET_CHARS), signal);
+        await pushSecret(accountId, script, name, text(args[1], "the secret value", MAX_SECRET_CHARS), signal);
         return undefined;
       }
       case "secrets.putHostValue":
@@ -495,7 +492,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         // Deleting the script drops its secrets, schedules and domains with it,
         // so it happens only when the user asked for a rebuild.
         if (!target.fullRebuild) throw new Error("deleting the Worker needs the full-rebuild option, which this deployment did not choose");
-        await deleteScript(token, accountId, script, signal);
+        await deleteScript(accountId, script, signal);
         return undefined;
       case "worker.uploadVersion":
         return uploadVersion(args[0], signal);
@@ -504,28 +501,28 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         if (!VERSION_ID_RE.test(versionId) || !uploadedVersions.has(versionId)) {
           throw new Error("traffic can only be switched to a version this deployment uploaded");
         }
-        await switchTraffic(token, accountId, script, versionId, signal);
+        await switchTraffic(accountId, script, versionId, signal);
         return undefined;
       }
       case "assets.upload":
         return upload(signal);
 
       case "cron.read":
-        return readCrons(token, accountId, script, signal);
+        return readCrons(accountId, script, signal);
       case "cron.set": {
         const crons = list(args[0], "the schedules", MAX_CRONS).map((entry) => text(entry, "a schedule", 120));
         for (const cron of crons) if (!CRON_RE.test(cron)) throw new Error(`"${clip(cron, 60)}" is not a cron expression`);
-        await setCron(token, accountId, script, crons, signal);
+        await setCron(accountId, script, crons, signal);
         return undefined;
       }
 
       case "domains.list":
         // Hostnames only: the zone ids that come with them are host bookkeeping.
-        return (await listCustomDomains(token, accountId, script, signal)).map((domain) => domain.hostname);
+        return (await listCustomDomains(accountId, script, signal)).map((domain) => domain.hostname);
       case "domains.attach": {
         const hostname = text(args[0], "the hostname", 253).trim().toLowerCase();
         if (!HOSTNAME_RE.test(hostname)) throw new Error(`"${clip(hostname, 80)}" is not a hostname`);
-        await attachCustomDomain(token, accountId, script, hostname, undefined, undefined, signal);
+        await attachCustomDomain(accountId, script, hostname, undefined, undefined, signal);
         return undefined;
       }
 

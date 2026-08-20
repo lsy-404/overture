@@ -34,7 +34,7 @@ const wizard = useWizard();
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="wizard.tosAccepted" @Click="wizard.goTo(STEPS.version)">
+        <WinButton Style="AccentButtonStyle" :IsEnabled="wizard.tosAccepted" @Click="wizard.goTo(STEPS.repository)">
           {{ t("common.next") }}
         </WinButton>
       </div>
