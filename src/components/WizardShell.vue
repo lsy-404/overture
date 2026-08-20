@@ -46,6 +46,14 @@ function cycleLocale() {
 }
 
 const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toUpperCase()}${themeMode.value.slice(1)}`));
+
+// Build identity, stamped in by vite.config.ts. Not translated: a version, a
+// commit and an address read the same in every locale. The address is shown
+// without its scheme — it is there to be read, and it is the link itself.
+const buildVersion = __BUILD_VERSION__;
+const buildCommit = __BUILD_COMMIT__;
+const repository = __BUILD_REPOSITORY__;
+const repositoryLabel = repository.replace(/^https?:\/\//, "");
 </script>
 
 <template>
@@ -119,6 +127,13 @@ const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toU
         <slot />
       </div>
     </main>
+
+    <footer class="shell-footer">
+      <span>{{ t("app.name") }}</span>
+      <span>{{ buildVersion }}</span>
+      <span v-if="buildCommit" class="build-commit">{{ buildCommit }}</span>
+      <a :href="repository" target="_blank" rel="noopener noreferrer">{{ repositoryLabel }}</a>
+    </footer>
   </div>
 </template>
 
@@ -294,6 +309,36 @@ const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toU
   flex: none;
   padding: 16px 32px;
   border-top: 1px solid var(--card-stroke);
+}
+
+/* Deliberately recessive: this is provenance, not part of the task on screen.
+   Opacity rather than a lighter colour keeps it faint in both themes. */
+.shell-footer {
+  width: 100%;
+  max-width: 1040px;
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.55;
+}
+
+.shell-footer a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid currentColor;
+}
+
+.shell-footer:hover {
+  opacity: 0.8;
+}
+
+.build-commit {
+  font-family: var(--font-mono);
 }
 
 @media (max-width: 560px) {

@@ -13,10 +13,31 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import { execFileSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 
+const pkg = JSON.parse(readFileSync(new URL("package.json", import.meta.url), "utf8"));
+
+// A deployed instance has to be able to say which build it is. The commit is
+// absent when this is not a git checkout — building from a release tarball is
+// the normal way for that to happen, so it degrades to null rather than failing
+// the build or inventing a placeholder.
+function buildCommit(): string | null {
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim() || null;
+  } catch {
+    return null;
+  }
+}
+
 export default defineConfig({
+  define: {
+    __BUILD_VERSION__: JSON.stringify(pkg.version),
+    __BUILD_COMMIT__: JSON.stringify(buildCommit()),
+    __BUILD_REPOSITORY__: JSON.stringify(pkg.repository),
+  },
   // The deployed Worker can serve this from a subpath or a custom domain —
   // a relative base works in either without a build-time host guess.
   base: "./",

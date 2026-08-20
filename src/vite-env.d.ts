@@ -21,6 +21,12 @@ declare module "*.vue" {
   export default component;
 }
 
+// Stamped in at build time by vite.config.ts. The commit is null when the tree
+// was not built from a git checkout, which a release tarball legitimately is.
+declare const __BUILD_VERSION__: string;
+declare const __BUILD_COMMIT__: string | null;
+declare const __BUILD_REPOSITORY__: string;
+
 interface ImportMetaEnv {
   readonly VITE_RELAY_URL: string;
 }
