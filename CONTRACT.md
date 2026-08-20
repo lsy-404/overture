@@ -6,21 +6,23 @@ routes: what each one accepts, why it exists, and which properties are not negot
 
 **This Worker has no storage.** No KV, no D1, no Cache, no Durable Object, and it writes no logs. Every
 response is computed from the incoming request and the Worker's own `wrangler.toml` vars. That is not an
-implementation detail — it is the core trust premise of a public tool that other people's Cloudflare API
-tokens pass through: there is nowhere in this Worker for a credential, a policy edit, or a record of who
-deployed what to end up.
+implementation detail — it is the core trust premise of a public tool that other people's Cloudflare
+credentials pass through: there is nowhere in this Worker for a credential, a policy edit, or a record of
+who deployed what to end up.
 
 ## Why a relay exists at all
 
 `api.cloudflare.com` returns no `Access-Control-Allow-*` header on any method, preflight included. A page
 running on Overture's origin therefore cannot talk to it, no matter what the token allows. R2's
 S3-compatible endpoint and GitHub's release-download host are the same story. So the browser sends those
-three kinds of request to this Worker, which forwards them and adds CORS headers on the way back.
+three kinds of request to this Worker — its own origin — which forwards them.
 
-That is the entire purpose. The relay adds no capability of its own: every request already carries the
-credential it needs, and the Worker never mints, stores, or substitutes one.
+That is the entire purpose. The relay adds no capability of its own. The deploy credential is an OAuth
+token this Worker obtained from Cloudflare and sealed into the visitor's own cookie (§3): a `/cf/*` call
+is authorised by unsealing that cookie, never by anything the page supplies, and nothing about the
+session is stored server-side.
 
-Three properties make this a relay instead of an open proxy, and a change that erodes any of them is a
+Four properties make this a relay instead of an open proxy, and a change that erodes any of them is a
 vulnerability rather than a regression:
 
 1. **Nothing reaches Cloudflare that is not in the table below**, matched on method plus an exact
@@ -30,6 +32,9 @@ vulnerability rather than a regression:
    bodies, and the R2 key pair are never written to observability, never cached, never put in KV.
 3. **Failures are opaque.** Upstream error text is replaced by a fixed message wherever it could carry
    signing internals derived from a secret.
+4. **Everything stateful is same-origin.** Any route that reads the session cookie demands the
+   `Overture-Relay` header and an exact `Origin` match, the token is never returned to the page, and an
+   account-scoped path must name the account the session selected.
 
 ## 1. Deploy policy — `GET /policy`
 
@@ -53,10 +58,19 @@ same path as any other config change. Nothing in this Worker can alter its own p
 
 ## 2. Cloudflare API passthrough — `/cf/*`
 
-The caller sends `/cf/<cf-api-path>` with exactly the method, body, and `Authorization: Bearer <token>` it
-would send to `https://api.cloudflare.com/client/v4/<cf-api-path>`. The Worker strips `/cf`, checks the
-remaining path against the allowlist, and forwards it unchanged apart from hop headers (`Host`,
-`Content-Length`, `cf-*`, `x-forwarded-*`). The response passes back untouched with CORS headers added.
+The caller sends `/cf/<cf-api-path>` with exactly the method and body it would send to
+`https://api.cloudflare.com/client/v4/<cf-api-path>` — but no credential. The Worker strips `/cf`, checks
+the remaining path against the allowlist, drops whatever `Authorization` the caller supplied, injects the
+session token unsealed from the cookie (§3), and forwards the request unchanged apart from hop headers
+(`Host`, `Content-Length`, `cf-*`, `x-forwarded-*`). The response passes back untouched.
+
+Two bindings gate the injection. The call must pass the same-origin gate (`Overture-Relay` header plus an
+exact `Origin`), and a path under `/accounts/{accountId}` must name the account the session has selected —
+one consent can span several accounts, and a package's `checks` may not read the ones the user did not
+pick. The single exception is asset upload (`POST .../assets/upload`), marked `passthroughAuth` in the
+table: it is authorised by the short-lived JWT Cloudflare issued for the upload session, so the Worker
+never reads the cookie there and refuses the call outright unless the caller carries a well-formed
+`Bearer` header of its own.
 
 Anything not matching gets `403` with no upstream call. Path segments are read from `url.pathname`, which
 keeps `%2F` un-decoded — what the allowlist validates is byte-for-byte what gets forwarded. Segments
@@ -103,11 +117,40 @@ token, to tell them which of these endpoints a deployment will reach and which p
 that this table does not cover. A second copy would eventually disagree with this one, and the
 disagreement would be the wizard promising one thing while the relay does another.
 
-## 3. R2 key-pair verification — `POST /r2/verify-keys`
+## 3. OAuth sign-in — `/oauth/*`
+
+The deploy credential is obtained by the standard Authorization Code flow against Cloudflare's own OAuth
+service, entirely server-side: the browser never sees the token, the code exchange happens in this Worker
+with a `client_secret` held as a Workers Secret, and the result lives in an encrypted cookie only this
+Worker can read.
+
+| Method | Path | Behaviour |
+|---|---|---|
+| GET | `/oauth/authorize` | Same-origin navigations only (`Sec-Fetch-Site: same-origin`). Validates `scope` (every entry within `shared/oauthScopes.ts`) and `pkg` (the package digest), signs both plus a CSPRNG nonce into `ov_state`, and redirects to Cloudflare's consent page. |
+| GET | `/oauth/callback` | Verifies `state` against `ov_state` (HMAC, consumed on first use), exchanges the code server-side, reads `GET /accounts` with the fresh token, seals everything into `__Host-ov_session`, and answers a tiny page that signals `oauth:complete` to its opener and closes itself. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and no data — not the token, not the scopes — in the message, the URL, or the page. |
+| GET | `/oauth/session` | What the wizard may know: `{ authorized, scope, accounts, accountId, pkg, expiresAt }`. Never the token. |
+| POST | `/oauth/session` | Selects the deploy account. The id must be one the consent covered; the cookie is re-sealed with it. |
+| POST | `/oauth/revoke` | Revokes the token upstream and clears the cookie, whatever upstream answers. |
+
+Cookies: `ov_state` is HMAC-signed (`OAUTH_STATE_SECRET`), `Path=/oauth`, `SameSite=Lax` — it has to
+survive the cross-site top-level return from the consent page — and is cleared the first time it is
+checked. `__Host-ov_session` is AES-GCM encrypted (`OAUTH_SESSION_KEY`), `HttpOnly`, `Secure`,
+`SameSite=Strict`, `Path=/`.
+
+Configuration: `OAUTH_CLIENT_ID` and `OAUTH_REDIRECT_URI` are plain vars — the redirect URI is
+deliberately not derived from the `Host` header — while `OAUTH_CLIENT_SECRET`, `OAUTH_STATE_SECRET`, and
+`OAUTH_SESSION_KEY` are Workers Secrets, installed with `wrangler secret put` and never present in
+`wrangler.toml`.
+
+Every route above except `authorize` and `callback` passes the same-origin gate: `Overture-Relay` header
+present, `Origin` present and exactly this origin, anything else `403`.
+
+## 4. R2 key-pair verification — `POST /r2/verify-keys`
 
 Not a Cloudflare API call. Some recipes need an S3 key pair for the bucket they just created, and the only
 honest way to tell the user their pair works is to sign a request with it. Body:
-`{ accountId, bucketName?, accessKeyId, secretAccessKey }`.
+`{ accountId, bucketName?, accessKeyId, secretAccessKey }`, which must arrive as `application/json`; the
+route also passes the same same-origin gate as the session routes.
 
 The Worker signs (via `aws4fetch`, region `auto`, service `s3`) a bucket-scoped `HEAD` against
 `https://{accountId}.r2.cloudflarestorage.com/{bucketName}`, or a `GET` at the account root when no bucket
@@ -126,7 +169,7 @@ Known limitation: a key pair scoped to a *different* bucket the user also owns w
 its own bucket. The status code cannot distinguish "wrong keys" from "right keys, wrong bucket", so the
 wizard names the bucket in the error it shows.
 
-## 4. Release-asset download — `GET /github/release-asset?src=owner/repo&url=<asset-url>`
+## 5. Release-asset download — `GET /github/release-asset?src=owner/repo&url=<asset-url>`
 
 GitHub's asset host redirects to storage that sends no CORS headers, so the package bytes stream through
 here. Two independent checks, both required:
@@ -145,18 +188,14 @@ about the download is cached or recorded.
 Note what this route is not: it takes a full URL, but it is not a fetcher. The only URLs it will ever
 retrieve are release downloads of repositories an operator has allow-listed.
 
-## 5. CORS
+## 6. Same-origin
 
-- `Access-Control-Allow-Origin`: exact match against the comma-separated `ALLOWED_ORIGINS` var. Arbitrary
-  `Origin` headers are never reflected, and there are no wildcards. Requests without an `Origin` (the
-  wizard's own same-origin calls) get no such header and do not need one; the var exists so a
-  separately-hosted frontend fork can still reach these routes.
-- `Access-Control-Allow-Methods`: `GET, POST, PUT, DELETE, OPTIONS`
-- `Access-Control-Allow-Headers`: `Authorization, Content-Type`
-- `OPTIONS` is answered `204` for every route.
-- `Access-Control-Allow-Credentials` stays unset. Nothing here uses cookies — bearer tokens only.
+There is no CORS layer. The wizard is served by this same Worker, every route is same-origin, and no
+`Access-Control-*` header is ever emitted. A separately-hosted frontend cannot talk to these routes — by
+design, since the session cookie must never be spendable from another origin. Routes that read the
+session additionally demand the `Overture-Relay` header and an exact `Origin` match (§3).
 
-## 6. Size and abuse limits
+## 7. Size and abuse limits
 
 - Request bodies over 20 MiB are refused with `413`, checked against the declared `Content-Length` first
   and the buffered length after. Worker version multipart uploads and asset chunks run a few MB, so this
@@ -165,7 +204,7 @@ retrieve are release downloads of repositories an operator has allow-listed.
 - No custom rate limiting beyond the platform's. This is a low-traffic deployment tool, not a public API;
   recorded here as a known limitation rather than something to build.
 
-## 7. Static assets and SPA routing
+## 8. Static assets and SPA routing
 
 Cloudflare consults the asset manifest before invoking this script, so a request only reaches the Worker
 when no built file matched it. Unmatched paths go to `ASSETS.fetch`; when that answers `404` and the

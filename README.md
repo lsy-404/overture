@@ -61,7 +61,7 @@ Nothing else to configure — no secrets to set, no namespaces to create. The Wo
 
 Overture is designed to minimize the blast radius of a compromised package:
 
-- **Credentials stay in your browser.** The OAuth token Cloudflare issues and any R2 keys never leave the host frame — they are not sent to the recipe sandbox, logged, persisted anywhere, or included in URLs.
+- **Credentials stay with you.** The sign-in token Cloudflare issues lives in an encrypted, HttpOnly cookie that only your own Overture deployment can read — page scripts, the recipe sandbox, logs, and URLs never see it, and nothing is stored server-side. Any R2 keys you enter stay in this browser tab.
 
 - **Recipe runs in a sandboxed iframe.** Each `recipe.js` runs in an opaque-origin iframe with `sandbox="allow-scripts"` — no DOM access, no same-origin policy, no local storage. It cannot read your credentials or interfere with the wizard's UI.
 
