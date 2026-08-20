@@ -27,7 +27,7 @@
 // call that touches the session, per the relay's CSRF gate.
 
 import { sourceSlug, type SourceRef } from "../../shared/package";
-import { formatScopeParam, parseScopeParam } from "../../shared/oauthScopes";
+import { formatScopeParam } from "../../shared/oauthScopes";
 
 /** Every call that reads or writes the session cookie carries this — the
  *  relay's second CSRF gate, alongside `SameSite` and the Origin check. */
@@ -253,7 +253,7 @@ export interface OAuthSessionState {
   accountId: string | null;
   /** `recipe.package.sha256` this session's scope was requested for. */
   pkg: string | null;
-  /** Epoch milliseconds the session cookie stops being honoured. */
+  /** Unix seconds the session cookie stops being honoured. */
   expiresAt: number | null;
 }
 
@@ -267,7 +267,8 @@ function parseOAuthSession(body: unknown): OAuthSessionState {
     : [];
   return {
     authorized: raw.authorized === true,
-    scope: typeof raw.scope === "string" ? parseScopeParam(raw.scope) : [],
+    // The wire shape is an array (worker/oauthHandlers.ts sessionResponseBody).
+    scope: Array.isArray(raw.scope) ? raw.scope.filter((entry): entry is string => typeof entry === "string") : [],
     accounts,
     accountId: typeof raw.accountId === "string" && raw.accountId ? raw.accountId : null,
     pkg: typeof raw.pkg === "string" && raw.pkg ? raw.pkg : null,
