@@ -1,0 +1,22 @@
+<!doctype html>
+<!--
+  SPDX-License-Identifier: AGPL-3.0-or-later
+
+  Drives the real src/lib/markdown.ts in a browser and asserts the property a
+  jsdom-backed unit test cannot be trusted to prove: a recipe author's own
+  terms/licence text can carry headings, bold, and links, but not a live
+  <script>, an event-handler attribute, or a javascript:/data: URL. Needs a dev
+  server, because it imports the app's own TypeScript:
+
+      npm run dev
+      open http://localhost:5174/test/fixtures/markdown-probe.html
+-->
+<meta charset="utf-8" />
+<title>Overture markdown probe</title>
+<style>
+  body { font: 13px ui-monospace, monospace; padding: 16px; }
+  pre { line-height: 1.7; white-space: pre-wrap; }
+</style>
+<h1>Overture markdown probe</h1>
+<pre id="out">running…</pre>
+<script type="module" src="./markdown-probe.ts"></script>

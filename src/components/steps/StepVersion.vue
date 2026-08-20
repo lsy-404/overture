@@ -4,11 +4,12 @@ import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { usePolicy } from "../../stores/policy";
-import { parseSource, sourceSlug, type SourceRef } from "../../../shared/package";
-import { fetchReleases } from "../../lib/github";
+import { parseSource, parseSourceLoose, sourceSlug, type SourceRef } from "../../../shared/package";
+import { fetchReleases, fetchRepoMeta, type GithubRepoMeta } from "../../lib/github";
 import { loadInstallConfig } from "../../lib/package/config";
 import { loadDataPackage } from "../../lib/package/artifact";
 import { analyzePackage } from "../../lib/analyze/analyze";
+import { renderMarkdown } from "../../lib/markdown";
 import { localized } from "../../lib/recipe/types";
 import PackageReport from "../PackageReport.vue";
 import { WinButton, WinCheckBox, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
@@ -54,7 +55,7 @@ function selectSlug(slug: string) {
 
 function submitManual() {
   manualError.value = "";
-  const parsed = parseSource(manual.value);
+  const parsed = parseSourceLoose(manual.value);
   if (!parsed) {
     manualError.value = t("version.manualInvalid");
     return;
@@ -65,6 +66,40 @@ function submitManual() {
   }
   selectSource(parsed);
 }
+
+// ---- repository display metadata --------------------------------------------
+// Purely decorative — the picker works off `allowlist`/`wizard.source` either
+// way, this only replaces "owner/repo" with a project name and description
+// once it loads. Never blocks selection, never surfaces its own errors.
+
+const repoMeta = ref<Record<string, GithubRepoMeta | null>>({});
+const metaRequested = new Set<string>();
+
+async function loadRepoMeta(ref: SourceRef) {
+  const slug = sourceSlug(ref);
+  if (metaRequested.has(slug)) return;
+  metaRequested.add(slug);
+  repoMeta.value[slug] = await fetchRepoMeta(ref);
+}
+
+watch(
+  allowlist,
+  (slugs) => {
+    for (const slug of slugs) {
+      const parsed = parseSource(slug);
+      if (parsed) void loadRepoMeta(parsed);
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  () => wizard.source,
+  (src) => {
+    if (src) void loadRepoMeta(src);
+  },
+  { immediate: true },
+);
 
 // ---- releases --------------------------------------------------------------
 
@@ -202,6 +237,8 @@ watch(
 
 const hasTerms = computed(() => wizard.termsText.trim().length > 0);
 const mustAccept = computed(() => hasTerms.value && wizard.recipe?.terms?.required === true);
+const termsHtml = computed(() => renderMarkdown(wizard.termsText));
+const licenseHtml = computed(() => renderMarkdown(wizard.licenseText));
 
 const pane = ref<"terms" | "license">("terms");
 watch(ready, (value) => {
@@ -272,10 +309,12 @@ onMounted(async () => {
       </WinInfoBar>
 
       <!-- A `?src=` the policy accepts needs no picker: the link already named
-           the one repository this run deploys from. -->
-      <div v-if="wizard.sourcePinned && wizard.source" class="card-option selected pinned-source">
-        <h3>{{ currentSlug }}</h3>
-        <p>{{ t("version.pinnedNote") }}</p>
+           the one repository this run deploys from. Plain text, not a card —
+           there is nothing here to choose between. -->
+      <div v-if="wizard.sourcePinned && wizard.source" class="pinned-source">
+        <h3>{{ repoMeta[currentSlug]?.name || currentSlug }}</h3>
+        <p>{{ repoMeta[currentSlug]?.description || t("version.githubRepo") }}</p>
+        <p class="field-help" style="margin: 4px 0 0">{{ currentSlug }}</p>
       </div>
 
       <template v-else>
@@ -288,8 +327,9 @@ onMounted(async () => {
           :class="{ selected: currentSlug === slug }"
           @click="selectSlug(slug)"
         >
-          <h3>{{ slug }}</h3>
-          <p>{{ t("version.githubRepo") }}</p>
+          <h3>{{ repoMeta[slug]?.name || slug }}</h3>
+          <p>{{ repoMeta[slug]?.description || t("version.githubRepo") }}</p>
+          <p class="field-help" style="margin: 4px 0 0">{{ slug }}</p>
         </button>
 
         <WinInfoBar
@@ -314,7 +354,7 @@ onMounted(async () => {
               type="text"
               spellcheck="false"
               autocomplete="off"
-              placeholder="owner/repo"
+              placeholder="https://github.com/owner/repo"
               @keyup.enter="submitManual"
             />
             <p class="field-help">{{ t("version.manualHelp") }}</p>
@@ -396,11 +436,17 @@ onMounted(async () => {
             </button>
           </div>
 
-          <div v-show="pane === 'terms' && hasTerms" ref="termsPane" class="text-pane" tabindex="0" @scroll="checkTermsRead">
-            <pre>{{ wizard.termsText }}</pre>
-          </div>
+          <div
+            v-show="pane === 'terms' && hasTerms"
+            ref="termsPane"
+            class="text-pane markdown-pane"
+            tabindex="0"
+            @scroll="checkTermsRead"
+            v-html="termsHtml"
+          ></div>
           <div v-show="pane === 'license'" class="text-pane" tabindex="0">
-            <pre>{{ wizard.licenseText || t("version.licenseMissing") }}</pre>
+            <div v-if="wizard.licenseText" class="markdown-pane" v-html="licenseHtml"></div>
+            <p v-else>{{ t("version.licenseMissing") }}</p>
           </div>
 
           <div v-if="mustAccept" class="accept-row">
@@ -433,7 +479,19 @@ onMounted(async () => {
 
 <style scoped>
 .pinned-source {
-  cursor: default;
+  margin-bottom: 12px;
+}
+
+.pinned-source h3 {
+  font-size: 1rem;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.pinned-source p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
 }
 
 .source-footer {
@@ -455,5 +513,60 @@ onMounted(async () => {
 .analysis-status {
   flex-wrap: wrap;
   margin: 16px 0;
+}
+
+.markdown-pane {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+}
+
+.markdown-pane :deep(h1),
+.markdown-pane :deep(h2),
+.markdown-pane :deep(h3),
+.markdown-pane :deep(h4) {
+  margin: 1.2em 0 0.5em;
+  font-size: 1em;
+  font-weight: 600;
+}
+
+.markdown-pane :deep(h1:first-child),
+.markdown-pane :deep(h2:first-child),
+.markdown-pane :deep(h3:first-child),
+.markdown-pane :deep(h4:first-child) {
+  margin-top: 0;
+}
+
+.markdown-pane :deep(p) {
+  margin: 0 0 0.8em;
+}
+
+.markdown-pane :deep(ul),
+.markdown-pane :deep(ol) {
+  margin: 0 0 0.8em;
+  padding-left: 1.4em;
+}
+
+.markdown-pane :deep(li + li) {
+  margin-top: 0.3em;
+}
+
+.markdown-pane :deep(a) {
+  color: var(--accent-base);
+}
+
+.markdown-pane :deep(code) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  background: var(--card-bg-secondary);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+.markdown-pane :deep(blockquote) {
+  margin: 0 0 0.8em;
+  padding-left: 0.8em;
+  border-left: 2px solid var(--card-stroke);
+  color: var(--text-secondary);
 }
 </style>

@@ -17,8 +17,10 @@
 // /accounts/{id}/storage/kv/namespaces takes `page`/`per_page` and returns
 // `{id, title, supports_url_encoding}` rows; POST to the same path takes
 // `{title}` and returns the same shape — and answers 400 when the account
-// already owns that title, which is why the title is resolved by listing first.
+// already owns that title, which is why a title is resolved against the
+// inventory the options page already read before anything is created.
 
+import type { ExistingResource } from "./types";
 import { callCfJson } from "../relay";
 
 const CONTEXT = "Workers KV Storage Write";
@@ -28,25 +30,19 @@ interface KvNamespace {
   title?: string;
 }
 
-async function listNamespaces(token: string, accountId: string, signal?: AbortSignal): Promise<KvNamespace[]> {
-  return callCfJson<KvNamespace[]>(
+export async function listNamespaces(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
+  const namespaces = await callCfJson<KvNamespace[]>(
     token,
     `/accounts/${accountId}/storage/kv/namespaces?per_page=100`,
     signal ? { signal } : undefined,
     CONTEXT,
   );
+  return namespaces
+    .filter((namespace) => namespace.title && namespace.id)
+    .map((namespace) => ({ name: namespace.title as string, id: namespace.id as string }));
 }
 
-export async function listNamespaceTitles(token: string, accountId: string, signal?: AbortSignal): Promise<string[]> {
-  const namespaces = await listNamespaces(token, accountId, signal);
-  return namespaces.map((namespace) => namespace.title || "").filter(Boolean);
-}
-
-export async function getOrCreateNamespace(token: string, accountId: string, title: string, signal?: AbortSignal): Promise<string> {
-  const existing = await listNamespaces(token, accountId, signal);
-  const match = existing.find((namespace) => namespace.title === title && namespace.id);
-  if (match?.id) return match.id;
-
+export async function createNamespace(token: string, accountId: string, title: string, signal?: AbortSignal): Promise<string> {
   const created = await callCfJson<KvNamespace>(
     token,
     `/accounts/${accountId}/storage/kv/namespaces`,

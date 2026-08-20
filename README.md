@@ -2,16 +2,16 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-A universal Cloudflare Workers deployment wizard that runs entirely in your browser. Deploy any GitHub release to Cloudflare Workers with just an API token — no local toolchain, no Node.js, no command line.
+A universal Cloudflare Workers deployment wizard that runs entirely in your browser. Deploy any GitHub release to Cloudflare Workers by signing in with your Cloudflare account — no local toolchain, no Node.js, no command line.
 
 ## How to use it
 
-1. Get a Cloudflare API token with Workers Scripts write permission.
-2. Visit `https://<your-overture-host>/?src=<owner>/<repo>` (replace `<owner>/<repo>` with the GitHub repository).
-3. Follow the guided wizard: paste your token, review permissions, name your resources, and confirm.
-4. Overture handles the rest — provisions D1 databases, R2 buckets, KV namespaces, and deploys the Worker.
+1. Visit `https://<your-overture-host>/?src=<owner>/<repo>` (replace `<owner>/<repo>` with the GitHub repository).
+2. Review what the package will do: the permissions it needs, the endpoints it reaches, and the resources it creates.
+3. Sign in with Cloudflare when prompted — the wizard requests only the permissions this package declares.
+4. Name your resources and confirm. Overture provisions everything: D1 databases, R2 buckets, KV namespaces, and the Worker itself.
 
-The wizard tracks progress and rolls back on failure.
+The wizard shows progress step by step. A failed deployment can be retried, and anything already created is reused rather than duplicated.
 
 ## For app developers: make your project deployable
 
@@ -61,7 +61,7 @@ Nothing else to configure — no secrets to set, no namespaces to create. The Wo
 
 Overture is designed to minimize the blast radius of a compromised package:
 
-- **Credentials stay in your browser.** Your Cloudflare API token and R2 keys never leave the host frame — they are not sent to the recipe sandbox, logged, persisted anywhere, or included in URLs.
+- **Credentials stay in your browser.** The OAuth token Cloudflare issues and any R2 keys never leave the host frame — they are not sent to the recipe sandbox, logged, persisted anywhere, or included in URLs.
 
 - **Recipe runs in a sandboxed iframe.** Each `recipe.js` runs in an opaque-origin iframe with `sandbox="allow-scripts"` — no DOM access, no same-origin policy, no local storage. It cannot read your credentials or interfere with the wizard's UI.
 

@@ -30,6 +30,29 @@ async function githubJson<T>(url: string): Promise<T | null> {
   return (await response.json()) as T;
 }
 
+export interface GithubRepoMeta {
+  name: string;
+  description: string | null;
+}
+
+/**
+ * Display metadata for a source picker card — the repository's own name and
+ * description, so a visitor who has never heard of "owner/repo" sees a project
+ * name and a sentence instead. Purely decorative: null on any failure (private,
+ * deleted, rate-limited) and the caller falls back to the raw slug.
+ */
+export async function fetchRepoMeta(ref: SourceRef): Promise<GithubRepoMeta | null> {
+  try {
+    const data = await githubJson<{ name?: string; description?: string | null }>(
+      `${GITHUB_API}/repos/${ref.owner}/${ref.repo}`,
+    );
+    if (!data) return null;
+    return { name: data.name || ref.repo, description: data.description ?? null };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Releases carrying a deploy package, newest first as GitHub orders them.
  * Non-deployable releases are dropped: without both fixed-name assets served

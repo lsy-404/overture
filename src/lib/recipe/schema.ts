@@ -44,6 +44,7 @@ import {
   type RecipeLicense,
   type RecipePermission,
   type RecipeResource,
+  type RecipeResourceMatch,
   type RecipeStep,
   type RecipeTerms,
   type RecipeVar,
@@ -372,6 +373,51 @@ function check(errors: Errors, path: string, value: unknown): RecipeCheck | unde
   return { id, requirement, label, path: cfPath, ...(hint === undefined ? {} : { hint }) };
 }
 
+/**
+ * The match declaration decides which existing resource a deployment will write
+ * into, so an unusable one is rejected rather than skipped: a package that meant
+ * to adopt an old database and got its pattern wrong should say so at the door,
+ * not deploy against an empty one.
+ */
+function resourceMatch(errors: Errors, path: string, value: unknown): RecipeResourceMatch | undefined {
+  const raw = bag(errors, path, value, true);
+  if (!raw) return undefined;
+
+  const names =
+    raw.names === undefined
+      ? undefined
+      : items(errors, `${path}.names`, raw.names, RECIPE_LIMITS.maxMatchNames, true, (entry, itemPath) =>
+          interpolatedName(errors, itemPath, entry),
+        );
+
+  const patterns =
+    raw.patterns === undefined
+      ? undefined
+      : items(errors, `${path}.patterns`, raw.patterns, RECIPE_LIMITS.maxMatchPatterns, true, (entry, itemPath) => {
+          const source = str(errors, itemPath, entry, true, RECIPE_LIMITS.maxPatternChars);
+          if (source === undefined) return undefined;
+          try {
+            new RegExp(source);
+          } catch {
+            errors.add(itemPath, "is not a valid regular expression");
+            return undefined;
+          }
+          return source;
+        });
+
+  if (names) requireUnique(errors, `${path}.names`, names, (entry) => entry, "match name");
+  if (patterns) requireUnique(errors, `${path}.patterns`, patterns, (entry) => entry, "match pattern");
+
+  if ((names?.length || 0) === 0 && (patterns?.length || 0) === 0) {
+    errors.add(path, "must name at least one name or pattern");
+    return undefined;
+  }
+  return {
+    ...(names === undefined || names.length === 0 ? {} : { names }),
+    ...(patterns === undefined || patterns.length === 0 ? {} : { patterns }),
+  };
+}
+
 function resource(errors: Errors, path: string, value: unknown): RecipeResource | undefined {
   const raw = bag(errors, path, value, true);
   if (!raw) return undefined;
@@ -382,6 +428,7 @@ function resource(errors: Errors, path: string, value: unknown): RecipeResource 
   const required = bool(errors, `${path}.required`, raw.required, true);
   const label = localized(errors, `${path}.label`, raw.label, true);
   const help = raw.help === undefined ? undefined : localized(errors, `${path}.help`, raw.help, false);
+  const match = raw.match === undefined ? undefined : resourceMatch(errors, `${path}.match`, raw.match);
   let s3Keys: Requirement | undefined;
   if (raw.s3Keys !== undefined) {
     s3Keys = oneOf<Requirement>(errors, `${path}.s3Keys`, raw.s3Keys, REQUIREMENTS, false);
@@ -396,6 +443,7 @@ function resource(errors: Errors, path: string, value: unknown): RecipeResource 
     required,
     label,
     ...(help === undefined ? {} : { help }),
+    ...(match === undefined ? {} : { match }),
     ...(s3Keys === undefined ? {} : { s3Keys }),
   };
 }

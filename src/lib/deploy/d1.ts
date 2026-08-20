@@ -13,6 +13,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import type { ExistingResource } from "./types";
 import { callCfJson } from "../relay";
 
 const CONTEXT = "D1 Write";
@@ -22,26 +23,19 @@ interface D1Database {
   name?: string;
 }
 
-export async function listDatabaseNames(token: string, accountId: string, signal?: AbortSignal): Promise<string[]> {
+export async function listDatabases(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
   const databases = await callCfJson<D1Database[]>(
     token,
     `/accounts/${accountId}/d1/database?per_page=100`,
     signal ? { signal } : undefined,
     CONTEXT,
   );
-  return databases.map((database) => database.name || "").filter(Boolean);
+  return databases
+    .filter((database) => database.name && database.uuid)
+    .map((database) => ({ name: database.name as string, id: database.uuid as string }));
 }
 
-export async function getOrCreateDatabase(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<string> {
-  const existing = await callCfJson<D1Database[]>(
-    token,
-    `/accounts/${accountId}/d1/database?name=${encodeURIComponent(name)}`,
-    signal ? { signal } : undefined,
-    CONTEXT,
-  );
-  const match = existing.find((database) => database.name === name && database.uuid);
-  if (match?.uuid) return match.uuid;
-
+export async function createDatabase(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<string> {
   const created = await callCfJson<D1Database>(
     token,
     `/accounts/${accountId}/d1/database`,

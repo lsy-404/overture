@@ -62,11 +62,25 @@ export interface LiveScriptFacts {
   containerClasses: string[];
 }
 
+/** One storage resource the account already holds. */
+export interface ExistingResource {
+  name: string;
+  /** D1 database id, KV namespace id, or the bucket name for R2. */
+  id: string;
+}
+
 export interface DeployTarget {
   mode: DeployMode;
   workerName: string;
   /** Recipe resource id → the name the user settled on. */
   resourceNames: Record<string, string>;
+  /**
+   * Recipe resource id → an existing resource this deployment will write into
+   * rather than create. Decided on the options page, from the account inventory
+   * and the recipe's match declaration, and confirmed by the user; a recipe
+   * still only ever names a resource by its own id.
+   */
+  adopted: Record<string, ExistingResource>;
   /** Recipe input id → the value the user gave. */
   inputs: Record<string, string | boolean>;
   /** Container class names to declare on the new version. */

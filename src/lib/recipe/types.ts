@@ -107,6 +107,25 @@ export interface RecipeCheck {
 export type ResourceKind = "d1" | "r2" | "kv";
 
 /**
+ * How to recognise a resource in the account that already belongs to this app —
+ * the database a two-versions-ago release created under a name nothing computes
+ * any more, the bucket someone renamed by hand.
+ *
+ * Without it the wizard only ever looks for the one name it would create, so an
+ * upgrade quietly deploys against an empty resource and leaves the real one
+ * bound to nothing. With it, the host lists what the account holds and works
+ * down this declaration: every exact name first, in the order given, and only
+ * then the patterns. A pattern that matches more than one existing resource
+ * adopts none of them — the choice goes to the user instead.
+ */
+export interface RecipeResourceMatch {
+  /** Exact names. Interpolated, then compared literally. */
+  names?: Interpolated[];
+  /** Regular-expression sources. The host anchors each one whole. */
+  patterns?: string[];
+}
+
+/**
  * A storage resource the deployment needs. The host renders a name field per
  * entry (pre-filled from `defaultName`), warns when the name already exists in
  * the account, provisions it, and binds it into the Worker as `binding`.
@@ -119,6 +138,8 @@ export interface RecipeResource {
   required: boolean;
   label: Localized;
   help?: Localized;
+  /** How to find an instance of this resource the account already holds. */
+  match?: RecipeResourceMatch;
   /**
    * r2 only. When set, the wizard collects an R2 S3 key pair and verifies it
    * against the bucket; "required" blocks the deploy without it.
@@ -272,6 +293,10 @@ export const RECIPE_LIMITS = {
   maxHostSecrets: 8,
   maxContainers: 4,
   maxDoneLinks: 8,
+  /** Per resource, for the match declaration. */
+  maxMatchNames: 12,
+  maxMatchPatterns: 8,
+  maxPatternChars: 200,
   /** Resource ids, input ids, step ids, capability keys. */
   idPattern: /^[a-z0-9][a-z0-9_-]{0,39}$/,
   /** Worker/D1/R2/KV names Cloudflare will accept. */

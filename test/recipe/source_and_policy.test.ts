@@ -17,7 +17,7 @@
 // modules decide which repository a package may come from and which URL may be
 // fetched for it, so they are tested as pure functions.
 
-import { parseSource, sourceSlug, isReleaseAssetUrl, assetOf, isDeployable, tagMatchesVersion, PACKAGE_ARTIFACT_NAME, PACKAGE_CONFIG_NAME, type GithubRelease } from "../../shared/package";
+import { parseSource, parseSourceLoose, sourceSlug, isReleaseAssetUrl, assetOf, isDeployable, tagMatchesVersion, PACKAGE_ARTIFACT_NAME, PACKAGE_CONFIG_NAME, type GithubRelease } from "../../shared/package";
 import { isSourceAllowed, normalizeSourceEntry, parseSourceList, policyFromVars, MAX_POLICY_SOURCES } from "../../shared/policy";
 
 const ref = { owner: "acme", repo: "widget" };
@@ -52,6 +52,21 @@ const checks: Array<[string, boolean, string?]> = [
   ["illegal characters are rejected",
     ["ac me/widget", "acme/wid get", "acme/wid?get", "acme/wid#get", "-acme/widget", "acme:80/widget"].every((value) => parseSource(value) === null)],
   ["a URL is not a source", ["https://github.com/acme/widget", "github.com/acme/widget", "git@github.com:acme/widget"].every((value) => parseSource(value) === null)],
+
+  ["parseSourceLoose still accepts a bare owner/repo",
+    (() => { const p = parseSourceLoose("acme/widget"); return !!p && sourceSlug(p) === "acme/widget"; })()],
+  ["parseSourceLoose accepts a full GitHub URL, schemeless, www, trailing slash, extra path, and .git",
+    ["https://github.com/acme/widget", "github.com/acme/widget", "www.github.com/acme/widget",
+      "https://github.com/acme/widget/", "https://github.com/acme/widget/releases/tag/v1.0.0",
+      "https://github.com/acme/widget.git"]
+      .every((value) => { const p = parseSourceLoose(value); return !!p && sourceSlug(p) === "acme/widget"; })],
+  ["parseSourceLoose still enforces owner/repo charset rules on the extracted segments",
+    parseSourceLoose("https://github.com/-acme/widget") === null && parseSourceLoose("https://github.com/../widget") === null],
+  ["parseSourceLoose rejects a non-GitHub host and the SSH form",
+    parseSourceLoose("https://github.com.evil.test/acme/widget") === null
+    && parseSourceLoose("https://evil.test/acme/widget") === null
+    && parseSourceLoose("git@github.com:acme/widget") === null],
+  ["parseSourceLoose rejects garbage without throwing", parseSourceLoose("not a url") === null && parseSourceLoose("") === null],
 
   ["an asset URL under this source's release downloads is accepted",
     isReleaseAssetUrl(download("acme", "widget", PACKAGE_ARTIFACT_NAME), ref)],

@@ -34,11 +34,12 @@ import { BRIDGE_LIMITS } from "../sandbox/protocol";
 import { uploadAssets, type AssetManifest } from "../deploy/assets";
 import { buildBindings, interpolate } from "../deploy/bindings";
 import { setCron } from "../deploy/cron";
-import { getOrCreateDatabase, runQuery } from "../deploy/d1";
+import { createDatabase, runQuery } from "../deploy/d1";
 import { attachCustomDomain, listCustomDomains } from "../deploy/domains";
 import { probeReachable } from "../deploy/health";
-import { getOrCreateNamespace } from "../deploy/kv";
-import { getOrCreateBucket } from "../deploy/r2";
+import { createNamespace } from "../deploy/kv";
+import { effectiveResourceNames } from "../deploy/match";
+import { createBucket } from "../deploy/r2";
 import { pushSecret } from "../deploy/secrets";
 import { deleteScript, readCrons, switchTraffic, uploadWorkerVersion } from "../deploy/workerVersion";
 
@@ -194,7 +195,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     uuid: input.deploymentUuid,
     accountId,
   };
-  for (const [id, name] of Object.entries(target.resourceNames)) tokens[`resource:${id}`] = name;
+  for (const [id, name] of Object.entries(effectiveResourceNames(target))) tokens[`resource:${id}`] = name;
   for (const [id, value] of Object.entries(target.inputs)) tokens[`input:${id}`] = String(value);
 
   // Anything that identifies the deploying account or authorises a call on its
@@ -235,12 +236,19 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     return resource;
   };
 
+  /**
+   * Adopting an existing resource is the host's decision, taken on the options
+   * page against one reading of the account and shown to the user there. By the
+   * time a recipe asks, the answer is already settled — it names a resource id
+   * and gets back whatever that id resolved to, with no say in which.
+   */
   const provision = async (resource: RecipeResource, create: (name: string) => Promise<string>): Promise<Provisioned> => {
     const existing = provisioned.get(resource.id);
     if (existing) return existing;
-    const name = target.resourceNames[resource.id] || "";
+    const adopted = target.adopted[resource.id];
+    const name = adopted ? adopted.name : target.resourceNames[resource.id] || "";
     if (!RECIPE_LIMITS.namePattern.test(name)) throw new Error(`resource "${resource.id}" has no usable name for this deployment`);
-    const entry: Provisioned = { kind: resource.kind, name, id: await create(name) };
+    const entry: Provisioned = { kind: resource.kind, name, id: adopted ? adopted.id : await create(name) };
     provisioned.set(resource.id, entry);
     return entry;
   };
@@ -449,7 +457,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         return crypto.randomUUID();
 
       case "d1.provision": {
-        const entry = await provision(resourceOf(args[0], "d1"), (name) => getOrCreateDatabase(token, accountId, name, signal));
+        const entry = await provision(resourceOf(args[0], "d1"), (name) => createDatabase(token, accountId, name, signal));
         return { databaseId: entry.id };
       }
       case "d1.query": {
@@ -463,13 +471,13 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
       }
       case "r2.provision": {
         const entry = await provision(resourceOf(args[0], "r2"), async (name) => {
-          await getOrCreateBucket(token, accountId, name, signal);
+          await createBucket(token, accountId, name, signal);
           return name;
         });
         return { bucketName: entry.name };
       }
       case "kv.provision": {
-        const entry = await provision(resourceOf(args[0], "kv"), (name) => getOrCreateNamespace(token, accountId, name, signal));
+        const entry = await provision(resourceOf(args[0], "kv"), (name) => createNamespace(token, accountId, name, signal));
         return { namespaceId: entry.id };
       }
 

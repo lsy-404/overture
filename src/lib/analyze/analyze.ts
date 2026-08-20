@@ -27,7 +27,7 @@
 import { matchEndpoint, pathSegments, CF_ENDPOINTS } from "../../../shared/cfAllowlist";
 import { METHOD_GATES } from "../sandbox/protocol";
 import type { Capability, Recipe, Requirement } from "../recipe/types";
-import { endpointPath, endpointsOfCapability, HOST_ENDPOINTS } from "./endpoints";
+import { endpointPath, endpointsOfCapability, hostEndpointsFor } from "./endpoints";
 import { permissionsForEndpoints, type PermissionNeed } from "./permissions";
 import { scanRecipeScript, type NetworkTarget, type ScriptScan } from "./script";
 
@@ -171,7 +171,7 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
     if (!list) via.set(id, [source]);
     else if (!list.includes(source)) list.push(source);
   };
-  for (const id of HOST_ENDPOINTS) note(id, "host");
+  for (const id of hostEndpointsFor(recipe)) note(id, "host");
   for (const entry of capabilities) {
     if (!entry.declared) continue;
     for (const id of entry.endpoints) note(id, entry.capability);
@@ -233,6 +233,18 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
   for (const secret of recipe.hostSecrets || []) {
     if (secret.source === "accountId") add("hostSecretAccountId", "note", { name: secret.name });
     else add("hostSecretCredential", "critical", { name: secret.name, source: secret.source });
+  }
+
+  // ---- resources this deployment may write into rather than create ---------
+
+  const adopting = recipe.resources.filter((resource) => resource.match);
+  if (adopting.length > 0) {
+    // Not a fault — it is how an upgrade keeps its data — but it is the package
+    // saying it expects to find something of its own already in the account, and
+    // the user is the one who knows whether that is true.
+    add("adoptsExisting", "note", {
+      resources: clip(adopting.map((resource) => resource.id).join(", ")),
+    });
   }
 
   // ---- a generated password landing in a readable place --------------------

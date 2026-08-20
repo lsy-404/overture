@@ -56,10 +56,19 @@ before anything is downloaded.
       "label": { "en": "R2 enabled" } }
   ],
 
-  // Storage the deployment needs. Overture renders a name field per entry,
-  // warns when the name already exists, provisions it, and binds it.
+  // Storage the deployment needs. Overture renders a name field per entry, works
+  // out whether the account already holds one, provisions it, and binds it.
+  //
+  // `match` is how a resource is recognised across renames and old versions.
+  // Exact names are tried first, in the order given, and only then the patterns
+  // (matched whole). Whatever it finds is named on the options page before
+  // anything runs, and a pattern that matches more than one thing adopts none of
+  // them — that choice goes to the user. Without `match`, only the name in the
+  // field is looked for, so an upgrade that ever renamed anything deploys
+  // against an empty resource and leaves the real one bound to nothing.
   "resources": [
     { "id": "db", "kind": "d1", "binding": "DB", "defaultName": "${worker}-db", "required": true,
+      "match": { "names": ["${worker}-database", "edgesonic-db"], "patterns": ["^edgesonic-db-\\d+$"] },
       "label": { "en": "Library database" } },
     { "id": "music", "kind": "r2", "binding": "MUSIC_BUCKET", "defaultName": "${worker}-storage",
       "required": true, "s3Keys": "optional", "label": { "en": "Music storage" } }
