@@ -126,16 +126,18 @@ Worker can read.
 
 | Method | Path | Behaviour |
 |---|---|---|
-| GET | `/oauth/authorize` | Same-origin navigations only (`Sec-Fetch-Site: same-origin`). Validates `scope` (every entry within `shared/oauthScopes.ts`) and `pkg` (the package digest), signs both plus a CSPRNG nonce into `ov_state`, and redirects to Cloudflare's consent page. |
-| GET | `/oauth/callback` | Verifies `state` against `ov_state` (HMAC, consumed on first use), exchanges the code server-side, reads `GET /accounts` with the fresh token, seals everything into `__Host-ov_session`, and answers a tiny page that signals `oauth:complete` to its opener and closes itself. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and no data — not the token, not the scopes — in the message, the URL, or the page. |
+| GET | `/oauth/authorize` | Same-origin navigations only (`Sec-Fetch-Site: same-origin`). Validates `scope` (every entry within `shared/oauthScopes.ts`) and `pkg` (the package digest), signs both plus a CSPRNG nonce into `__Host-ov_state`, and redirects to Cloudflare's consent page. |
+| GET | `/oauth/callback` | Verifies `state` against `__Host-ov_state` (HMAC, consumed on first use), exchanges the code server-side, reads `GET /accounts` with the fresh token, seals everything into `__Host-ov_session`, and answers a tiny page that signals `oauth:complete` to its opener and closes itself. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and no data — not the token, not the scopes — in the message, the URL, or the page. |
 | GET | `/oauth/session` | What the wizard may know: `{ authorized, scope, accounts, accountId, pkg, expiresAt }`. Never the token. |
 | POST | `/oauth/session` | Selects the deploy account. The id must be one the consent covered; the cookie is re-sealed with it. |
 | POST | `/oauth/revoke` | Revokes the token upstream and clears the cookie, whatever upstream answers. |
 
-Cookies: `ov_state` is HMAC-signed (`OAUTH_STATE_SECRET`), `Path=/oauth`, `SameSite=Lax` — it has to
-survive the cross-site top-level return from the consent page — and is cleared the first time it is
-checked. `__Host-ov_session` is AES-GCM encrypted (`OAUTH_SESSION_KEY`), `HttpOnly`, `Secure`,
-`SameSite=Strict`, `Path=/`.
+Cookies: both carry the `__Host-` prefix, so a sibling host on the same registrable domain cannot toss
+either one up to the parent — the login-CSRF session-fixation this closes is the whole reason the prefix
+matters. `__Host-ov_state` is HMAC-signed (`OAUTH_STATE_SECRET`), `SameSite=Lax` — it has to survive the
+cross-site top-level return from the consent page — and is cleared the first time it is checked;
+`__Host-` forces `Path=/`, so it is no longer scoped to `/oauth`. `__Host-ov_session` is AES-GCM
+encrypted (`OAUTH_SESSION_KEY`), `SameSite=Strict`. Both are `HttpOnly`, `Secure`, `Path=/`.
 
 Configuration: `OAUTH_CLIENT_ID` and `OAUTH_REDIRECT_URI` are plain vars — the redirect URI is
 deliberately not derived from the `Host` header — while `OAUTH_CLIENT_SECRET`, `OAUTH_STATE_SECRET`, and
