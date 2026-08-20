@@ -30,24 +30,20 @@
 // than picking an answer: this table is shown to a user as fact.
 
 const SESSION_JWT = "jwt";
-/** Carried by the session credential itself; nothing extra is asked for. */
-const SESSION_ISSUED = "session";
 
 export interface EndpointPermission {
   /** OAuth scopes that authorise the call. All of them are needed, not any one. */
   scopes: string[];
   /**
-   * No scope to ask for: `session` because the credential itself already
-   * carries the authority, `jwt` because the call is authorised by a
-   * short-lived token Cloudflare issued for it rather than by the session.
+   * No scope to ask for: the call is authorised by a short-lived token
+   * Cloudflare issued for it rather than by the session credential.
    */
-  ungated?: typeof SESSION_JWT | typeof SESSION_ISSUED;
+  ungated?: typeof SESSION_JWT;
   /** Where Cloudflare's own documentation left the answer incomplete. */
   uncertain?: string;
 }
 
 export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
-  "token.verify": { scopes: [], ungated: SESSION_ISSUED },
   "account.read": { scopes: ["account-settings.read"] },
   "r2.bucketList": { scopes: ["workers-r2.read"] },
   "r2.bucketCreate": { scopes: ["workers-r2.write"] },

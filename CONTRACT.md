@@ -68,7 +68,6 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 
 | Method | Path pattern | Used for |
 |---|---|---|
-| GET | `/accounts/{accountId}/tokens/verify` | Is the pasted API token live and scoped to this account |
 | GET | `/accounts/{accountId}` | Account name and plan, shown on the target step |
 | GET | `/accounts/{accountId}/r2/buckets` | Is R2 enabled, and which buckets the recipe's resources could match |
 | POST | `/accounts/{accountId}/r2/buckets` | Create a bucket the recipe declared |

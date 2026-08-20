@@ -34,7 +34,6 @@ interface Rule {
 
 const RULES: Rule[] = [
   { method: "GET", segments: ["accounts", null] },
-  { method: "GET", segments: ["accounts", null, "tokens", "verify"] },
   { method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { method: "POST", segments: ["accounts", null, "r2", "buckets"] },
   { method: "GET", segments: ["accounts", null, "d1", "database"] },
@@ -115,8 +114,9 @@ const unlisted: Call[] = [
   ["GET", ["user", "tokens"]],
   ["GET", ["accounts"]],
   ["POST", ["accounts", ACCOUNT, "tokens"]],
-  // Removed with the token-policy audit: an OAuth credential answers 401 here.
+  // Removed with the manual-token flow: an OAuth credential answers 401 here.
   ["GET", ["accounts", ACCOUNT, "tokens", ID]],
+  ["GET", ["accounts", ACCOUNT, "tokens", "verify"]],
   ["DELETE", ["accounts", ACCOUNT, "r2", "buckets", "some-bucket"]],
   ["GET", ["zones", ID, "dns_records"]],
   ["POST", ["accounts", ACCOUNT, "workers", "scripts", SCRIPT, "content"]],
@@ -142,7 +142,7 @@ const checks: Array<[string, boolean, string?]> = [
   ["traversal, encoded slashes and empty segments are refused", leakedTraversal.length === 0, leakedTraversal.map(describe).join(", ")],
   ["nothing outside the list is relayed", leakedUnlisted.length === 0, leakedUnlisted.map(describe).join(", ")],
   ["a lowercased method is not accepted for an allowed shape",
-    !isPathAllowed("get", ["accounts", ACCOUNT, "tokens", "verify"])],
+    !isPathAllowed("get", ["accounts", ACCOUNT, "r2", "buckets"])],
 ];
 
 let failures = 0;
