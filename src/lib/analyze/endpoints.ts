@@ -54,7 +54,6 @@ export const METHOD_ENDPOINTS: Record<string, string[]> = {
  */
 export const HOST_ENDPOINTS: readonly string[] = [
   "token.verify",
-  "token.read",
   "account.read",
   "worker.scriptList",
   "worker.scriptRead",
@@ -113,7 +112,6 @@ const OPAQUE_NAMES: Record<string, string> = {
   accounts: "{accountId}",
   scripts: "{scriptName}",
   database: "{databaseId}",
-  tokens: "{tokenId}",
   zones: "{zoneId}",
 };
 

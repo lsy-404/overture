@@ -3,7 +3,6 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { PackageAnalysis, Severity } from "../lib/analyze/analyze";
-import { dashboardLabel } from "../lib/analyze/permissions";
 import { WinInfoBar } from "../vendor/winui";
 
 const props = defineProps<{ analysis: PackageAnalysis }>();
@@ -22,12 +21,9 @@ function viaLabel(via: string): string {
   return via === "host" ? t("analyze.viaHost") : via;
 }
 
-function alternatives(groups: string[]): string {
-  return groups.join(t("analyze.orSeparator"));
-}
-
-function dashboardHint(groups: string[]): string {
-  return groups.map(dashboardLabel).join(t("analyze.orSeparator"));
+/** Scopes are granted together, not as alternatives. */
+function scopeList(scopes: string[]): string {
+  return scopes.join(" ");
 }
 </script>
 
@@ -50,9 +46,8 @@ function dashboardHint(groups: string[]): string {
     <h4>{{ t("analyze.permissionsTitle") }}</h4>
     <p class="field-help" style="margin-top: 0">{{ t("analyze.permissionsIntro") }}</p>
     <ul class="plain-list">
-      <li v-for="need in analysis.permissions" :key="need.groups.join('|')">
-        <code>{{ alternatives(need.groups) }}</code>
-        <span class="field-help"> — {{ t("analyze.permissionDashboard", { labels: dashboardHint(need.groups) }) }}</span>
+      <li v-for="need in analysis.permissions" :key="need.scopes.join('|')">
+        <code>{{ scopeList(need.scopes) }}</code>
         <p v-if="need.uncertain" class="field-help tone-warn" style="margin: 4px 0 0">
           {{ t(`analyze.uncertain.${need.uncertain}`) }}
         </p>

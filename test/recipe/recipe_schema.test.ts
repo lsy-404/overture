@@ -27,7 +27,7 @@ const VALID_SHA256 = "a".repeat(64);
 
 function minimal(): Json {
   return {
-    schema: 1,
+    schema: 2,
     id: "demo",
     name: "Demo",
     summary: { en: "A demo package", "*": "A demo package" },
@@ -40,7 +40,7 @@ function minimal(): Json {
       {
         key: "scripts",
         requirement: "required",
-        groups: ["Workers Scripts Write"],
+        oauthScopes: ["workers-scripts.write"],
         label: { en: "Workers Scripts" },
         scenario: { en: "Upload the Worker" },
         scope: "account",
@@ -94,7 +94,18 @@ const checks: Array<[string, boolean, string?]> = [
   ["a minimal recipe validates", accepts(minimal()), errorsOf(minimal()).join("; ")],
 
   ["a missing schema is rejected", rejects(tweak((r) => delete r.schema))],
-  ["a schema other than 1 is rejected", rejects(tweak((r) => (r.schema = 2))) && rejects(tweak((r) => (r.schema = "1")))],
+  ["a schema other than the current one is rejected",
+    rejects(tweak((r) => (r.schema = 1))) && rejects(tweak((r) => (r.schema = 3))) && rejects(tweak((r) => (r.schema = "2")))],
+
+  // Scopes are what the consent screen will list, so a package cannot name one
+  // this deployment's OAuth client was never registered to hold.
+  ["a scope outside the registered ceiling is rejected",
+    rejects(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = ["workers-scripts.write", "not-a-scope.write"])))
+    && rejects(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = ["Workers Scripts Write"])))],
+  ["an authority OAuth cannot grant is allowed to name no scope",
+    accepts(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = [])))],
+  ["a duplicated scope is rejected",
+    rejects(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = ["d1.read", "d1.read"])))],
   ["a non-object input is rejected", rejects(null) && rejects("{}") && rejects([]) && rejects(42)],
 
   ["a worker without an entry module is rejected",

@@ -27,7 +27,7 @@ type Json = Record<string, unknown>;
 
 function build(overrides: Json = {}): Recipe {
   const base: Json = {
-    schema: 1,
+    schema: 2,
     id: "demo",
     name: "Demo",
     summary: { "*": "A demo package" },
@@ -40,7 +40,7 @@ function build(overrides: Json = {}): Recipe {
       {
         key: "scripts",
         requirement: "required",
-        groups: ["Workers Scripts Write"],
+        oauthScopes: ["workers-scripts.write"],
         label: { "*": "Workers Scripts" },
         scenario: { "*": "Upload the Worker" },
         scope: "account",
@@ -162,9 +162,9 @@ const checks: Array<[string, boolean, string?]> = [
     plain.endpoints.some((entry) => entry.id === "d1.databaseCreate" && entry.via.includes("d1")),
   ],
   [
-    "the permission needed is derived, not copied from the recipe",
-    plain.permissions.some((need) => need.groups.length === 1 && need.groups[0] === "D1 Write"),
-    plain.permissions.map((need) => need.groups.join("/")).join(" | "),
+    "the scope needed is derived, not copied from the recipe",
+    plain.permissions.some((need) => need.scopes.length === 1 && need.scopes[0] === "d1.write"),
+    plain.permissions.map((need) => need.scopes.join("+")).join(" | "),
   ],
   ["a full read is reported as certain", plain.certain],
 

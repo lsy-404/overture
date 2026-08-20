@@ -41,7 +41,6 @@ export interface EndpointRule {
 
 export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "token.verify", method: "GET", segments: ["accounts", null, "tokens", "verify"] },
-  { id: "token.read", method: "GET", segments: ["accounts", null, "tokens", null] },
   { id: "account.read", method: "GET", segments: ["accounts", null] },
   { id: "r2.bucketList", method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { id: "r2.bucketCreate", method: "POST", segments: ["accounts", null, "r2", "buckets"] },

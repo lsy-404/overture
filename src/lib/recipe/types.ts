@@ -22,7 +22,7 @@
 //
 // docs/RECIPE.md is the human-facing version of this file. Keep them in step.
 
-export const RECIPE_SCHEMA = 1;
+export const RECIPE_SCHEMA = 2;
 
 /** Plain string, or per-locale strings keyed by BCP-47 tag with `*` as fallback. */
 export type Localized = string | Record<string, string>;
@@ -74,15 +74,24 @@ export interface RecipeTerms {
 }
 
 /**
- * One row of the API Token permission table. `groups` lists the Cloudflare
- * permission-group names that satisfy the row — holding any one is enough,
- * which is how a token created with either the modern or the legacy group name
- * still passes.
+ * One row of the authority table: something this package needs to be allowed to
+ * do, in words, next to the Cloudflare OAuth scopes that grant it.
+ *
+ * The wizard asks Cloudflare for the union of every row's `oauthScopes`, so
+ * these are what the consent screen will list. A row may name no scope at all —
+ * the R2 S3 key pair is the one authority Cloudflare's OAuth namespace does not
+ * cover — and such a row is collected by hand instead.
  */
 export interface RecipePermission {
   key: string;
   requirement: Requirement;
-  groups: string[];
+  /**
+   * Cloudflare OAuth scopes, in Cloudflare's own dotted namespace. Every one
+   * must be in shared/oauthScopes.ts: a scope this deployment's OAuth client was
+   * never registered to hold cannot be granted, and asking for it fails at
+   * Cloudflare where the user can do nothing about it.
+   */
+  oauthScopes: string[];
   label: Localized;
   scenario: Localized;
   scope: "account" | "zone" | "allBuckets";

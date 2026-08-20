@@ -17,20 +17,24 @@
 // half-configured token should tell the user exactly which row to go back and
 // fix. Rows are reported as they resolve, so the table fills in progressively.
 //
-// Row keys: "token" for the token itself, one per `recipe.permissions` entry
-// (its `key`), one per `recipe.checks` entry (its `id`), and "r2Keys" when the
-// recipe asks for an R2 S3 key pair. `detail` carries Cloudflare's own wording;
-// the caller supplies the localized row labels.
+// Row keys: "token" for the credential itself, one per `recipe.checks` entry
+// (its `id`), and "r2Keys" when the recipe asks for an R2 S3 key pair. `detail`
+// carries Cloudflare's own wording; the caller supplies the localized row labels.
+//
+// The authority table is not checked here. Which authorities were granted is
+// settled at the consent screen, and a credential issued that way cannot read
+// its own policies back — the endpoint answers 401 — so there is nothing to
+// compare against. What still decides whether a deployment may run is the
+// account probes below, which ask the account directly.
 
 import type { Recipe } from "../recipe/types";
 import type { DeployCredentials } from "../deploy/types";
 import { callCfJson, verifyR2Keys } from "../relay";
 import { describeCfError } from "./errors";
-import { hasPermission, readTokenPermissionGroups } from "./tokenPolicies";
 
 export interface CredentialCheck {
   key: string;
-  status: "pending" | "checking" | "ok" | "missing" | "unknown" | "error";
+  status: "pending" | "checking" | "ok" | "missing" | "error";
   detail?: string;
 }
 
@@ -47,45 +51,17 @@ export async function verifyCredentials(
   creds: DeployCredentials,
   recipe: Recipe,
   report: (check: CredentialCheck) => void,
-): Promise<{ ok: boolean; groups: Set<string> | null }> {
+): Promise<{ ok: boolean }> {
   const { accountId, apiToken } = creds;
   let ok = true;
 
   report({ key: "token", status: "checking" });
-  let tokenId = "";
   try {
-    const token = await callCfJson<{ id?: string }>(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, TOKEN_CONTEXT);
-    tokenId = token.id || "";
+    await callCfJson(apiToken, `/accounts/${accountId}/tokens/verify`, undefined, TOKEN_CONTEXT);
     report({ key: "token", status: "ok" });
   } catch (error) {
     report({ key: "token", status: "error", detail: describeCfError(error, TOKEN_CONTEXT).message });
-    return { ok: false, groups: null };
-  }
-
-  // A token that can read its own policies settles the whole permission table in
-  // one call. When it can't, those rows stay unprovable — that is a worse
-  // experience, not a blocked deployment, so the account probes below are what
-  // actually decide whether the deploy may run.
-  let groups: Set<string> | null = null;
-  if (tokenId) {
-    try {
-      groups = await readTokenPermissionGroups(apiToken, accountId, tokenId);
-    } catch {
-      groups = null;
-    }
-  }
-
-  for (const permission of recipe.permissions) {
-    if (!groups) {
-      report({ key: permission.key, status: "unknown" });
-      continue;
-    }
-    if (hasPermission(groups, permission)) {
-      report({ key: permission.key, status: "ok" });
-      continue;
-    }
-    report({ key: permission.key, status: "missing", detail: permission.groups.join(" / ") });
-    if (permission.requirement === "required") ok = false;
+    return { ok: false };
   }
 
   for (const check of recipe.checks || []) {
@@ -127,5 +103,5 @@ export async function verifyCredentials(
     }
   }
 
-  return { ok, groups };
+  return { ok };
 }

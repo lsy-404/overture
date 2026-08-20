@@ -77,11 +77,9 @@
       "warning": "警告",
       "note": "提示"
     },
-    "orSeparator": " 或 ",
     "viaHost": "Overture 自己",
     "permissionsTitle": "需要的 Cloudflare 权限",
     "permissionsIntro": "这个应用需要在你 Cloudflare 账号里获得的许可。",
-    "permissionDashboard": "Cloudflare 那边叫「{labels}」",
     "permissionsNone": "没有——这里没有哪一项需要单独的权限。",
     "endpointsTitle": "会打到的 Cloudflare 端点（{count} 个）",
     "checksTitle": "包要求的账户预检",
@@ -112,8 +110,6 @@
       "adoptsExisting": "这个应用会在你账户里找它已有的资源（{resources}），找到就直接写进去，而不是另建新的。"
     },
     "uncertain": {
-      "unrecorded": "Cloudflare 没有为这个调用登记任何权限——这是它们 schema 里的缺口，不等于官方说明「不需要权限」。",
-      "noDashboardRow": "这个权限只出现在 Cloudflare 的 API 定义里，官方没有其他地方说明它到底管什么，不完全确定。",
       "writeAssumed": "Cloudflare 在这里也列了只读组，但 recipe 要执行的语句需要写权限。",
       "zoneMayBeNeeded": "绑自定义域会连带动到 zone 的 DNS 和证书，可能还需要 zone 级的权限。"
     }
@@ -152,7 +148,6 @@
       "checking": "检查中…",
       "ok": "通过",
       "missing": "缺失或未启用",
-      "unknown": "无法判定",
       "error": "检查失败"
     },
     "tokenCheck": "Token 有效",

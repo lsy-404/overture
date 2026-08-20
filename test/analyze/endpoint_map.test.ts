@@ -21,7 +21,8 @@
 
 import { CF_ENDPOINTS } from "../../shared/cfAllowlist";
 import { METHOD_ENDPOINTS, HOST_ENDPOINTS, endpointPath } from "../../src/lib/analyze/endpoints";
-import { ENDPOINT_PERMISSIONS, dashboardLabel } from "../../src/lib/analyze/permissions";
+import { ENDPOINT_PERMISSIONS } from "../../src/lib/analyze/permissions";
+import { isKnownScope } from "../../shared/oauthScopes";
 import { METHOD_GATES } from "../../src/lib/sandbox/protocol";
 
 const ids = new Set(CF_ENDPOINTS.map((rule) => rule.id));
@@ -47,16 +48,17 @@ const capabilitiesWithoutEndpoints = [...new Set(Object.values(METHOD_GATES).fil
 const endpointsWithoutPermission = [...ids].filter((id) => ENDPOINT_PERMISSIONS[id] === undefined);
 const permissionsWithoutEndpoint = Object.keys(ENDPOINT_PERMISSIONS).filter((id) => !ids.has(id));
 
-// "Edit" is what the dashboard prints; a token's own policies always read back
-// in the "Write" spelling. A gate written against "Edit" could never match.
-const editSpellings = Object.entries(ENDPOINT_PERMISSIONS).flatMap(([id, permission]) =>
-  permission.groups.filter((group) => group.endsWith(" Edit")).map((group) => `${id}: ${group}`),
+// A scope outside the registered ceiling can never be granted, so an authorize
+// request built from this table would fail at Cloudflare with nothing the user
+// could do about it.
+const unknownScopeNames = Object.entries(ENDPOINT_PERMISSIONS).flatMap(([id, permission]) =>
+  permission.scopes.filter((scope) => !isKnownScope(scope)).map((scope) => `${id}: ${scope}`),
 );
 
 // An entry with no groups has to say why, or it reads as "needs nothing" when
 // what it means is "nobody wrote it down".
 const silentlyUngated = Object.entries(ENDPOINT_PERMISSIONS)
-  .filter(([, permission]) => permission.groups.length === 0 && !permission.ungated)
+  .filter(([, permission]) => permission.scopes.length === 0 && !permission.ungated)
   .map(([id]) => id);
 
 const checks: Array<[string, boolean, string?]> = [
@@ -70,11 +72,8 @@ const checks: Array<[string, boolean, string?]> = [
   ],
   ["every allow-listed endpoint has a permission entry", endpointsWithoutPermission.length === 0, endpointsWithoutPermission.join(", ")],
   ["no permission entry names an endpoint that is gone", permissionsWithoutEndpoint.length === 0, permissionsWithoutEndpoint.join(", ")],
-  ["permission groups use the API spelling, never the dashboard's", editSpellings.length === 0, editSpellings.join(", ")],
-  ["an endpoint needing no permission says why", silentlyUngated.length === 0, silentlyUngated.join(", ")],
-  ["the dashboard label is the Edit spelling", dashboardLabel("Workers Scripts Write") === "Workers Scripts Edit"],
-  ["the Images groups gain their dashboard prefix", dashboardLabel("Images Read") === "Cloudflare Images Read"],
-  ["a read group is not renamed", dashboardLabel("Zone Read") === "Zone Read"],
+  ["every scope is one this deployment can request", unknownScopeNames.length === 0, unknownScopeNames.join(", ")],
+  ["an endpoint needing no scope says why", silentlyUngated.length === 0, silentlyUngated.join(", ")],
   [
     "opaque path segments are named after what they hold",
     endpointPath(CF_ENDPOINTS.find((rule) => rule.id === "d1.query")!) === "/accounts/{accountId}/d1/database/{databaseId}/query",

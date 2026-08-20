@@ -13,8 +13,8 @@ const wizard = useWizard();
 const ACCOUNT_ID_RE = /^[0-9a-f]{32}$/i;
 const API_TOKEN_RE = /^cfat_[A-Za-z0-9_-]{20,}$/;
 
-// Keyed by the recipe's own permission keys and check ids, plus the checks the
-// host always runs ("token", and "r2Keys" when a resource asks for S3 keys).
+// Keyed by the recipe's check ids, plus the checks the host always runs
+// ("token", and "r2Keys" when a resource asks for S3 keys).
 const statuses = reactive<Record<string, CredentialCheck>>({});
 const verifying = ref(false);
 const hasAttempted = ref(false);
@@ -86,7 +86,6 @@ async function verify() {
       statuses[check.key] = check;
     });
     if (current !== generation) return;
-    wizard.tokenGroups = outcome.groups;
     wizard.credentialsVerified = outcome.ok;
   } catch (e) {
     if (current !== generation) return;
@@ -96,7 +95,7 @@ async function verify() {
   }
 }
 
-// Permissions are usually fixed in the Cloudflare dashboard with this page left
+// The account is usually fixed in the Cloudflare dashboard with this page left
 // open, and nothing about that reaches the wizard — so re-running the checklist
 // needs an explicit control, not another edit of the token field.
 function recheck() {
@@ -136,7 +135,6 @@ function recheck() {
                   <th>{{ t("credentials.permissionScenario") }}</th>
                   <th>{{ t("credentials.permissionScope") }}</th>
                   <th>{{ t("credentials.permissionLevel") }}</th>
-                  <th>{{ t("credentials.permissionStatus") }}</th>
                 </tr>
               </thead>
               <tbody>
@@ -144,20 +142,10 @@ function recheck() {
                   <td>
                     <span :class="`requirement-${permission.requirement}`">{{ t(`credentials.requirements.${permission.requirement}`) }}</span>
                   </td>
-                  <td>
-                    {{ localized(permission.label, locale) }}
-                    <p class="group-list">{{ permission.groups.join(" / ") }}</p>
-                  </td>
+                  <td>{{ localized(permission.label, locale) }}</td>
                   <td>{{ localized(permission.scenario, locale) }}</td>
                   <td>{{ t(`credentials.permissionScopes.${permission.scope}`) }}</td>
                   <td>{{ t(`credentials.permissionLevels.${permission.level}`) }}</td>
-                  <td>
-                    <span v-if="hasAttempted" class="check-status" :title="detailOf(permission.key)">
-                      <span class="check-dot" :class="`check-dot-${statusOf(permission.key)}`" aria-hidden="true" />
-                      {{ t(`credentials.checkStatus.${statusOf(permission.key)}`) }}
-                    </span>
-                    <span v-else class="check-status">—</span>
-                  </td>
                 </tr>
               </tbody>
             </table>

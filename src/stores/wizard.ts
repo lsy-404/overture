@@ -115,8 +115,6 @@ export const useWizard = defineStore("wizard", () => {
   // retry in the same tab doesn't force retyping everything.
   const credentials = ref<DeployCredentials>(loadCredentials());
   const credentialsVerified = ref(false);
-  /** Permission groups the token proved it holds, or null when unreadable. */
-  const tokenGroups = ref<Set<string> | null>(null);
 
   watch(
     credentials,
@@ -134,7 +132,6 @@ export const useWizard = defineStore("wizard", () => {
     sessionStorage.removeItem(CREDS_KEY);
     if (wipeMemory) credentials.value = emptyCredentials();
     credentialsVerified.value = false;
-    tokenGroups.value = null;
   }
 
   const needsS3Keys = computed(() =>
@@ -467,7 +464,6 @@ export const useWizard = defineStore("wizard", () => {
     termsAccepted,
     credentials,
     credentialsVerified,
-    tokenGroups,
     clearCredentials,
     needsS3Keys,
     requiresS3Keys,
