@@ -4,6 +4,7 @@
   "type": "module",
   "private": true,
   "repository": "https://github.com/wuyilingwei/overture",
+  "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "vite",
     "dev:worker": "wrangler dev",

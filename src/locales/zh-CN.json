@@ -48,7 +48,6 @@
     "manualUse": "使用这个仓库",
     "manualInvalid": "这看起来不是一个 GitHub 仓库。",
     "manualNotAllowed": "本部署器的策略不接受这个仓库。",
-    "policyLink": "查看这台 Overture 的部署策略",
     "releaseHeading": "版本",
     "noneEligible": "这个仓库没有任何 release 发布了部署包。",
     "recommended": "推荐",

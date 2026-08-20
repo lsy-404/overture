@@ -400,9 +400,6 @@ onMounted(async () => {
         </template>
       </template>
 
-      <p class="field-help source-footer">
-        <a href="#" @click.prevent="policy.show('policy')">{{ t("repository.policyLink") }}</a>
-      </p>
     </template>
 
     <Teleport defer to=".shell-card-actions">
@@ -432,10 +429,6 @@ onMounted(async () => {
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.85rem;
-}
-
-.source-footer {
-  margin-top: 24px;
 }
 
 .analysis-status {
