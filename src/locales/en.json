@@ -48,7 +48,6 @@
     "manualUse": "Use this repository",
     "manualInvalid": "That doesn't look like a GitHub repository.",
     "manualNotAllowed": "This deployer's policy doesn't accept that repository.",
-    "policyLink": "Deployment policy for this Overture",
     "releaseHeading": "Release",
     "noneEligible": "No release of this repository publishes a deploy package.",
     "recommended": "Recommended",

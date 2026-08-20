@@ -37,6 +37,7 @@ export default defineConfig({
     __BUILD_VERSION__: JSON.stringify(pkg.version),
     __BUILD_COMMIT__: JSON.stringify(buildCommit()),
     __BUILD_REPOSITORY__: JSON.stringify(pkg.repository),
+    __BUILD_LICENSE__: JSON.stringify(pkg.license),
   },
   // The deployed Worker can serve this from a subpath or a custom domain —
   // a relative base works in either without a build-time host guess.

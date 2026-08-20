@@ -47,13 +47,12 @@ function cycleLocale() {
 
 const themeLabel = computed(() => t(`common.theme${themeMode.value.charAt(0).toUpperCase()}${themeMode.value.slice(1)}`));
 
-// Build identity, stamped in by vite.config.ts. Not translated: a version, a
-// commit and an address read the same in every locale. The address is shown
-// without its scheme — it is there to be read, and it is the link itself.
+// Build identity, stamped in by vite.config.ts. Not translated: a name, a
+// version, a commit and an SPDX identifier read the same in every locale.
 const buildVersion = __BUILD_VERSION__;
 const buildCommit = __BUILD_COMMIT__;
 const repository = __BUILD_REPOSITORY__;
-const repositoryLabel = repository.replace(/^https?:\/\//, "");
+const buildLicense = __BUILD_LICENSE__;
 </script>
 
 <template>
@@ -129,10 +128,10 @@ const repositoryLabel = repository.replace(/^https?:\/\//, "");
     </main>
 
     <footer class="shell-footer">
-      <span>{{ t("app.name") }}</span>
+      <a :href="repository" target="_blank" rel="noopener noreferrer">{{ t("app.name") }}</a>
       <span>{{ buildVersion }}</span>
       <span v-if="buildCommit" class="build-commit">{{ buildCommit }}</span>
-      <a :href="repository" target="_blank" rel="noopener noreferrer">{{ repositoryLabel }}</a>
+      <span>{{ buildLicense }}</span>
     </footer>
   </div>
 </template>
@@ -320,6 +319,7 @@ const repositoryLabel = repository.replace(/^https?:\/\//, "");
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   margin-top: 10px;
   font-size: 0.7rem;

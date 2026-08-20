@@ -26,6 +26,7 @@ declare module "*.vue" {
 declare const __BUILD_VERSION__: string;
 declare const __BUILD_COMMIT__: string | null;
 declare const __BUILD_REPOSITORY__: string;
+declare const __BUILD_LICENSE__: string;
 
 interface ImportMetaEnv {
   readonly VITE_RELAY_URL: string;
