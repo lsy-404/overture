@@ -28,10 +28,12 @@ interface Env {
   OAUTH_CLIENT_ID: string;
   OAUTH_REDIRECT_URI: string;
   // Workers secrets (`wrangler secret put <name>`), never in wrangler.toml.
-  // Kept apart so the client secret (token exchange, revoke), the ov_state
-  // HMAC key, and the ov_session AES-GCM key can each be rotated without
-  // touching the others.
+  // The client secret is issued by Cloudflare with the OAuth client and
+  // authenticates the token exchange and revoke calls against it.
   OAUTH_CLIENT_SECRET: string;
-  OAUTH_STATE_SECRET: string;
-  OAUTH_SESSION_KEY: string;
+  // A random string the operator generates; Cloudflare knows nothing about it.
+  // worker/oauth.ts derives both cookie keys from it — an HMAC key for ov_state
+  // and an AES-GCM key for ov_session — under separate HKDF labels, so neither
+  // derived key can stand in for the other.
+  OAUTH_COOKIE_KEY: string;
 }

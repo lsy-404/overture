@@ -93,8 +93,8 @@ export async function handleOauthAuthorize(c: RelayContext): Promise<Response> {
   }
 
   const nonce = generateStateNonce();
-  const stateHash = await hashStateNonce(nonce, c.env.OAUTH_STATE_SECRET);
-  const cookieValue = await signStateCookie({ stateHash, scope, pkg, iat: now() }, c.env.OAUTH_STATE_SECRET);
+  const stateHash = await hashStateNonce(nonce, c.env.OAUTH_COOKIE_KEY);
+  const cookieValue = await signStateCookie({ stateHash, scope, pkg, iat: now() }, c.env.OAUTH_COOKIE_KEY);
 
   const target = new URL(CF_AUTHORIZE_URL);
   target.searchParams.set("response_type", "code");
@@ -167,14 +167,14 @@ export async function handleOauthCallback(c: RelayContext): Promise<Response> {
     return failurePage(FAILURE.noState, clearState);
   }
 
-  const statePayload = await verifyStateCookie(stateCookie, c.env.OAUTH_STATE_SECRET);
+  const statePayload = await verifyStateCookie(stateCookie, c.env.OAUTH_COOKIE_KEY);
   if (!statePayload) {
     return failurePage(FAILURE.badState, clearState);
   }
 
   const nonce = url.searchParams.get("state") || "";
   const code = url.searchParams.get("code") || "";
-  if (!code || !(await stateNonceMatches(nonce, statePayload.stateHash, c.env.OAUTH_STATE_SECRET))) {
+  if (!code || !(await stateNonceMatches(nonce, statePayload.stateHash, c.env.OAUTH_COOKIE_KEY))) {
     return failurePage(FAILURE.badState, clearState);
   }
 
@@ -225,7 +225,7 @@ export async function handleOauthCallback(c: RelayContext): Promise<Response> {
 
   const sessionCookieValue = await encryptSession(
     { token: token.access_token, scope: grantedScope, accounts, pkg: statePayload.pkg, expiresAt },
-    c.env.OAUTH_SESSION_KEY,
+    c.env.OAUTH_COOKIE_KEY,
   );
 
   const headers = callbackHeaders();
@@ -266,7 +266,7 @@ function sessionResponseBody(session: {
 async function readSession(c: RelayContext) {
   const cookie = parseCookies(c.req.header("Cookie"))[OV_SESSION_COOKIE];
   if (!cookie) return null;
-  const session = await decryptSession(cookie, c.env.OAUTH_SESSION_KEY);
+  const session = await decryptSession(cookie, c.env.OAUTH_COOKIE_KEY);
   if (!session || session.expiresAt <= now()) return null;
   return session;
 }
@@ -305,7 +305,7 @@ export async function handleOauthSessionPost(c: RelayContext): Promise<Response>
   }
 
   const updated = { ...session, accountId };
-  const cookieValue = await encryptSession(updated, c.env.OAUTH_SESSION_KEY);
+  const cookieValue = await encryptSession(updated, c.env.OAUTH_COOKIE_KEY);
   const headers = new Headers({ "Content-Type": "application/json" });
   headers.append(
     "Set-Cookie",

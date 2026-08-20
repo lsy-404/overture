@@ -28,7 +28,7 @@ const SESSION_KEY = "cfproxy-test-session-key";
 const ACCOUNT_A = "0123456789abcdef0123456789abcdef";
 const ACCOUNT_B = "fedcba9876543210fedcba9876543210";
 
-const env = { OAUTH_SESSION_KEY: SESSION_KEY } as Env;
+const env = { OAUTH_COOKIE_KEY: SESSION_KEY } as Env;
 
 const app = new Hono<{ Bindings: Env }>();
 app.all("/cf/*", handleCfProxy);

@@ -7,8 +7,7 @@
 #   cp wrangler.toml.example wrangler.toml
 #   npm run build && npm run deploy
 #   wrangler secret put OAUTH_CLIENT_SECRET
-#   wrangler secret put OAUTH_STATE_SECRET
-#   wrangler secret put OAUTH_SESSION_KEY
+#   openssl rand -base64 32 | wrangler secret put OAUTH_COOKIE_KEY
 #
 # One Worker serves the built wizard (dist/) and the routes it talks to:
 # /oauth, /cf, /r2, /github, /policy. See CONTRACT.md for what each one does.
@@ -31,14 +30,20 @@
 # derived from the request's Host header, so a forwarded or spoofed Host can't
 # turn this into an open redirect.
 #
-# Three more secrets belong to that same client and must never be committed:
-# install them with `wrangler secret put <name>` after the first deploy.
-#   OAUTH_CLIENT_SECRET  authenticates the authorization-code token exchange
-#                        and the revoke call.
-#   OAUTH_STATE_SECRET   HMAC key for the short-lived ov_state cookie.
-#   OAUTH_SESSION_KEY    AES-GCM key for the ov_session cookie.
-# Keep the three apart — each can be rotated on its own without touching the
-# others, and a leak of one does not unlock what the others protect.
+# Two secrets, from two different places. Neither may be committed; install both
+# with `wrangler secret put <name>` after the first deploy.
+#
+#   OAUTH_CLIENT_SECRET  Issued by Cloudflare alongside the client id above, and
+#                        the only one of the two that comes from Cloudflare. It
+#                        authenticates the authorization-code token exchange and
+#                        the revoke call.
+#   OAUTH_COOKIE_KEY     A random string you generate yourself — Cloudflare knows
+#                        nothing about it. Overture derives both cookie keys from
+#                        it (one to sign ov_state, one to encrypt ov_session)
+#                        under separate HKDF labels. Pipe it straight in, as in
+#                        the setup steps above, and the value never reaches your
+#                        screen, clipboard, or shell history. Replacing it signs
+#                        everyone out; nothing else breaks.
 # ---------------------------------------------------------------------------
 name = "overture"
 main = "worker/index.ts"

@@ -24,7 +24,7 @@ import app from "../../worker/index";
 const ENV = {
   OAUTH_CLIENT_ID: "test-client-id",
   OAUTH_REDIRECT_URI: "https://deploy.example.com/oauth/callback",
-  OAUTH_STATE_SECRET: "state-secret-testing-only",
+  OAUTH_COOKIE_KEY: "cookie-key-testing-only",
 } as unknown as Env;
 
 const AUTHORIZE = `/oauth/authorize?scope=${encodeURIComponent("d1.read d1.write")}&pkg=${"a".repeat(64)}`;

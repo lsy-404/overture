@@ -48,26 +48,39 @@ export function generateStateNonce(): string {
   return toBase64Url(bytes);
 }
 
-// Both cookies are keyed off a Workers secret string, not a fixed-length key,
-// so each is hashed down to exactly the 32 bytes HMAC-SHA256/AES-256-GCM need.
-// The two secrets (OAUTH_STATE_SECRET, OAUTH_SESSION_KEY) are never shared, so
-// a key derived from one cannot be replayed against the other's cookie.
-async function deriveKeyBytes(secret: string): Promise<ArrayBuffer> {
-  return crypto.subtle.digest("SHA-256", textEncoder.encode(secret));
+// One operator-supplied random string (OAUTH_COOKIE_KEY) keys both cookies.
+// HKDF splits it into two 32-byte subkeys under distinct info labels, so the
+// key that signs ov_state can neither decrypt ov_session nor be worked back to
+// the string both come from. Changing a label invalidates every cookie already
+// issued under it, which is a rotation, not a bug.
+//
+// No salt: the input is already a high-entropy random string rather than a
+// password, which is the case RFC 5869 says an empty salt covers.
+export type CookieKeyPurpose = "state" | "session";
+
+const KEY_INFO: Record<CookieKeyPurpose, string> = {
+  state: "overture:ov_state:hmac-sha256",
+  session: "overture:ov_session:aes-256-gcm",
+};
+
+/** Exported so the separation of the two subkeys can be asserted directly. */
+export async function deriveCookieSubkey(secret: string, purpose: CookieKeyPurpose): Promise<ArrayBuffer> {
+  const master = await crypto.subtle.importKey("raw", textEncoder.encode(secret), "HKDF", false, ["deriveBits"]);
+  return crypto.subtle.deriveBits(
+    { name: "HKDF", hash: "SHA-256", salt: new Uint8Array(0), info: textEncoder.encode(KEY_INFO[purpose]) },
+    master,
+    256,
+  );
 }
 
 async function importHmacKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", await deriveKeyBytes(secret), { name: "HMAC", hash: "SHA-256" }, false, [
-    "sign",
-    "verify",
-  ]);
+  const bytes = await deriveCookieSubkey(secret, "state");
+  return crypto.subtle.importKey("raw", bytes, { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
 }
 
 async function importAesKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", await deriveKeyBytes(secret), { name: "AES-GCM" }, false, [
-    "encrypt",
-    "decrypt",
-  ]);
+  const bytes = await deriveCookieSubkey(secret, "session");
+  return crypto.subtle.importKey("raw", bytes, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
 async function hmac(secret: string, data: string): Promise<string> {
@@ -88,7 +101,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 export const STATE_COOKIE_MAX_AGE_SECONDS = 600;
 
 export interface StatePayload {
-  /** HMAC(OAUTH_STATE_SECRET, nonce) — binds this cookie to the nonce handed to Cloudflare. */
+  /** HMAC of the nonce handed to Cloudflare, binding this cookie to it. */
   stateHash: string;
   scope: string[];
   /** `recipe.package.sha256` — the package this authorize request was made for. */

@@ -134,15 +134,20 @@ Worker can read.
 
 Cookies: both carry the `__Host-` prefix, so a sibling host on the same registrable domain cannot toss
 either one up to the parent — the login-CSRF session-fixation this closes is the whole reason the prefix
-matters. `__Host-ov_state` is HMAC-signed (`OAUTH_STATE_SECRET`), `SameSite=Lax` — it has to survive the
-cross-site top-level return from the consent page — and is cleared the first time it is checked;
-`__Host-` forces `Path=/`, so it is no longer scoped to `/oauth`. `__Host-ov_session` is AES-GCM
-encrypted (`OAUTH_SESSION_KEY`), `SameSite=Strict`. Both are `HttpOnly`, `Secure`, `Path=/`.
+matters. `__Host-ov_state` is HMAC-signed, `SameSite=Lax` — it has to survive the cross-site top-level
+return from the consent page — and is cleared the first time it is checked; `__Host-` forces `Path=/`, so
+it is no longer scoped to `/oauth`. `__Host-ov_session` is AES-GCM encrypted, `SameSite=Strict`. Both are
+`HttpOnly`, `Secure`, `Path=/`.
+
+Both cookie keys are derived from the single `OAUTH_COOKIE_KEY` secret through HKDF under separate info
+labels, so the key that signs the state cookie cannot decrypt the session cookie or be worked back to the
+secret both come from. One secret is what an operator has to generate and keep; two independent keys is
+what the crypto gets.
 
 Configuration: `OAUTH_CLIENT_ID` and `OAUTH_REDIRECT_URI` are plain vars — the redirect URI is
-deliberately not derived from the `Host` header — while `OAUTH_CLIENT_SECRET`, `OAUTH_STATE_SECRET`, and
-`OAUTH_SESSION_KEY` are Workers Secrets, installed with `wrangler secret put` and never present in
-`wrangler.toml`.
+deliberately not derived from the `Host` header. Two Workers Secrets, installed with `wrangler secret put`
+and never present in `wrangler.toml`: `OAUTH_CLIENT_SECRET`, which Cloudflare issues with the OAuth
+client, and `OAUTH_COOKIE_KEY`, which the operator generates and Cloudflare never sees.
 
 Every route above except `authorize` and `callback` passes the same-origin gate: `Overture-Relay` header
 present, `Origin` present and exactly this origin, anything else `403`.
