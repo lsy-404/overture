@@ -104,8 +104,10 @@ before anything is downloaded.
   "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "probe"],
 
   // Workers Secrets whose value comes from Overture, not from recipe.js. The
-  // review page states these plainly — an app receiving the deploying account's
-  // API token is something the user has to see before agreeing to it.
+  // review page states these plainly — an app keeping a copy of anything about
+  // the deployment is something the user has to see before agreeing to it.
+  // The deploy credential itself cannot be named here: it never leaves the
+  // deployment's own Worker, so there is nothing to hand over.
   "hostSecrets": [
     { "name": "CF_ACCOUNT_ID", "source": "accountId", "requirement": "required",
       "reason": { "en": "Self-update and transcoding call the account's own API" } }
@@ -172,7 +174,7 @@ The full context surface is `RecipeContext` in `src/lib/sandbox/protocol.ts`.
 ### What the script can and cannot do
 
 It runs in an `<iframe sandbox="allow-scripts">`: an opaque origin with no access to the wizard's DOM,
-storage or variables. It cannot read the Cloudflare API token, the R2 key pair, or any host state — the
+storage or variables. It cannot read the Cloudflare credential (which never reaches the page at all), the R2 key pair, or any host state — the
 only things it receives are its own configuration, the names and choices the user made, and facts about
 the live Worker (`ctx.ctx.live`).
 

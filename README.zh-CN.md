@@ -61,7 +61,7 @@ Overture 本身也是一个 Cloudflare Worker。要运行自己的实例：
 
 Overture 的设计目标是最小化被攻击包造成的影响：
 
-- **凭证只存在浏览器里。** Cloudflare 签发的 OAuth Token 与 R2 密钥永远不会离开宿主帧 —— 不会被发送到 recipe 沙箱、不会被记日志、不会被持久化存储、不会出现在 URL 里。
+- **凭证只属于你。** Cloudflare 签发的登录令牌保存在加密的 HttpOnly Cookie 里，只有你自己这台 Overture 部署能读到 —— 页面脚本、recipe 沙箱、日志和 URL 都接触不到它，服务端也不保存任何东西。你填写的 R2 密钥只留在当前浏览器标签页里。
 
 - **Recipe 运行在沙箱 iframe 里。** 每个 `recipe.js` 都在一个不透明源的 iframe 里运行（`sandbox="allow-scripts"`）—— 没有 DOM 访问权限、没有同源策略、没有本地存储。它读不到你的凭证，也干扰不了向导的 UI。
 
