@@ -18,33 +18,50 @@
 // ASSETS binding (Cloudflare matches the asset manifest first, so only unmatched
 // paths reach this script) plus the routes the wizard cannot make from the
 // browser itself:
-//   /cf/*                  allow-listed passthrough to api.cloudflare.com
-//   POST /r2/verify-keys   signed probe against R2's S3 endpoint
-//   GET  /github/release-asset  policy-checked package download
-//   GET  /policy           read-only view of the operator's source allowlist
-// CONTRACT.md is the spec. Never log Authorization headers, request/response
-// bodies, or the R2 key pair: the trust model rests on this Worker being a
-// pipe nobody can extract a credential from. There is no persistence and no
-// admin token — everything the Worker knows comes from its own vars.
+//   GET  /oauth/authorize      starts the Cloudflare consent flow
+//   GET  /oauth/callback       exchanges the code, writes the session cookie
+//   /oauth/session             read (GET) or pick an account for (POST) the session
+//   POST /oauth/revoke         upstream revoke + unconditional local cookie clear
+//   /cf/*                      allow-listed passthrough to api.cloudflare.com
+//   POST /r2/verify-keys       signed probe against R2's S3 endpoint
+//   GET  /github/release-asset policy-checked package download
+//   GET  /policy                read-only view of the operator's source allowlist
+// CONTRACT.md is the spec. Never log Authorization headers, cookies,
+// request/response bodies, or the R2 key pair: the trust model rests on this
+// Worker being a pipe nobody can extract a credential from. There is no
+// persistence and no admin token — everything the Worker knows comes from its
+// own vars and secrets. The SPA and this Worker are always the same origin,
+// so there is no CORS layer: every route that touches the session cookie sits
+// behind csrfGate instead.
 //
 
 import { Hono } from "hono";
 import { handleCfProxy } from "./cfProxy";
-import { applyCorsHeaders, preflightResponse } from "./cors";
+import { csrfGate } from "./csrf";
 import { handleGithubAsset } from "./githubAsset";
+import { jsonResponse } from "./http";
+import { handleOauthAuthorize, handleOauthCallback, handleOauthRevoke, handleOauthSessionGet, handleOauthSessionPost } from "./oauthHandlers";
 import { handleGetPolicy } from "./policy";
 import { handleVerifyR2Keys } from "./r2Verify";
 
 const app = new Hono<{ Bindings: Env }>();
 
-app.use("*", async (c, next) => {
-  if (c.req.method === "OPTIONS") {
-    return preflightResponse(c);
-  }
-  await next();
-});
+// csrfGate covers every route that reads or writes ov_session, GET included.
+// /oauth/authorize and /oauth/callback are deliberately outside it: they are
+// reached by navigation (window.open / Cloudflare's own redirect), which
+// cannot carry the custom header this gate requires — they have their own
+// checks instead (Sec-Fetch-Site, then state verification).
+app.use("/cf/*", csrfGate);
+app.use("/oauth/session", csrfGate);
+app.use("/oauth/revoke", csrfGate);
+app.use("/r2/verify-keys", csrfGate);
 
 app.all("/cf/*", handleCfProxy);
+app.get("/oauth/authorize", handleOauthAuthorize);
+app.get("/oauth/callback", handleOauthCallback);
+app.get("/oauth/session", handleOauthSessionGet);
+app.post("/oauth/session", handleOauthSessionPost);
+app.post("/oauth/revoke", handleOauthRevoke);
 app.post("/r2/verify-keys", handleVerifyR2Keys);
 app.get("/github/release-asset", handleGithubAsset);
 app.get("/policy", handleGetPolicy);
@@ -63,12 +80,7 @@ app.notFound(async (c) => {
     const shell = new URL("/index.html", c.req.url);
     return c.env.ASSETS.fetch(new Request(shell, { headers: c.req.raw.headers }));
   }
-  const headers = new Headers({ "Content-Type": "application/json" });
-  applyCorsHeaders(c, headers);
-  return new Response(JSON.stringify({ ok: false, error: "Not found" }), {
-    status: 404,
-    headers,
-  });
+  return jsonResponse(c, 404, { ok: false, error: "Not found" });
 });
 
 export default app;

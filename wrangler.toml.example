@@ -6,14 +6,14 @@
 # First-time setup:
 #   cp wrangler.toml.example wrangler.toml
 #   npm run build && npm run deploy
+#   wrangler secret put OAUTH_CLIENT_SECRET
+#   wrangler secret put OAUTH_STATE_SECRET
+#   wrangler secret put OAUTH_SESSION_KEY
 #
 # One Worker serves the built wizard (dist/) and the routes it talks to:
-# /cf, /r2, /github, /policy. See CONTRACT.md for what each one does. It stores
-# nothing: no KV, no database, no logs.
-#
-# ALLOWED_ORIGINS is a comma-separated, exact-match allowlist of *other*
-# origins permitted to call this Worker's relay routes cross-origin. The
-# wizard's own same-origin calls don't need it.
+# /oauth, /cf, /r2, /github, /policy. See CONTRACT.md for what each one does.
+# It stores nothing: no KV, no database, no logs. The wizard is always served
+# from this same Worker, so there is no cross-origin caller to allow-list.
 #
 # The deploy policy is these two vars and nothing else — edit them here (or in
 # the dashboard) and redeploy. The policy page in the wizard shows what is in
@@ -23,6 +23,22 @@
 #                      typo fails closed. "false" lets a visitor deploy a package
 #                      from any GitHub repository they name.
 #   ALLOWED_SOURCES    comma-separated owner/repo entries this instance accepts.
+#
+# OAUTH_CLIENT_ID / OAUTH_REDIRECT_URI identify the Cloudflare OAuth client an
+# operator registers once in the Cloudflare dashboard (Private/Confidential,
+# grant type Authorization Code, token auth method Client Secret Basic).
+# OAUTH_REDIRECT_URI must match that registration exactly — it is a var, not
+# derived from the request's Host header, so a forwarded or spoofed Host can't
+# turn this into an open redirect.
+#
+# Three more secrets belong to that same client and must never be committed:
+# install them with `wrangler secret put <name>` after the first deploy.
+#   OAUTH_CLIENT_SECRET  authenticates the authorization-code token exchange
+#                        and the revoke call.
+#   OAUTH_STATE_SECRET   HMAC key for the short-lived ov_state cookie.
+#   OAUTH_SESSION_KEY    AES-GCM key for the ov_session cookie.
+# Keep the three apart — each can be rotated on its own without touching the
+# others, and a leak of one does not unlock what the others protect.
 # ---------------------------------------------------------------------------
 name = "overture"
 main = "worker/index.ts"
@@ -39,9 +55,10 @@ directory = "dist"
 binding = "ASSETS"
 
 [vars]
-ALLOWED_ORIGINS = ""
 ALLOWLIST_ENABLED = "true"
 ALLOWED_SOURCES = "wuyilingwei/edgesonic"
+OAUTH_CLIENT_ID = "<YOUR_CLOUDFLARE_OAUTH_CLIENT_ID>"
+OAUTH_REDIRECT_URI = "https://<YOUR_DOMAIN>/oauth/callback"
 
 # Off on purpose. This Worker relays other people's Cloudflare API traffic, so it
 # keeps no record of it — see the no-logging invariant in CLAUDE.md.
