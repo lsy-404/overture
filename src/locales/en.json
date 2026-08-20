@@ -23,7 +23,7 @@
   "tos": {
     "title": "Before you use Overture",
     "subtitle": "Overture installs Cloudflare Workers apps from your browser. It needs your Cloudflare account, and nothing installed on this computer. Below are Overture's own terms of use.",
-    "point1": "Your Cloudflare API Token stays in this browser tab only. Overture never sends it anywhere except Cloudflare's own API, and it is gone the moment you close the tab.",
+    "point1": "Staying signed in works the way your browser already keeps you signed into other sites — automatically, and not in a way this page's own code can read or touch. It stops working on its own within about an hour, or the moment you leave, whichever comes first.",
     "point2": "Overture writes no logs and keeps no record of what anyone deployed, when, or from where. There is nothing here for anyone — including whoever runs this Overture — to look up later.",
     "point3": "Everything gets created in your own Cloudflare account, under your own billing. Overture itself owns nothing it deploys.",
     "point4": "Every cost and every consequence of a deployment is yours to carry. Overture is a tool that acts on your instructions, not a party to what happens afterward.",
@@ -32,9 +32,9 @@
     "point7": "Overture is never sold. If anyone asks you to pay for \"access\" to a copy of it, that is a scam — walk away.",
     "accept": "I have read and agree to these terms"
   },
-  "version": {
+  "repository": {
     "title": "Choose what to deploy",
-    "subtitle": "Pick a project, then the version to install.",
+    "subtitle": "Pick an app, then the version to install. What it does and what it needs appears below once you pick one.",
     "loadingPolicy": "Checking which apps are available…",
     "malformedSrc": "The link asked for “{value}”, which isn't an owner/repo pair. Pick a source below instead.",
     "rejectedTitle": "This source is not accepted here",
@@ -54,8 +54,12 @@
     "recommended": "Recommended",
     "prerelease": "Prerelease",
     "reload": "Reload releases",
-    "agreementHeading": "Terms and licence",
-    "configFailed": "This version could not be read",
+    "packageHeading": "About this app",
+    "configFailed": "This version could not be read"
+  },
+  "license": {
+    "title": "Terms and licence",
+    "subtitle": "This is the app's own terms and licence, not Overture's. If it requires acceptance, you need to read to the end first.",
     "termsTab": "Terms of service",
     "licenseTab": "Licence ({id})",
     "licenseMissing": "This package ships no licence text.",
@@ -107,41 +111,40 @@
       "hostSecretCredential": "The deployed app is handed your {source} as the Workers Secret {name}, and holds it for as long as it stays deployed.",
       "hostSecretAccountId": "The deployed app is handed your Cloudflare account id as the Workers Secret {name}.",
       "passwordInVar": "The value of “{input}” is written into the plain Worker variable {var}, where anyone with dashboard access can read it.",
-      "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones."
+      "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones.",
+      "oauthScopeUnderReported": "The script appears to need {scopes}, but recipe.json's declared permissions don't cover them, so sign-in never asks Cloudflare for them. Those calls are refused part-way through the deployment.",
+      "oauthScopeOverReported": "recipe.json's declared permissions ask for {scopes}, and the script never uses them."
     },
     "uncertain": {
       "writeAssumed": "Cloudflare also lists the read-only group here, but the statements a recipe runs need write access.",
       "zoneMayBeNeeded": "Attaching a custom domain also touches the zone's DNS and certificate, so a zone-level permission may be needed as well."
     }
   },
-  "credentials": {
-    "title": "Cloudflare credentials",
-    "subtitle": "These are the permissions this app needs in your Cloudflare account.",
-    "setupTitle": "Three steps",
-    "createAccount": "Create or sign in to Cloudflare",
-    "setupToken": "Create a Custom Token in the target account's Account API Tokens.",
-    "apiTokenCreateLink": "Open Account API Tokens",
-    "setupPermissions": "Give the token these permissions:",
+  "authorize": {
+    "title": "Sign in to Cloudflare",
+    "subtitle": "Sign in with your Cloudflare account so this app can be installed into it. You'll be asked to approve the permissions listed below.",
+    "appScopesTitle": "Permissions this app needs",
+    "appScopesNone": "None — this app needs no permissions of its own.",
+    "hostScopesTitle": "Permissions Overture always needs",
+    "hostScopesIntro": "This deployer's own baseline — the same permissions every time, whichever app you picked:",
+    "signInButton": "Sign in with Cloudflare",
+    "signingIn": "Signing in…",
+    "signInAgain": "Sign in again",
+    "popupBlocked": "Your browser's popup blocker stopped the sign-in window from opening. Allow popups for this site, then try again.",
+    "grantedTitle": "Permissions granted",
+    "accountsTitle": "Choose an account",
+    "accountsHelp": "Pick the Cloudflare account this should be installed into.",
+    "checksTitle": "Account pre-checks",
+    "checksHelp": "Read-only probes of your account, run before anything is created.",
+    "checkLabel": "Check",
+    "recheck": "Re-check",
+    "verifying": "Checking…",
     "permissionRequirement": "Requirement",
-    "permissionResource": "Resource",
-    "permissionScenario": "Use",
-    "permissionScope": "Scope",
-    "permissionLevel": "Permission",
     "permissionStatus": "Status",
     "requirements": {
       "required": "Required",
       "recommended": "Recommended",
       "optional": "Optional"
-    },
-    "permissionScopes": {
-      "account": "Target account",
-      "zone": "Zone",
-      "allBuckets": "All buckets"
-    },
-    "permissionLevels": {
-      "read": "Read",
-      "write": "Write",
-      "readWrite": "Read & Write"
     },
     "checkStatus": {
       "pending": "Not checked yet",
@@ -150,21 +153,10 @@
       "missing": "Missing or not enabled",
       "error": "Couldn't check"
     },
-    "tokenCheck": "Token is valid",
-    "verifying": "Checking…",
-    "recheck": "Re-check",
-    "accountId": "Account ID",
-    "accountIdHelp": "Found on the right sidebar of any Cloudflare dashboard page.",
-    "apiToken": "API Token",
-    "apiTokenHelp": "Use an account-level API Token (cfat_), not a Profile API Token.",
-    "apiTokenStorageNote": "The token stays in this browser tab's session storage and is never sent anywhere but Cloudflare's own API. If the package asks to keep a copy as one of its own Workers Secrets, the confirmation page says so before you agree.",
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
     "r2KeyHelp": "An R2 S3 key pair, asked for because this package uses one for direct bucket access.",
     "r2KeysPairRequired": "Provide both R2 key fields, or leave both empty.",
-    "checksTitle": "Account pre-checks",
-    "checksHelp": "Read-only probes of your account, run before anything is created.",
-    "checkLabel": "Check",
     "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check."
   },
   "target": {
@@ -216,6 +208,8 @@
   "confirm": {
     "title": "Confirm before deploying",
     "subtitle": "Check what will be created and changed. Nothing has been created yet.",
+    "sessionStale": "Go back and sign in again for the app you've picked.",
+    "accountLabel": "Account",
     "sourceLabel": "Source",
     "releaseLabel": "Release",
     "modeLabel": "Mode",
@@ -251,7 +245,6 @@
     "hostSecretsWarnBody": "The values below are written into the deployed Worker's own Secrets, so the app can call the Cloudflare API as you afterwards. The deploy script never reads them, but the running app can use them for anything the credential allows. Continue only if you trust this app with that.",
     "secretSources": {
       "accountId": "Your Cloudflare account ID",
-      "apiToken": "Your Cloudflare API Token",
       "r2AccessKeyId": "Your R2 access key ID",
       "r2SecretAccessKey": "Your R2 secret access key"
     },

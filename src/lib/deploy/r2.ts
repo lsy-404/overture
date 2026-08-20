@@ -27,9 +27,8 @@ interface R2ListResult {
 }
 
 /** A bucket has no id of its own; its name is what a binding carries. */
-export async function listBuckets(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
+export async function listBuckets(accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
   const result = await callCfJson<R2ListResult>(
-    token,
     `/accounts/${accountId}/r2/buckets`,
     signal ? { signal } : undefined,
     CONTEXT,
@@ -39,11 +38,6 @@ export async function listBuckets(token: string, accountId: string, signal?: Abo
     .map((bucket) => ({ name: bucket.name as string, id: bucket.name as string }));
 }
 
-export async function createBucket(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<void> {
-  await callCfJson(
-    token,
-    `/accounts/${accountId}/r2/buckets`,
-    { method: "POST", body: JSON.stringify({ name }), signal },
-    CONTEXT,
-  );
+export async function createBucket(accountId: string, name: string, signal?: AbortSignal): Promise<void> {
+  await callCfJson(`/accounts/${accountId}/r2/buckets`, { method: "POST", body: JSON.stringify({ name }), signal }, CONTEXT);
 }

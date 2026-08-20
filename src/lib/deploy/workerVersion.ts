@@ -34,7 +34,6 @@ export const KEEP_BINDING_TYPES = [
 ];
 
 export interface UploadVersionInput {
-  token: string;
   accountId: string;
   script: string;
   /** Package-relative path of the ESM entry, used verbatim as the module name. */
@@ -87,7 +86,6 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
   );
 
   const result = await callCfMultipart<{ id?: string }>(
-    input.token,
     `/accounts/${input.accountId}/workers/scripts/${encodeURIComponent(input.script)}/versions`,
     form,
     CONTEXT,
@@ -97,34 +95,21 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
   return result.id;
 }
 
-export async function switchTraffic(
-  token: string,
-  accountId: string,
-  script: string,
-  versionId: string,
-  signal?: AbortSignal,
-): Promise<void> {
+export async function switchTraffic(accountId: string, script: string, versionId: string, signal?: AbortSignal): Promise<void> {
   await callCfJson(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/deployments`,
     { method: "POST", body: JSON.stringify({ strategy: "percentage", versions: [{ percentage: 100, version_id: versionId }] }), signal },
     CONTEXT,
   );
 }
 
-export async function listScriptNames(token: string, accountId: string, signal?: AbortSignal): Promise<string[]> {
-  const list = await callCfJson<Array<{ id?: string }>>(
-    token,
-    `/accounts/${accountId}/workers/scripts`,
-    signal ? { signal } : undefined,
-    CONTEXT,
-  );
+export async function listScriptNames(accountId: string, signal?: AbortSignal): Promise<string[]> {
+  const list = await callCfJson<Array<{ id?: string }>>(`/accounts/${accountId}/workers/scripts`, signal ? { signal } : undefined, CONTEXT);
   return list.map((entry) => entry.id || "").filter(Boolean);
 }
 
-export async function readCrons(token: string, accountId: string, script: string, signal?: AbortSignal): Promise<string[]> {
+export async function readCrons(accountId: string, script: string, signal?: AbortSignal): Promise<string[]> {
   const result = await callCfJson<{ schedules?: Array<{ cron?: string }> }>(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/schedules`,
     signal ? { signal } : undefined,
     CONTEXT,
@@ -138,9 +123,8 @@ export async function readCrons(token: string, accountId: string, script: string
  * D1, R2 and KV are separate resources and survive, so the data is never at
  * risk — but whatever the deploy cannot regenerate has to be read out first.
  */
-export async function deleteScript(token: string, accountId: string, script: string, signal?: AbortSignal): Promise<void> {
+export async function deleteScript(accountId: string, script: string, signal?: AbortSignal): Promise<void> {
   await callCfNoContent(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}?force=true`,
     { method: "DELETE", signal },
     CONTEXT,

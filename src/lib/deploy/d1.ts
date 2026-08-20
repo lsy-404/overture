@@ -23,9 +23,8 @@ interface D1Database {
   name?: string;
 }
 
-export async function listDatabases(token: string, accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
+export async function listDatabases(accountId: string, signal?: AbortSignal): Promise<ExistingResource[]> {
   const databases = await callCfJson<D1Database[]>(
-    token,
     `/accounts/${accountId}/d1/database?per_page=100`,
     signal ? { signal } : undefined,
     CONTEXT,
@@ -35,9 +34,8 @@ export async function listDatabases(token: string, accountId: string, signal?: A
     .map((database) => ({ name: database.name as string, id: database.uuid as string }));
 }
 
-export async function createDatabase(token: string, accountId: string, name: string, signal?: AbortSignal): Promise<string> {
+export async function createDatabase(accountId: string, name: string, signal?: AbortSignal): Promise<string> {
   const created = await callCfJson<D1Database>(
-    token,
     `/accounts/${accountId}/d1/database`,
     { method: "POST", body: JSON.stringify({ name }), signal },
     CONTEXT,
@@ -49,7 +47,6 @@ export async function createDatabase(token: string, accountId: string, name: str
 // D1's query endpoint accepts a semicolon-joined batch in one call, so a whole
 // migration file can be replayed in a single request.
 export async function runQuery(
-  token: string,
   accountId: string,
   databaseId: string,
   sql: string,
@@ -57,7 +54,6 @@ export async function runQuery(
   signal?: AbortSignal,
 ): Promise<unknown> {
   return callCfJson<unknown>(
-    token,
     `/accounts/${accountId}/d1/database/${encodeURIComponent(databaseId)}/query`,
     { method: "POST", body: JSON.stringify(params ? { sql, params } : { sql }), signal },
     CONTEXT,

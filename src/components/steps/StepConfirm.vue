@@ -30,6 +30,15 @@ const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
 
+/**
+ * The one line a hijacked or stale session would show wrong — the account
+ * name only Cloudflare's own consent screen otherwise displayed. Also the gate
+ * for the confirm button itself: a session granted for a different package
+ * (picked, went back, picked another) may not stand in for consent to this one.
+ */
+const accountName = computed(() => wizard.oauthAccounts.find((account) => account.id === wizard.credentials.accountId)?.name || "");
+const sessionOk = computed(() => wizard.sessionMatchesPackage && !!wizard.credentials.accountId);
+
 /** The names this deployment will really use — an adopted resource keeps its own. */
 const resourceSummary = computed(() =>
   (recipe.value?.resources ?? [])
@@ -57,7 +66,15 @@ function start() {
     <h1 class="step-title">{{ t("confirm.title") }}</h1>
     <p class="step-subtitle">{{ t("confirm.subtitle") }}</p>
 
+    <WinInfoBar v-if="!sessionOk" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+      {{ t("confirm.sessionStale") }}
+    </WinInfoBar>
+
     <dl class="kv-list">
+      <div class="kv-row">
+        <dt>{{ t("confirm.accountLabel") }}</dt>
+        <dd>{{ accountName }} <span class="field-help">({{ wizard.credentials.accountId }})</span></dd>
+      </div>
       <div class="kv-row">
         <dt>{{ t("confirm.sourceLabel") }}</dt>
         <dd>{{ wizard.source ? sourceSlug(wizard.source) : "" }}</dd>
@@ -150,7 +167,7 @@ function start() {
       <ul class="plain-list">
         <li v-for="secret in hostSecrets" :key="secret.name">
           <code>{{ secret.name }}</code> — {{ t(`confirm.secretSources.${secret.source}`) }}
-          <span :class="`requirement-${secret.requirement}`">({{ t(`credentials.requirements.${secret.requirement}`) }})</span>
+          <span :class="`requirement-${secret.requirement}`">({{ t(`authorize.requirements.${secret.requirement}`) }})</span>
           — {{ localized(secret.reason, locale) }}
         </li>
       </ul>
@@ -160,7 +177,7 @@ function start() {
       <div class="step-actions">
         <WinButton @Click="wizard.goTo(STEPS.target)">{{ t("common.back") }}</WinButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0" @Click="start">
+        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0 && sessionOk" @Click="start">
           {{ lockSecondsLeft > 0 ? t("confirm.confirmWait", { seconds: lockSecondsLeft }) : t("confirm.confirm") }}
         </WinButton>
       </div>

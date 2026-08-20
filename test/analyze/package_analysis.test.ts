@@ -38,11 +38,14 @@ function build(overrides: Json = {}): Recipe {
     license: { id: "AGPL-3.0-or-later", text: "Licence text." },
     permissions: [
       {
-        key: "scripts",
+        key: "database",
         requirement: "required",
-        oauthScopes: ["workers-scripts.write"],
-        label: { "*": "Workers Scripts" },
-        scenario: { "*": "Upload the Worker" },
+        // Matches what the base fixture's capabilities/resources actually
+        // reach (d1.databaseCreate → d1.write), so fixtures that don't
+        // override this stay clean of the self-report-vs-derived finding.
+        oauthScopes: ["d1.write"],
+        label: { "*": "D1 database" },
+        scenario: { "*": "Create and query the database" },
         scope: "account",
         level: "write",
       },
@@ -139,16 +142,46 @@ const handsOverToken = analyzePackage(
   build({
     capabilities: ["d1", "secrets"],
     hostSecrets: [
-      { name: "CF_API_TOKEN", source: "apiToken", requirement: "required", reason: { "*": "To manage itself" } },
+      { name: "R2_SECRET", source: "r2SecretAccessKey", requirement: "required", reason: { "*": "To read its own bucket" } },
     ],
   }),
-  DEPLOY('  await ctx.secrets.putHostValue("CF_API_TOKEN");'),
+  DEPLOY('  await ctx.secrets.putHostValue("R2_SECRET");'),
 );
 
 const passwordVar = analyzePackage(
   build({
     inputs: [{ id: "adminpw", kind: "password", label: { "*": "Admin password" }, generate: 16 }],
     worker: { defaultName: "demo", module: "worker/index.js", vars: [{ name: "ADMIN_PW", value: "${input:adminpw}" }] },
+  }),
+  DEPLOY('  await ctx.d1.provision("db");'),
+);
+
+// Declares a capability ("secrets") whose endpoint (worker.secretPut →
+// workers-scripts.write) is never asked for in oauthScopes — Cloudflare would
+// refuse that call mid-deployment.
+const underReportedScope = analyzePackage(
+  build({
+    capabilities: ["d1", "secrets"],
+    hostSecrets: [{ name: "GREETING", source: "accountId", requirement: "optional", reason: { "*": "Say hi" } }],
+  }),
+  DEPLOY('  await ctx.d1.provision("db");\n  await ctx.secrets.putHostValue("GREETING");'),
+);
+
+// Asks for a scope ("zone.read") no declared capability's endpoints derive —
+// visible to the user, not a reason to block the deploy.
+const overReportedScope = analyzePackage(
+  build({
+    permissions: [
+      {
+        key: "database",
+        requirement: "required",
+        oauthScopes: ["d1.write", "zone.read"],
+        label: { "*": "D1 database" },
+        scenario: { "*": "Create and query the database" },
+        scope: "account",
+        level: "write",
+      },
+    ],
   }),
   DEPLOY('  await ctx.d1.provision("db");'),
 );
@@ -239,6 +272,34 @@ const checks: Array<[string, boolean, string?]> = [
   [
     "findings are ordered worst first",
     undeclared.findings.length > 0 && undeclared.findings[0].severity === "critical" && undeclared.worst === "critical",
+  ],
+
+  [
+    "a capability whose endpoint scope was never self-reported is flagged as under-reported",
+    underReportedScope.findings.some((finding) => finding.code === "oauthScopeUnderReported" && finding.severity === "warning"),
+    underReportedScope.findings.map((f) => f.code).join(", "),
+  ],
+  [
+    "the under-report finding names the missing scope",
+    underReportedScope.findings.some(
+      (finding) => finding.code === "oauthScopeUnderReported" && String(finding.values?.scopes).includes("workers-scripts.write"),
+    ),
+  ],
+  [
+    "a self-reported scope no declared capability derives is flagged as over-reported",
+    overReportedScope.findings.some((finding) => finding.code === "oauthScopeOverReported" && finding.severity === "warning"),
+    overReportedScope.findings.map((f) => f.code).join(", "),
+  ],
+  [
+    "the over-report finding names the extra scope",
+    overReportedScope.findings.some(
+      (finding) => finding.code === "oauthScopeOverReported" && String(finding.values?.scopes).includes("zone.read"),
+    ),
+  ],
+  [
+    "a self-report matching the derived set raises neither scope finding",
+    !plain.findings.some((finding) => finding.code === "oauthScopeUnderReported" || finding.code === "oauthScopeOverReported"),
+    plain.findings.map((f) => f.code).join(", "),
   ],
 ];
 

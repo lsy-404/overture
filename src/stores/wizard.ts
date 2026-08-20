@@ -32,33 +32,48 @@ import {
   type StepStatus,
 } from "../lib/deploy/types";
 import { matchResource, type ResourceMatch } from "../lib/deploy/match";
+import { hostEndpointsFor } from "../lib/analyze/endpoints";
+import { scopesForEndpoints } from "../lib/analyze/permissions";
+import type { OAuthAccount, OAuthSessionState } from "../lib/relay";
 
 /** Wizard page numbers, in the order the user walks them. */
 export const STEPS = {
   tos: 1,
-  version: 2,
-  credentials: 3,
-  target: 4,
-  confirm: 5,
-  deploy: 6,
-  done: 7,
+  repository: 2,
+  license: 3,
+  authorize: 4,
+  target: 5,
+  confirm: 6,
+  deploy: 7,
+  done: 8,
 } as const;
 
 export const TOTAL_STEPS = STEPS.done;
 
-const CREDS_KEY = "overture_creds";
+const R2_KEYS_KEY = "overture_r2_keys";
 
-function emptyCredentials(): DeployCredentials {
-  return { accountId: "", apiToken: "", r2AccessKeyId: "", r2SecretAccessKey: "" };
+interface StoredR2Keys {
+  r2AccessKeyId: string;
+  r2SecretAccessKey: string;
 }
 
-function loadCredentials(): DeployCredentials {
+function emptyCredentials(): DeployCredentials {
+  return { accountId: "", r2AccessKeyId: "", r2SecretAccessKey: "" };
+}
+
+/**
+ * Only the R2 S3 pair persists across a reload — the account id is what the
+ * OAuth session says it is, re-read from the `ov_session` cookie every time,
+ * never a value this frame remembers on its own.
+ */
+function loadR2Keys(): StoredR2Keys {
   try {
-    const raw = sessionStorage.getItem(CREDS_KEY);
-    if (!raw) return emptyCredentials();
-    return { ...emptyCredentials(), ...(JSON.parse(raw) as Partial<DeployCredentials>) };
+    const raw = sessionStorage.getItem(R2_KEYS_KEY);
+    if (!raw) return { r2AccessKeyId: "", r2SecretAccessKey: "" };
+    const parsed = JSON.parse(raw) as Partial<StoredR2Keys>;
+    return { r2AccessKeyId: parsed.r2AccessKeyId || "", r2SecretAccessKey: parsed.r2SecretAccessKey || "" };
   } catch {
-    return emptyCredentials();
+    return { r2AccessKeyId: "", r2SecretAccessKey: "" };
   }
 }
 
@@ -109,30 +124,76 @@ export const useWizard = defineStore("wizard", () => {
   const termsAccepted = ref(false);
 
   // ---- credentials -------------------------------------------------------
-  // sessionStorage only: the API token and R2 key pair never outlive the tab,
-  // never enter a log line, a URL, or a sandbox message. On a failed deploy the
-  // stored copy is dropped while the in-memory one survives, so an immediate
-  // retry in the same tab doesn't force retyping everything.
-  const credentials = ref<DeployCredentials>(loadCredentials());
-  const credentialsVerified = ref(false);
+  // sessionStorage only: the R2 key pair never outlives the tab, never enters a
+  // log line, a URL, or a sandbox message. The session credential itself is
+  // never here — it is an HttpOnly cookie this frame cannot read. On a failed
+  // deploy the stored copy is dropped while the in-memory one survives, so an
+  // immediate retry in the same tab doesn't force retyping everything.
+  const credentials = ref<DeployCredentials>({ ...emptyCredentials(), ...loadR2Keys() });
+  const accountVerified = ref(false);
 
   watch(
-    credentials,
-    (value) => {
+    () => [credentials.value.r2AccessKeyId, credentials.value.r2SecretAccessKey] as const,
+    ([r2AccessKeyId, r2SecretAccessKey]) => {
       try {
-        sessionStorage.setItem(CREDS_KEY, JSON.stringify(value));
+        sessionStorage.setItem(R2_KEYS_KEY, JSON.stringify({ r2AccessKeyId, r2SecretAccessKey }));
       } catch {
         // Private browsing or a full quota — the form still works in memory.
       }
     },
-    { deep: true },
   );
 
   function clearCredentials(wipeMemory: boolean) {
-    sessionStorage.removeItem(CREDS_KEY);
-    if (wipeMemory) credentials.value = emptyCredentials();
-    credentialsVerified.value = false;
+    sessionStorage.removeItem(R2_KEYS_KEY);
+    if (wipeMemory) {
+      credentials.value.r2AccessKeyId = "";
+      credentials.value.r2SecretAccessKey = "";
+    }
+    accountVerified.value = false;
   }
+
+  // ---- OAuth session -------------------------------------------------------
+  // Never a token: everything here is what `GET /oauth/session` is willing to
+  // say about the `ov_session` cookie, which this frame cannot read directly.
+  const authorized = ref(false);
+  const oauthScope = ref<string[]>([]);
+  const oauthAccounts = ref<OAuthAccount[]>([]);
+  const oauthExpiresAt = ref<number | null>(null);
+  /** `recipe.package.sha256` the session's scope was actually requested for. */
+  const oauthPkg = ref<string | null>(null);
+
+  function applyOAuthSession(session: OAuthSessionState) {
+    authorized.value = session.authorized;
+    oauthScope.value = session.scope;
+    oauthAccounts.value = session.accounts;
+    oauthExpiresAt.value = session.expiresAt;
+    oauthPkg.value = session.pkg;
+    if (session.accountId) credentials.value.accountId = session.accountId;
+  }
+
+  /**
+   * The session on hand was granted for a different package than the one now
+   * selected — going back and picking another release must not let a stale
+   * grant stand in for consent to this one (C-2).
+   */
+  const sessionMatchesPackage = computed(
+    () => authorized.value && !!recipe.value && oauthPkg.value === recipe.value.package.sha256,
+  );
+
+  /** What the app itself declared it needs, deduplicated. */
+  const appRequestedScope = computed<string[]>(() => {
+    const out = new Set<string>();
+    for (const permission of recipe.value?.permissions ?? []) {
+      for (const scope of permission.oauthScopes) out.add(scope);
+    }
+    return [...out].sort();
+  });
+
+  /** What Overture itself needs regardless of what the package declares. */
+  const hostBaselineScope = computed<string[]>(() => (recipe.value ? scopesForEndpoints(hostEndpointsFor(recipe.value)) : []));
+
+  /** The union an authorize request actually asks Cloudflare for. */
+  const requestedScope = computed<string[]>(() => [...new Set([...appRequestedScope.value, ...hostBaselineScope.value])].sort());
 
   const needsS3Keys = computed(() =>
     (recipe.value?.resources ?? []).some((resource) => resource.kind === "r2" && !!resource.s3Keys),
@@ -463,8 +524,18 @@ export const useWizard = defineStore("wizard", () => {
     adoptConfig,
     termsAccepted,
     credentials,
-    credentialsVerified,
+    accountVerified,
     clearCredentials,
+    authorized,
+    oauthScope,
+    oauthAccounts,
+    oauthExpiresAt,
+    oauthPkg,
+    applyOAuthSession,
+    sessionMatchesPackage,
+    appRequestedScope,
+    hostBaselineScope,
+    requestedScope,
     needsS3Keys,
     requiresS3Keys,
     workerName,

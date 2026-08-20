@@ -36,13 +36,15 @@ export interface StepState {
 }
 
 /**
- * Never crosses into the sandbox, never leaves sessionStorage, never logged.
- * The R2 pair is optional — a recipe declaring `s3Keys` decides whether the
- * deploy can proceed without it.
+ * The account id the OAuth session is scoped to, plus the one credential that
+ * still lives in this frame: the R2 S3 key pair, which OAuth's scope namespace
+ * cannot issue. The session credential itself never appears here — it is an
+ * HttpOnly cookie the relay reads on the deployer's own Worker, and the R2 pair
+ * is optional even so: a recipe declaring `s3Keys` decides whether the deploy
+ * can proceed without it.
  */
 export interface DeployCredentials {
   accountId: string;
-  apiToken: string;
   r2AccessKeyId: string;
   r2SecretAccessKey: string;
 }

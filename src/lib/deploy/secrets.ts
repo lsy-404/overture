@@ -15,16 +15,8 @@
 
 import { callCfJson } from "../relay";
 
-export async function pushSecret(
-  token: string,
-  accountId: string,
-  script: string,
-  name: string,
-  text: string,
-  signal?: AbortSignal,
-): Promise<void> {
+export async function pushSecret(accountId: string, script: string, name: string, text: string, signal?: AbortSignal): Promise<void> {
   await callCfJson(
-    token,
     `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/secrets`,
     { method: "PUT", body: JSON.stringify({ name, text, type: "secret_text" }), signal },
     "Workers Scripts Write",
