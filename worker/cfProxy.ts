@@ -89,7 +89,7 @@ export async function handleCfProxy(c: RelayContext): Promise<Response> {
     headers.set("Authorization", callerAuth);
   } else {
     const sessionCookie = parseCookies(c.req.header("Cookie"))[OV_SESSION_COOKIE];
-    const session = sessionCookie ? await decryptSession(sessionCookie, c.env.OAUTH_SESSION_KEY) : null;
+    const session = sessionCookie ? await decryptSession(sessionCookie, c.env.OAUTH_COOKIE_KEY) : null;
     if (!session || session.expiresAt <= Math.floor(Date.now() / 1000)) {
       return jsonResponse(c, 403, { ok: false, error: "Not signed in" });
     }
