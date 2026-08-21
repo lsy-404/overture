@@ -6,42 +6,24 @@ import { STEPS, useWizard } from "../../stores/wizard";
 import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
 import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
-import { WinButton } from "../../vendor/winui";
+import { buildTokenLinkUrl, describePermissions } from "../../lib/cf/tokenLink";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
 
-// Cloudflare's *account*-scoped token page, reached through the `?to=/:account`
-// redirect so no account id has to be known before the user has signed in
-// anywhere — the dashboard resolves `:account` itself (and asks which, if there
-// is more than one). Account-owned tokens, not the profile page's user tokens,
-// are what both modes here need.
-//
-// Auto mode's link also pre-fills the one permission its token needs — "Account
-// API Tokens Write" (the account_api_tokens/edit key, i.e. the "Create Account
-// Tokens" template) — so the user lands on a form that only has to be named and
-// created. Manual mode's token carries the app's own varied groups, which the
-// page copy lists, so its link is the bare account token page.
-const CF_ACCOUNT_TOKENS_URL = "https://dash.cloudflare.com/?to=/:account/api-tokens";
-const CF_AUTO_TOKEN_URL =
-  `${CF_ACCOUNT_TOKENS_URL}&permissionGroupKeys=` +
-  encodeURIComponent('[{"key":"account_api_tokens","type":"edit"}]') +
-  "&name=" +
-  encodeURIComponent("Overture setup token");
-
-const titleKey = computed(() => {
-  if (wizard.authMode === "auto") return "authorize.auto.title";
-  if (wizard.authMode === "manual") return "authorize.manual.title";
-  return "authorize.title";
-});
-const subtitleKey = computed(() => {
-  if (wizard.authMode === "auto") return "authorize.auto.subtitle";
-  if (wizard.authMode === "manual") return "authorize.manual.subtitle";
-  return "authorize.subtitle";
-});
+const titleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto.title" : "authorize.title"));
+const subtitleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto.subtitle" : "authorize.subtitle"));
 
 /** The long-lived token this app wants, when the recipe declares one. */
 const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
+
+/** Every permission the app's token needs, with its display name and danger flag. */
+const permissionRows = computed(() => describePermissions(cfApiTokenSecret.value?.permissions ?? []));
+const dangerPermissions = computed(() => permissionRows.value.filter((row) => row.danger));
+
+/** The token-creation link, pre-filled with those same permissions. */
+const tokenLinkUrl = computed(() => buildTokenLinkUrl(cfApiTokenSecret.value?.permissions ?? []));
 
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
@@ -140,10 +122,12 @@ onUnmounted(() => {
   stopPopupWatch();
 });
 
-// ---- pasted token (auto and manual modes) ----------------------------------
-// The value lives only in this local ref, never in the wizard store: it is
-// posted to the relay and dropped from this component the moment the request
-// settles, success or failure alike.
+// ---- pasted token (auto mode) -----------------------------------------------
+// The value lives only in this local ref, never kept once it has been posted:
+// it is sent to the relay to seal the deploy session, and — since this same
+// token is also the app's own long-lived credential when the recipe declares
+// one — copied into the wizard's in-memory credentials. Either way it is gone
+// from this component's own state the moment the request settles.
 
 const pasteToken = ref("");
 const submitting = ref(false);
@@ -153,20 +137,18 @@ const canSubmitToken = computed(() => pasteToken.value.trim().length > 0 && !sub
 
 async function submitToken() {
   const recipe = wizard.recipe;
-  const mode = wizard.authMode;
-  if (!recipe || (mode !== "auto" && mode !== "manual")) return;
+  if (!recipe || wizard.authMode !== "auto") return;
   const value = pasteToken.value.trim();
   if (!value) return;
   submitting.value = true;
   submitError.value = "";
   try {
-    const session = await submitAuthToken(value, mode, recipe.package.sha256);
+    const session = await submitAuthToken(value, "auto", recipe.package.sha256);
     wizard.applyOAuthSession(session);
-    // Manual mode's one token covers both deploy and the app's own long-lived
-    // credential, so the value the user just typed is what gets handed to the
-    // app later — unlike auto mode's pasted value, which is powerful and never
-    // kept past this request.
-    if (mode === "manual") wizard.credentials.cfApiToken = value;
+    // This one pasted token covers both deploy and — if the app needs one —
+    // its own long-lived credential afterward, so the value the user just
+    // typed is what gets handed to the app later.
+    wizard.credentials.cfApiToken = value;
     await autoSelectAccount();
   } catch (e) {
     submitError.value = e instanceof Error ? e.message : String(e);
@@ -302,17 +284,28 @@ function recheck() {
       </template>
 
       <template v-else-if="wizard.authMode === 'auto'">
-        <div class="guide-card">
-          <h3>{{ t("authorize.auto.requirementsTitle") }}</h3>
-          <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.requirementsBaseline") }}</p>
-          <p class="field-help">{{ t("authorize.auto.templateHint") }}</p>
-          <template v-if="cfApiTokenSecret">
-            <p class="field-help">{{ t("authorize.auto.mintsIntro") }}</p>
-            <p class="field-help scope-codes">{{ cfApiTokenSecret.groups?.join(", ") }}</p>
-          </template>
-        </div>
         <p class="field-help">{{ t("authorize.auto.intro") }}</p>
-        <a class="btn" :href="CF_AUTO_TOKEN_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
+
+        <div v-if="permissionRows.length > 0" class="guide-card">
+          <h3>{{ t("authorize.auto.requirementsTitle") }}</h3>
+          <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.requirementsIntro") }}</p>
+          <ul class="plain-list">
+            <li v-for="permission in permissionRows" :key="permission.key">
+              {{ permission.name }}
+              <span class="field-tag optional">{{ t(`authorize.auto.permType.${permission.type}`) }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <WinInfoBar v-if="dangerPermissions.length > 0" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+          <strong>{{ t("authorize.auto.dangerTitle") }}</strong>
+          <p style="margin: 6px 0 0">{{ t("authorize.auto.dangerIntro") }}</p>
+          <ul style="margin: 6px 0 0; padding-left: 20px">
+            <li v-for="permission in dangerPermissions" :key="permission.key">{{ permission.name }}</li>
+          </ul>
+        </WinInfoBar>
+
+        <a class="btn" :href="tokenLinkUrl" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
         <div class="field">
           <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>
           <input
@@ -323,38 +316,9 @@ function recheck() {
             spellcheck="false"
             :placeholder="t('authorize.auto.placeholder')"
           />
-          <p class="field-help">{{ t("authorize.auto.selfDeleteNote") }}</p>
         </div>
         <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
           {{ submitting ? t("authorize.auto.submitting") : t("authorize.auto.submit") }}
-        </WinButton>
-        <p v-if="submitError" class="field-help tone-bad">{{ submitError }}</p>
-      </template>
-
-      <template v-else-if="wizard.authMode === 'manual'">
-        <div class="guide-card">
-          <h3>{{ t("authorize.manual.requirementsTitle") }}</h3>
-          <template v-if="cfApiTokenSecret">
-            <p class="field-help" style="margin-top: 0">{{ t("authorize.manual.requirementsAppIntro") }}</p>
-            <p class="field-help scope-codes">{{ cfApiTokenSecret.groups?.join(", ") }}</p>
-          </template>
-          <p v-else class="field-help" style="margin-top: 0">{{ t("authorize.manual.requirementsFallback") }}</p>
-        </div>
-        <p class="field-help">{{ t("authorize.manual.intro") }}</p>
-        <a class="btn" :href="CF_ACCOUNT_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.manual.tokenLinkLabel") }}</a>
-        <div class="field">
-          <label for="manualToken">{{ t("authorize.manual.tokenLabel") }}</label>
-          <input
-            id="manualToken"
-            v-model="pasteToken"
-            type="password"
-            autocomplete="off"
-            spellcheck="false"
-            :placeholder="t('authorize.manual.placeholder')"
-          />
-        </div>
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
-          {{ submitting ? t("authorize.manual.submitting") : t("authorize.manual.submit") }}
         </WinButton>
         <p v-if="submitError" class="field-help tone-bad">{{ submitError }}</p>
       </template>
