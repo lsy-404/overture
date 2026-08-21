@@ -34,6 +34,18 @@ onMounted(() => {
 });
 
 const canContinue = computed(() => !mustAccept.value || wizard.termsAccepted);
+
+// The selector page only exists when there is a real choice to make; a recipe
+// declaring exactly one mode skips straight into it rather than showing a
+// chooser with a single, forced-looking option.
+function goNext() {
+  if (wizard.hasAuthChoice) {
+    wizard.goTo(STEPS.authMethod);
+    return;
+  }
+  wizard.setAuthMode(wizard.recipe?.authModes[0] ?? null);
+  wizard.goTo(STEPS.authorize);
+}
 </script>
 
 <template>
@@ -76,7 +88,7 @@ const canContinue = computed(() => !mustAccept.value || wizard.termsAccepted);
       <div class="step-actions">
         <WinButton @Click="wizard.goTo(STEPS.repository)">{{ t("common.back") }}</WinButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.authorize)">
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">
           {{ t("common.next") }}
         </WinButton>
       </div>

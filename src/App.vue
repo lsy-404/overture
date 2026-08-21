@@ -9,6 +9,7 @@ import PolicyPage from "./components/PolicyPage.vue";
 import StepTos from "./components/steps/StepTos.vue";
 import StepRepository from "./components/steps/StepRepository.vue";
 import StepLicense from "./components/steps/StepLicense.vue";
+import StepAuthMethod from "./components/steps/StepAuthMethod.vue";
 import StepAuthorize from "./components/steps/StepAuthorize.vue";
 import StepTarget from "./components/steps/StepTarget.vue";
 import StepConfirm from "./components/steps/StepConfirm.vue";
@@ -22,6 +23,7 @@ const PAGES: Record<number, Component> = {
   [STEPS.tos]: StepTos,
   [STEPS.repository]: StepRepository,
   [STEPS.license]: StepLicense,
+  [STEPS.authMethod]: StepAuthMethod,
   [STEPS.authorize]: StepAuthorize,
   [STEPS.target]: StepTarget,
   [STEPS.confirm]: StepConfirm,

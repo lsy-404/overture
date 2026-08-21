@@ -19,7 +19,7 @@ import type { GithubRelease, SourceRef } from "../../shared/package";
 import type { LoadedConfig } from "../lib/package/config";
 import type { DataPackage } from "../lib/package/artifact";
 import type { PackageAnalysis } from "../lib/analyze/analyze";
-import type { Recipe, RecipeResource } from "../lib/recipe/types";
+import type { AuthMode, Recipe, RecipeResource } from "../lib/recipe/types";
 import {
   HOST_STEP_HEALTH,
   type DeployCredentials,
@@ -41,11 +41,12 @@ export const STEPS = {
   tos: 1,
   repository: 2,
   license: 3,
-  authorize: 4,
-  target: 5,
-  confirm: 6,
-  deploy: 7,
-  done: 8,
+  authMethod: 4,
+  authorize: 5,
+  target: 6,
+  confirm: 7,
+  deploy: 8,
+  done: 9,
 } as const;
 
 export const TOTAL_STEPS = STEPS.done;
@@ -152,9 +153,30 @@ export const useWizard = defineStore("wizard", () => {
     accountVerified.value = false;
   }
 
+  // ---- authentication mode -------------------------------------------------
+  // Which of the three flows this deployment uses. Chosen on the selector page
+  // when a recipe declares more than one, or filled in without asking when it
+  // declares exactly one. Reset per recipe, same as everything else adoptConfig
+  // touches.
+  const authMode = ref<AuthMode | null>(null);
+  const hasAuthChoice = computed(() => (recipe.value?.authModes.length ?? 0) > 1);
+
+  /**
+   * Sets which mode this deployment uses. Also drops any `cfApiToken` a
+   * previous mode already collected — a manual paste that stays in memory
+   * across a mode switch would otherwise be pushed as the app's credential
+   * under a mode the user never actually confirmed it for.
+   */
+  function setAuthMode(next: AuthMode | null) {
+    authMode.value = next;
+    credentials.value.cfApiToken = "";
+  }
+
   // ---- OAuth session -------------------------------------------------------
   // Never a token: everything here is what `GET /oauth/session` is willing to
   // say about the `ov_session` cookie, which this frame cannot read directly.
+  // The name predates auto/manual mode; the cookie and this state are shared by
+  // all three now.
   const authorized = ref(false);
   const oauthScope = ref<string[]>([]);
   const oauthAccounts = ref<OAuthAccount[]>([]);
@@ -168,6 +190,9 @@ export const useWizard = defineStore("wizard", () => {
     oauthAccounts.value = session.accounts;
     oauthExpiresAt.value = session.expiresAt;
     oauthPkg.value = session.pkg;
+    // The server's own record of how this session was authorized — kept in
+    // sync so a reload picks the right flow back up without re-asking.
+    if (session.mode) authMode.value = session.mode;
     if (session.accountId) credentials.value.accountId = session.accountId;
   }
 
@@ -370,6 +395,7 @@ export const useWizard = defineStore("wizard", () => {
     dataPackage.value = null;
     analysis.value = null;
     termsAccepted.value = false;
+    authMode.value = null;
     workerName.value = loaded.recipe.worker.defaultName;
     touchedResources.value = {};
     resourceNames.value = {};
@@ -526,6 +552,9 @@ export const useWizard = defineStore("wizard", () => {
     credentials,
     accountVerified,
     clearCredentials,
+    authMode,
+    hasAuthChoice,
+    setAuthMode,
     authorized,
     oauthScope,
     oauthAccounts,
