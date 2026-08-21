@@ -35,16 +35,18 @@ onMounted(() => {
 
 const canContinue = computed(() => !mustAccept.value || wizard.termsAccepted);
 
-// The selector page only exists when there is a real choice to make; a recipe
-// declaring exactly one mode skips straight into it rather than showing a
-// chooser with a single, forced-looking option.
+// The selector page only exists when there is a real choice to make; exactly
+// one available mode skips straight into it rather than showing a chooser
+// with a single, forced-looking option. Zero available modes also goes to the
+// selector page, which is where that dead end is explained.
 function goNext() {
-  if (wizard.hasAuthChoice) {
-    wizard.goTo(STEPS.authMethod);
+  const available = wizard.availableAuthModes;
+  if (available.length === 1) {
+    wizard.setAuthMode(available[0]);
+    wizard.goTo(STEPS.authorize);
     return;
   }
-  wizard.setAuthMode(wizard.recipe?.authModes[0] ?? null);
-  wizard.goTo(STEPS.authorize);
+  wizard.goTo(STEPS.authMethod);
 }
 </script>
 

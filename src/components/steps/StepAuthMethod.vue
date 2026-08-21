@@ -4,14 +4,15 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import type { AuthMode } from "../../lib/recipe/types";
-import { WinButton } from "../../vendor/winui";
+import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
 
-// Fixed display order; only the modes this recipe actually declared appear.
-const ORDER: AuthMode[] = ["oauth", "auto", "manual"];
-const modes = computed(() => ORDER.filter((mode) => (wizard.recipe?.authModes ?? []).includes(mode)));
+// Fixed display order; only modes both the recipe and this Overture instance
+// actually support appear (wizard.availableAuthModes).
+const ORDER: AuthMode[] = ["oauth", "auto"];
+const modes = computed(() => ORDER.filter((mode) => wizard.availableAuthModes.includes(mode)));
 
 function choose(mode: AuthMode) {
   wizard.setAuthMode(mode);
@@ -23,6 +24,11 @@ function choose(mode: AuthMode) {
   <div>
     <h1 class="step-title">{{ t("authMethod.title") }}</h1>
     <p class="step-subtitle">{{ t("authMethod.subtitle") }}</p>
+
+    <WinInfoBar v-if="wizard.noAuthModeAvailable" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+      <strong>{{ t("authMethod.notAvailable.title") }}</strong>
+      <p style="margin: 6px 0 0">{{ t("authMethod.notAvailable.body") }}</p>
+    </WinInfoBar>
 
     <button
       v-for="authMode in modes"

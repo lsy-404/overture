@@ -147,13 +147,13 @@
         "description": "Sign in with your Cloudflare account. It's the simplest option — nothing to create or paste."
       },
       "auto": {
-        "title": "Automatic",
-        "description": "Paste one token once. Overture handles everything else automatically, and nothing is left behind afterward."
-      },
-      "manual": {
-        "title": "Manual",
-        "description": "You're shown exactly what to create. Build the token yourself and paste it in."
+        "title": "Token",
+        "description": "Create a Cloudflare token using a link that already has the right permissions selected, then paste it in."
       }
+    },
+    "notAvailable": {
+      "title": "This app can't connect here",
+      "body": "This app can only be connected using Sign in with Cloudflare, and this Overture instance hasn't been configured for it. There's nothing you can do here — try a different Overture instance, or ask whoever runs this one to set it up."
     }
   },
   "authorize": {
@@ -195,30 +195,20 @@
     "r2KeysPairRequired": "Provide both R2 key fields, or leave both empty.",
     "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check.",
     "auto": {
-      "title": "Paste a setup token",
-      "subtitle": "Paste a Cloudflare token so this app can be installed. Overture handles the rest automatically.",
-      "intro": "This token is only used to complete the install. Once it's done, Overture deletes it automatically.",
-      "tokenLabel": "Setup token",
-      "placeholder": "Paste the token here",
-      "tokenLinkLabel": "Create the token on Cloudflare",
-      "requirementsTitle": "What this token needs",
-      "requirementsBaseline": "This token needs just one permission: Account API Tokens Write. Nothing else — Overture builds everything the app needs from it.",
-      "templateHint": "The link opens Cloudflare with that permission already filled in — just give the token a name and create it.",
-      "mintsIntro": "Overture uses your token to create a separate, smaller token for the app — you don’t grant these yourself. The app will be able to:",
-      "selfDeleteNote": "Once the install finishes, this token deletes itself. Nothing is kept.",
-      "submit": "Continue",
-      "submitting": "Connecting…"
-    },
-    "manual": {
       "title": "Create your own token",
-      "subtitle": "Create a Cloudflare token with the exact permissions listed below, then paste it in.",
-      "intro": "You'll create one Cloudflare token that covers everything this app needs — to deploy now, and as its own credential afterward if it needs one.",
+      "subtitle": "Open the link below to create a Cloudflare token with the right permissions already selected, then paste it in here.",
+      "intro": "This token deploys the app, and if the app needs a long-term credential afterward, this same token becomes it. Nothing is deleted or swapped out later — it stays your own token, and you can remove it from your Cloudflare dashboard whenever you want.",
       "tokenLabel": "Your token",
       "placeholder": "Paste the token here",
-      "tokenLinkLabel": "Create a token on Cloudflare",
+      "tokenLinkLabel": "Create the token on Cloudflare",
       "requirementsTitle": "Permissions to grant",
-      "requirementsAppIntro": "Check exactly these permissions when you create the token:",
-      "requirementsFallback": "There's no exact list for this app — match the permissions already listed above as closely as Cloudflare's token screen allows.",
+      "requirementsIntro": "The link below already has these permissions selected — just give the token a name and create it.",
+      "permType": {
+        "read": "Read",
+        "edit": "Edit"
+      },
+      "dangerTitle": "Sensitive permissions requested",
+      "dangerIntro": "This app is asking for permissions that most apps never need — things like managing tokens, billing, or account settings. Make sure you trust this app before creating a token with them:",
       "submit": "Continue",
       "submitting": "Connecting…"
     }
@@ -323,8 +313,6 @@
     "failedTitle": "Deployment failed",
     "failedAt": "Failed at step: {step}",
     "retryFromHere": "Retrying restarts the whole deployment. Anything already created is reused.",
-    "autoTokenCleanupFailed": "The setup token could not delete itself after this deploy and is still active. Delete it yourself from the Cloudflare dashboard.",
-    "autoTokenStillLive": "The setup token you pasted is still active in your Cloudflare account. It removes itself once the deploy succeeds, so a retry cleans it up. If you give up here, delete it yourself from the Cloudflare dashboard.",
     "hostSteps": {
       "health": "Check that the deployment answers"
     },

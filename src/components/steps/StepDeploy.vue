@@ -1,10 +1,9 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, onMounted, ref, toRaw } from "vue";
+import { onMounted, ref, toRaw } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { runRecipe } from "../../lib/engine/run";
-import { mintAppToken, revokeAuthToken } from "../../lib/relay";
 import { DeployError, HOST_STEP_HEALTH } from "../../lib/deploy/types";
 import { localized } from "../../lib/recipe/types";
 import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
@@ -26,8 +25,6 @@ function labelFor(id: string): string {
   return step ? localized(step.label, locale.value) : id;
 }
 
-const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
-
 async function start() {
   const config = wizard.config;
   const dataPackage = wizard.dataPackage;
@@ -39,19 +36,10 @@ async function start() {
   wizard.resetExecution();
   running.value = true;
   try {
-    // Auto mode's app token is minted from the pasted powerful one before the
-    // recipe runs, so it is already in `credentials` by the time the recipe's
-    // declared host secrets get pushed — the same channel the R2 keys use.
-    // Minting never touches the powerful token's ability to keep provisioning:
-    // that only happens after the whole deployment below has succeeded.
-    //
-    // Guarded on an empty value so a retry reuses the token minted on the first
-    // attempt rather than minting a fresh one each time — the powerful token
-    // self-deletes on success and could never clean up the orphans otherwise.
-    if (wizard.authMode === "auto" && cfApiTokenSecret.value && !wizard.credentials.cfApiToken) {
-      wizard.credentials.cfApiToken = await mintAppToken(wizard.credentials.accountId, cfApiTokenSecret.value.groups ?? []);
-    }
-
+    // Auto mode's app token is whatever the user pasted on the authorize step
+    // — already in `credentials` by the time the recipe's declared host
+    // secrets get pushed, the same channel the R2 keys use. Nothing here mints
+    // or deletes it: it is the user's own token.
     const result = await runRecipe({
       config,
       dataPackage: toRaw(dataPackage),
@@ -63,14 +51,6 @@ async function start() {
       onProgress: (id, fraction) => wizard.setStepProgress(id, fraction),
     });
     wizard.result = result;
-
-    // The powerful pasted token has done its job now that the deployment
-    // succeeded — it deletes itself. A failed self-delete is not silent: the
-    // done page has to tell the user it is still live in their account.
-    if (wizard.authMode === "auto") {
-      const outcome = await revokeAuthToken();
-      if (!outcome.ok) wizard.result.notes = [...wizard.result.notes, t("deploy.autoTokenCleanupFailed")];
-    }
 
     await delay(1200);
     wizard.goTo(STEPS.done);
@@ -126,7 +106,6 @@ function retry() {
       <strong>{{ t("deploy.failedTitle") }}</strong>
       <p v-if="wizard.failedStep" style="margin: 6px 0 0">{{ t("deploy.failedAt", { step: labelFor(wizard.failedStep) }) }}</p>
       <p style="margin: 6px 0 0">{{ wizard.failedMessage }}</p>
-      <p v-if="wizard.authMode === 'auto'" style="margin: 6px 0 0">{{ t("deploy.autoTokenStillLive") }}</p>
     </WinInfoBar>
 
     <p v-if="wizard.deployFailed" class="field-help">{{ t("deploy.retryFromHere") }}</p>
