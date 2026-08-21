@@ -128,9 +128,26 @@ Worker can read.
 |---|---|---|
 | GET | `/oauth/authorize` | Same-origin navigations only (`Sec-Fetch-Site: same-origin`). Validates `scope` (every entry within `shared/oauthScopes.ts`) and `pkg` (the package digest), signs both plus a CSPRNG nonce into `__Host-ov_state`, and redirects to Cloudflare's consent page. |
 | GET | `/oauth/callback` | Verifies `state` against `__Host-ov_state` (HMAC, consumed on first use), exchanges the code server-side, reads `GET /accounts` with the fresh token, seals everything into `__Host-ov_session`, and answers a tiny page that signals `oauth:complete` to its opener and closes itself. `Cache-Control: no-store`, `Referrer-Policy: no-referrer`, and no data — not the token, not the scopes — in the message, the URL, or the page. |
-| GET | `/oauth/session` | What the wizard may know: `{ authorized, scope, accounts, accountId, pkg, expiresAt }`. Never the token. |
+| GET | `/oauth/session` | What the wizard may know: `{ authorized, scope, accounts, accountId, pkg, expiresAt, mode }`. Never the token. |
 | POST | `/oauth/session` | Selects the deploy account. The id must be one the consent covered; the cookie is re-sealed with it. |
-| POST | `/oauth/revoke` | Revokes the token upstream and clears the cookie, whatever upstream answers. |
+| POST | `/oauth/revoke` | Ends the session. Branches on `mode`: `oauth` revokes upstream via the OAuth client, `auto` self-deletes the pasted token, `manual` only clears the cookie. Always `200` with `{ ok, error? }` — self-delete failure must be visible, never a silent `204`. |
+| POST | `/auth/token` | The auto/manual entry point: accepts a pasted Cloudflare API token `{ token, mode, pkg }`, verifies it against Cloudflare (`GET /accounts`, then `tokens/verify`) rather than trusting its shape, and seals it into the same `__Host-ov_session` the OAuth callback fills. Returns the same view as `/oauth/session`; never the token. |
+| POST | `/auth/token/revoke-self` | Auto mode only. Self-deletes the pasted powerful token with itself as bearer and clears the cookie. Called by the deploy orchestrator only after the minted app token is already written into the app's Secret. `200` with `{ ok, error? }`; a failed delete says so. |
+
+The two authentication modes that do not use OAuth reach Cloudflare with a token the user pasted, sealed
+into the same session cookie the OAuth callback fills — so `/cf/*` injection, the same-origin gate, and
+the account-id binding all behave identically regardless of mode. The mode only decides how the session is
+established and how it is torn down.
+
+## 3a. Minting an app token — `POST /cf/mint-app-token`
+
+Auto mode's one privileged operation. It sits under `/cf/*` so it inherits that prefix's same-origin gate,
+but it is not a passthrough: with the session's powerful token (never returned to the page), it resolves
+the recipe's declared permission-group names to ids and mints a narrow, long-lived Account API Token on
+the session's selected account, scoped to exactly those groups. The response carries only the minted
+token's own value — the deploy then writes it into the app's own Worker Secret. Cloudflare refuses to let
+a token minted by a token hold token-management permissions (error 1001), so the minted value can never
+mint or delete anything, even if it leaked. `accountId` in the body must equal the session's account.
 
 Cookies: both carry the `__Host-` prefix, so a sibling host on the same registrable domain cannot toss
 either one up to the parent — the login-CSRF session-fixation this closes is the whole reason the prefix
