@@ -15,17 +15,20 @@
 
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import { isSourceAllowed, type DeployPolicy } from "../../shared/policy";
+import { isSourceAllowed } from "../../shared/policy";
 import type { SourceRef } from "../../shared/package";
-import { getPolicy } from "../lib/policyClient";
+import { getPolicy, type OverturePolicy } from "../lib/policyClient";
 
 /** The two screens this app has. The policy page is reachable at /settings. */
 export type AppView = "wizard" | "policy";
 
 const SETTINGS_RE = /\/settings\/?$/;
 
+// Guarded rather than assumed: the wizard store composes this store for its
+// oauthEnabled read, and a test harness that instantiates the wizard store
+// outside a browser has no `location` to read a route from.
 function viewFromLocation(): AppView {
-  return SETTINGS_RE.test(location.pathname) ? "policy" : "wizard";
+  return typeof location !== "undefined" && SETTINGS_RE.test(location.pathname) ? "policy" : "wizard";
 }
 
 // The app may be served from a subpath, so a route change edits the tail of
@@ -37,9 +40,11 @@ function pathFor(view: AppView): string {
 
 export const usePolicy = defineStore("policy", () => {
   const view = ref<AppView>(viewFromLocation());
-  addEventListener("popstate", () => {
-    view.value = viewFromLocation();
-  });
+  if (typeof addEventListener === "function") {
+    addEventListener("popstate", () => {
+      view.value = viewFromLocation();
+    });
+  }
 
   function show(next: AppView) {
     if (view.value === next) return;
@@ -48,8 +53,9 @@ export const usePolicy = defineStore("policy", () => {
   }
 
   // Until the real answer arrives, assume the strictest policy: allowlist on
-  // with nothing on it, so no source is offered by accident.
-  const policy = ref<DeployPolicy>({ allowlistEnabled: true, sources: [] });
+  // with nothing on it, and oauth off, so no source or sign-in option is
+  // offered by accident.
+  const policy = ref<OverturePolicy>({ allowlistEnabled: true, sources: [], oauthEnabled: false });
   const loaded = ref(false);
   const loading = ref(false);
 
