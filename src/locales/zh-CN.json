@@ -324,6 +324,7 @@
     "failedAt": "失败步骤：{step}",
     "retryFromHere": "重试会从头再跑一遍整个部署，已经建好的资源会被复用。",
     "autoTokenCleanupFailed": "这次部署已经成功，但安装令牌未能自动删除，仍然有效——请自己去 Cloudflare 控制台把它删掉。",
+    "autoTokenStillLive": "你粘贴的安装令牌仍在你的 Cloudflare 账号里有效。部署一旦成功它就会自动删除，所以重试成功即会清理。如果你就此放弃，请自己去 Cloudflare 控制台把它删掉。",
     "hostSteps": {
       "health": "检查部署是否响应"
     },
