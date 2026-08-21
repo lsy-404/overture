@@ -11,10 +11,23 @@ import { WinButton } from "../../vendor/winui";
 const { t, locale } = useI18n();
 const wizard = useWizard();
 
-// Cloudflare's own token management page — there is no stable deep link into
-// the creation form itself, so this is as far as a link can safely take the
-// user; the rest is the page's own copy telling them what to build.
-const CF_TOKENS_URL = "https://dash.cloudflare.com/profile/api-tokens";
+// Cloudflare's *account*-scoped token page, reached through the `?to=/:account`
+// redirect so no account id has to be known before the user has signed in
+// anywhere — the dashboard resolves `:account` itself (and asks which, if there
+// is more than one). Account-owned tokens, not the profile page's user tokens,
+// are what both modes here need.
+//
+// Auto mode's link also pre-fills the one permission its token needs — "Account
+// API Tokens Write" (the account_api_tokens/edit key, i.e. the "Create Account
+// Tokens" template) — so the user lands on a form that only has to be named and
+// created. Manual mode's token carries the app's own varied groups, which the
+// page copy lists, so its link is the bare account token page.
+const CF_ACCOUNT_TOKENS_URL = "https://dash.cloudflare.com/?to=/:account/api-tokens";
+const CF_AUTO_TOKEN_URL =
+  `${CF_ACCOUNT_TOKENS_URL}&permissionGroupKeys=` +
+  encodeURIComponent('[{"key":"account_api_tokens","type":"edit"}]') +
+  "&name=" +
+  encodeURIComponent("Overture setup token");
 
 const titleKey = computed(() => {
   if (wizard.authMode === "auto") return "authorize.auto.title";
@@ -299,7 +312,7 @@ function recheck() {
           </template>
         </div>
         <p class="field-help">{{ t("authorize.auto.intro") }}</p>
-        <a class="btn" :href="CF_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
+        <a class="btn" :href="CF_AUTO_TOKEN_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
         <div class="field">
           <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>
           <input
@@ -328,7 +341,7 @@ function recheck() {
           <p v-else class="field-help" style="margin-top: 0">{{ t("authorize.manual.requirementsFallback") }}</p>
         </div>
         <p class="field-help">{{ t("authorize.manual.intro") }}</p>
-        <a class="btn" :href="CF_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.manual.tokenLinkLabel") }}</a>
+        <a class="btn" :href="CF_ACCOUNT_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.manual.tokenLinkLabel") }}</a>
         <div class="field">
           <label for="manualToken">{{ t("authorize.manual.tokenLabel") }}</label>
           <input
