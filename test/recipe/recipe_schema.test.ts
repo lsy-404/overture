@@ -36,6 +36,7 @@ function minimal(): Json {
     buildTime: "2026-01-01T00:00:00Z",
     package: { artifact: PACKAGE_ARTIFACT_NAME, sha256: VALID_SHA256 },
     license: { id: "AGPL-3.0-or-later", text: "Full licence text." },
+    authModes: ["oauth"],
     permissions: [
       {
         key: "scripts",
@@ -106,6 +107,37 @@ const checks: Array<[string, boolean, string?]> = [
     accepts(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = [])))],
   ["a duplicated scope is rejected",
     rejects(tweak((r) => ((r.permissions as Json[])[0].oauthScopes = ["d1.read", "d1.read"])))],
+
+  // authModes declares which authentication modes the package supports.
+  ["a missing authModes is rejected", rejects(tweak((r) => delete r.authModes))],
+  ["an empty authModes is rejected", rejects(tweak((r) => (r.authModes = [])))],
+  ["an unknown authMode is rejected", rejects(tweak((r) => (r.authModes = ["oauth", "nope"])))],
+  ["a duplicated authMode is rejected", rejects(tweak((r) => (r.authModes = ["oauth", "oauth"])))],
+  ["all three modes together validate", accepts(tweak((r) => (r.authModes = ["oauth", "auto", "manual"])))],
+
+  // A cfApiToken host secret is a long-lived app credential; oauth alone cannot
+  // furnish it, and the groups list is required and exclusive to that source.
+  ["a cfApiToken host secret with groups and an auto/manual mode validates",
+    accepts(tweak((r) => {
+      r.authModes = ["auto", "manual"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", groups: ["Workers Scripts Write"],
+        reason: { en: "self-manage" }, requirement: "required" }];
+    }))],
+  ["a cfApiToken host secret under oauth-only is rejected",
+    rejects(tweak((r) => {
+      r.authModes = ["oauth"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", groups: ["Workers Scripts Write"],
+        reason: { en: "self-manage" }, requirement: "required" }];
+    }))],
+  ["a cfApiToken host secret without groups is rejected",
+    rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", reason: { en: "x" }, requirement: "required" }];
+    }))],
+  ["groups on a non-cfApiToken host secret is rejected",
+    rejects(tweak((r) => {
+      r.hostSecrets = [{ name: "CF_ACCOUNT_ID", source: "accountId", groups: ["x"], reason: { en: "x" }, requirement: "required" }];
+    }))],
   ["a non-object input is rejected", rejects(null) && rejects("{}") && rejects([]) && rejects(42)],
 
   ["a worker without an entry module is rejected",

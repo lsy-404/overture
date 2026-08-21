@@ -39,6 +39,19 @@ before anything is downloaded.
   "license": { "id": "AGPL-3.0-or-later", "text": "                    GNU AFFERO GENERAL PUBLIC LICENSE\n…" },
   "terms": { "required": true, "texts": { "zh-CN": "…", "*": "…" } },
 
+  // How this package can authenticate to Cloudflare. One mode is used per
+  // deployment; it provides all the account authority the deploy needs.
+  //   "oauth"  — sign in with Cloudflare (best UX; no long-lived app credential)
+  //   "auto"   — the user hands over one powerful token once; the host mints a
+  //              narrow long-lived token for the app, then that powerful token
+  //              deletes itself
+  //   "manual" — the user creates the tokens the wizard lists and pastes them
+  // Declare every mode the package supports. The wizard shows a chooser when
+  // more than one is declared and skips it when exactly one is. A package that
+  // needs a cfApiToken host secret (below) must offer "auto" and/or "manual",
+  // since "oauth" cannot furnish an app a long-lived credential.
+  "authModes": ["oauth", "auto", "manual"],
+
   // The authority table shown before any credential is asked for. `oauthScopes`
   // are Cloudflare OAuth scope names — dotted and lowercase, a different
   // namespace from the Title Case permission groups of classic API tokens — and
@@ -106,11 +119,21 @@ before anything is downloaded.
   // Workers Secrets whose value comes from Overture, not from recipe.js. The
   // review page states these plainly — an app keeping a copy of anything about
   // the deployment is something the user has to see before agreeing to it.
-  // The deploy credential itself cannot be named here: it never leaves the
-  // deployment's own Worker, so there is nothing to hand over.
+  // The deploy session credential itself cannot be named here: it never leaves
+  // the deployment's own Worker, so there is nothing to hand over.
+  //
+  // `source` is one of: "accountId", "r2AccessKeyId", "r2SecretAccessKey", or
+  // "cfApiToken". The last is the app's own long-lived Cloudflare token: it
+  // carries `groups` (Cloudflare permission-group names — Title Case, a
+  // different namespace from oauthScopes above). In "auto" mode the host mints a
+  // token holding exactly these; in "manual" mode they are the list the user is
+  // shown to build a token against. It is never the deploy session credential.
   "hostSecrets": [
     { "name": "CF_ACCOUNT_ID", "source": "accountId", "requirement": "required",
-      "reason": { "en": "Self-update and transcoding call the account's own API" } }
+      "reason": { "en": "Self-update and transcoding call the account's own API" } },
+    { "name": "CF_API_TOKEN", "source": "cfApiToken", "requirement": "required",
+      "groups": ["Workers Scripts Write", "Workers R2 Storage Write"],
+      "reason": { "en": "The app manages its own cron and storage after deploy" } }
   ],
 
   // The execution checklist. recipe.js drives the transitions. Overture prepends

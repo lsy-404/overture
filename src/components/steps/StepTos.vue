@@ -6,6 +6,8 @@ import { WinButton, WinCheckBox } from "../../vendor/winui";
 
 const { t } = useI18n();
 const wizard = useWizard();
+
+const SECTIONS = ["auth", "privacy", "ownership", "liability", "capabilities", "license"] as const;
 </script>
 
 <template>
@@ -13,16 +15,12 @@ const wizard = useWizard();
     <h1 class="step-title">{{ t("tos.title") }}</h1>
     <p class="step-subtitle">{{ t("tos.subtitle") }}</p>
 
-    <div class="guide-card">
-      <ul class="notice-list">
-        <li>{{ t("tos.point1") }}</li>
-        <li>{{ t("tos.point2") }}</li>
-        <li>{{ t("tos.point3") }}</li>
-        <li>{{ t("tos.point4") }}</li>
-        <li>{{ t("tos.point5") }}</li>
-        <li>{{ t("tos.point6") }}</li>
-        <li>{{ t("tos.point7") }}</li>
-      </ul>
+    <div class="guide-card disclaimer-body">
+      <section v-for="(section, index) in SECTIONS" :key="section" class="disclaimer-section">
+        <div class="section-rule" v-if="index > 0" aria-hidden="true" />
+        <h2 class="section-heading">{{ t(`tos.sections.${section}.heading`) }}</h2>
+        <p class="section-body">{{ t(`tos.sections.${section}.body`) }}</p>
+      </section>
     </div>
 
     <div class="accept-row">
@@ -43,15 +41,37 @@ const wizard = useWizard();
 </template>
 
 <style scoped>
-.notice-list {
+.disclaimer-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.disclaimer-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.section-rule {
+  height: 1px;
+  background: var(--card-stroke);
+  margin: 12px 0;
+}
+
+.section-heading {
   margin: 0;
-  padding-left: 20px;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-secondary);
 }
 
-.notice-list li + li {
-  margin-top: 8px;
+.section-body {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: var(--text-primary);
 }
 
 .accept-row {

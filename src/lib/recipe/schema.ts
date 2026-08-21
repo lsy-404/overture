@@ -32,6 +32,7 @@ import {
   RECIPE_SCHEMA,
   type Capability,
   type DeployMode,
+  type AuthMode,
   type HostSecretSource,
   type InputKind,
   type Localized,
@@ -59,6 +60,7 @@ const MAX_PATH_CHARS = 256;
 const MAX_NAME_CHARS = 128;
 const MAX_LOCALE_ENTRIES = 30;
 const MAX_PERMISSION_SCOPES = 24;
+const MAX_TOKEN_GROUPS = 24;
 const MAX_COMPAT_FLAGS = 20;
 const MAX_INPUT_OPTIONS = 40;
 const MAX_API_PATH_CHARS = 512;
@@ -76,7 +78,8 @@ const DEPLOY_MODES = ["fresh", "overwrite"] as const;
 const PERMISSION_SCOPES = ["account", "zone", "allBuckets"] as const;
 const PERMISSION_LEVELS = ["read", "write", "readWrite"] as const;
 const CONTAINER_MODES = ["ask", "always", "never"] as const;
-const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey"] as const;
+const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey", "cfApiToken"] as const;
+const AUTH_MODES = ["oauth", "auto", "manual"] as const;
 
 // Derived from the bridge itself, so a capability the host cannot gate can never
 // be declared.
@@ -606,8 +609,24 @@ function hostSecret(errors: Errors, path: string, value: unknown): RecipeHostSec
   const source = oneOf<HostSecretSource>(errors, `${path}.source`, raw.source, HOST_SECRET_SOURCES, true);
   const reason = localized(errors, `${path}.reason`, raw.reason, true);
   const requirement = oneOf<Requirement>(errors, `${path}.requirement`, raw.requirement, REQUIREMENTS, true);
+
+  // `groups` names the permission groups the app's own minted/pasted token must
+  // carry — it belongs to `cfApiToken` and to nothing else. Requiring it there
+  // and forbidding it elsewhere keeps the two host-secret shapes from blurring.
+  let groups: string[] | undefined;
+  if (source === "cfApiToken") {
+    groups = items(errors, `${path}.groups`, raw.groups, MAX_TOKEN_GROUPS, true, (entry, itemPath) =>
+      str(errors, itemPath, entry, true, MAX_NAME_CHARS),
+    );
+    if (groups && groups.length === 0) errors.add(`${path}.groups`, "must name at least one permission group");
+    if (groups) requireUnique(errors, `${path}.groups`, groups, (entry) => entry, "permission group");
+  } else if (raw.groups !== undefined) {
+    errors.add(`${path}.groups`, "is only valid on a cfApiToken host secret");
+  }
+
   if (!name || !source || !reason || !requirement) return undefined;
-  return { name, source, reason, requirement };
+  if (source === "cfApiToken" && (!groups || groups.length === 0)) return undefined;
+  return { name, source, reason, requirement, ...(groups === undefined ? {} : { groups }) };
 }
 
 function step(errors: Errors, path: string, value: unknown): RecipeStep | undefined {
@@ -718,6 +737,18 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
 
   const termsField = raw.terms === undefined ? undefined : terms(errors, "terms", raw.terms);
 
+  const authModes = items<AuthMode>(errors, "authModes", raw.authModes, AUTH_MODES.length, true, (entry, path) => {
+    const text = str(errors, path, entry, true, 20);
+    if (text === undefined) return undefined;
+    if (!(AUTH_MODES as readonly string[]).includes(text)) {
+      errors.add(path, "is not an authentication mode this wizard offers");
+      return undefined;
+    }
+    return text as AuthMode;
+  });
+  if (authModes && authModes.length === 0) errors.add("authModes", "must name at least one authentication mode");
+  if (authModes) requireUnique(errors, "authModes", authModes, (entry) => entry, "authentication mode");
+
   const permissions = items(errors, "permissions", raw.permissions, RECIPE_LIMITS.maxPermissions, true, (entry, path) =>
     permission(errors, path, entry),
   );
@@ -791,6 +822,18 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
   if (capabilities) requireUnique(errors, "capabilities", capabilities, (entry) => entry, "capability");
   if (hostSecrets) requireUnique(errors, "hostSecrets", hostSecrets, (entry) => entry.name, "host secret name");
 
+  // A cfApiToken host secret is a long-lived app credential, which oauth cannot
+  // furnish — so a recipe that needs one has to offer a mode that can.
+  if (
+    hostSecrets &&
+    authModes &&
+    authModes.length > 0 &&
+    hostSecrets.some((secret) => secret.source === "cfApiToken") &&
+    !authModes.some((mode) => mode === "auto" || mode === "manual")
+  ) {
+    errors.add("authModes", "must include \"auto\" or \"manual\" when a cfApiToken host secret is declared");
+  }
+
   if (
     errors.list.length > 0 ||
     !id ||
@@ -801,6 +844,8 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     !buildTime ||
     !packageField ||
     !licenseField ||
+    !authModes ||
+    authModes.length === 0 ||
     !permissions ||
     !resources ||
     !workerSection ||
@@ -825,6 +870,7 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
       package: packageField,
       license: licenseField,
       ...(termsField === undefined ? {} : { terms: termsField }),
+      authModes,
       permissions,
       ...(checks === undefined ? {} : { checks }),
       resources,

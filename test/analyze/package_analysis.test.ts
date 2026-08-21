@@ -36,6 +36,7 @@ function build(overrides: Json = {}): Recipe {
     buildTime: "2026-01-01T00:00:00Z",
     package: { artifact: PACKAGE_ARTIFACT_NAME, sha256: "a".repeat(64) },
     license: { id: "AGPL-3.0-or-later", text: "Licence text." },
+    authModes: ["oauth"],
     permissions: [
       {
         key: "database",

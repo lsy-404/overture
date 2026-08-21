@@ -21,15 +21,34 @@
     "themeAuto": "Auto"
   },
   "tos": {
-    "title": "Before you use Overture",
-    "subtitle": "Overture installs Cloudflare Workers apps from your browser. It needs your Cloudflare account, and nothing installed on this computer. Below are Overture's own terms of use.",
-    "point1": "Staying signed in works the way your browser already keeps you signed into other sites — automatically, and not in a way this page's own code can read or touch. It stops working on its own within about an hour, or the moment you leave, whichever comes first.",
-    "point2": "Overture writes no logs and keeps no record of what anyone deployed, when, or from where. There is nothing here for anyone — including whoever runs this Overture — to look up later.",
-    "point3": "Everything gets created in your own Cloudflare account, under your own billing. Overture itself owns nothing it deploys.",
-    "point4": "Every cost and every consequence of a deployment is yours to carry. Overture is a tool that acts on your instructions, not a party to what happens afterward.",
-    "point5": "A package this Overture accepts can do anything within its declared capabilities, inside your account. The wizard reads every package and shows you exactly what it will do before you agree to anything.",
-    "point6": "Overture itself is free software, licensed under the AGPL, with its source open for anyone to read.",
-    "point7": "Overture is never sold. If anyone asks you to pay for \"access\" to a copy of it, that is a scam — walk away.",
+    "title": "Terms of Use",
+    "subtitle": "Read and accept before continuing. These terms govern your use of this Overture instance.",
+    "sections": {
+      "auth": {
+        "heading": "Authentication",
+        "body": "Your Cloudflare session is managed by your browser through standard OAuth. This page's own code cannot read or access it. The session expires automatically when you leave or within approximately one hour, whichever occurs first."
+      },
+      "privacy": {
+        "heading": "No Data Retention",
+        "body": "Overture keeps no logs and retains no record of what was deployed, by whom, or when. No information about your usage is transmitted to or stored by the operator of this instance."
+      },
+      "ownership": {
+        "heading": "Account Ownership and Billing",
+        "body": "All resources are created within your own Cloudflare account. You are responsible for all associated costs. Overture holds no ownership of anything it deploys on your behalf."
+      },
+      "liability": {
+        "heading": "Deployment Liability",
+        "body": "You bear full responsibility for every deployment made through this tool and for all consequences that follow. Overture is an automated executor of your instructions and assumes no liability for outcomes."
+      },
+      "capabilities": {
+        "heading": "Package Capabilities",
+        "body": "Any package this instance of Overture accepts may exercise, within your Cloudflare account, any capability it declares. The wizard presents a complete disclosure of those capabilities before you authorize any deployment."
+      },
+      "license": {
+        "heading": "License and Availability",
+        "body": "Overture is free software released under the GNU Affero General Public License (AGPL-3.0-or-later). Its source code is publicly available. Overture is never sold; any offer of paid access is fraudulent."
+      }
+    },
     "accept": "I have read and agree to these terms"
   },
   "repository": {
