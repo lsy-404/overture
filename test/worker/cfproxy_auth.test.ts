@@ -65,6 +65,7 @@ async function sessionCookie(overrides: Partial<SessionPayload> = {}): Promise<s
     ],
     pkg: "a".repeat(64),
     expiresAt: Math.floor(Date.now() / 1000) + 3599,
+    mode: "oauth",
     ...overrides,
   };
   return `__Host-ov_session=${await encryptSession(full, SESSION_KEY)}`;
@@ -125,6 +126,24 @@ async function run(): Promise<void> {
     "a caller-supplied Authorization header is never forwarded on a session-backed endpoint",
     forwardedAuth() === "Bearer cfoat_session_token",
   ]);
+
+  // --- mode-agnostic: auto and manual sessions get the same account-segment
+  // binding as oauth, since cfProxy.ts injects session.token regardless of
+  // how the session was filled ---
+  for (const mode of ["auto", "manual"] as const) {
+    stubFetch();
+    const wrongAccountForMode = await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {
+      Cookie: await sessionCookie({ accountId: ACCOUNT_B, mode }),
+    });
+    checks.push([`a ${mode}-mode session for another account is rejected with 403`, wrongAccountForMode.status === 403]);
+
+    stubFetch();
+    const matchingForMode = await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {
+      Cookie: await sessionCookie({ accountId: ACCOUNT_A, mode, token: `${mode}-pasted-token` }),
+    });
+    checks.push([`a ${mode}-mode session matching the selected account is forwarded`, matchingForMode.status === 200]);
+    checks.push([`the forwarded call carries the ${mode}-mode session's own token`, forwardedAuth() === `Bearer ${mode}-pasted-token`]);
+  }
 
   // --- /zones has no accounts/{id} segment: no selected account required ---
   stubFetch();

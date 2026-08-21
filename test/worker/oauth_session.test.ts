@@ -29,6 +29,7 @@ const payload: SessionPayload = {
   accounts: [{ id: "0123456789abcdef0123456789abcdef", name: "Test Account" }],
   pkg: "a".repeat(64),
   expiresAt: Math.floor(Date.now() / 1000) + 3599,
+  mode: "oauth",
 };
 
 const checks: Array<[string, boolean, string?]> = [];
@@ -48,8 +49,12 @@ async function run(): Promise<void> {
 
   checks.push(["decrypting with a different secret is rejected", (await decryptSession(cookie, SECRET_B)) === null]);
 
+  // Flips the first character, never the last: base64's final quartet can
+  // leave a few trailing bits unused when the byte count isn't a multiple of
+  // 3, so a flip there occasionally decodes to the same byte and the tamper
+  // silently no-ops. The first character always covers real, fully-used bits.
   const [ivPart, dataPart] = cookie.split(".");
-  const tamperedData = dataPart.slice(0, -1) + (dataPart.endsWith("A") ? "B" : "A");
+  const tamperedData = (dataPart[0] === "A" ? "B" : "A") + dataPart.slice(1);
   checks.push([
     "a single flipped ciphertext character fails AES-GCM's own authentication",
     (await decryptSession(`${ivPart}.${tamperedData}`, SECRET_A)) === null,
@@ -68,6 +73,30 @@ async function run(): Promise<void> {
     "a decryptable but incorrectly shaped payload (missing accounts) is rejected",
     (await decryptSession(malformedCookie, SECRET_A)) === null,
   ]);
+
+  // mode is the discriminant the unified session cookie added for the auto
+  // and manual authentication modes (worker/authToken.ts) alongside oauth
+  // (worker/oauthHandlers.ts) — every mode must round-trip, and anything
+  // missing or outside the three known literals must still be rejected the
+  // same way a missing `accounts` array already is above.
+  for (const mode of ["oauth", "auto", "manual"] as const) {
+    const modePayload: SessionPayload = { ...payload, mode };
+    const modeCookie = await encryptSession(modePayload, SECRET_A);
+    const modeDecrypted = await decryptSession(modeCookie, SECRET_A);
+    checks.push([
+      `a session with mode "${mode}" round-trips exactly, mode included`,
+      !!modeDecrypted && modeDecrypted.mode === mode && JSON.stringify(modeDecrypted) === JSON.stringify(modePayload),
+    ]);
+  }
+
+  const missingMode = { ...payload } as Partial<SessionPayload>;
+  delete missingMode.mode;
+  const missingModeCookie = await encryptSession(missingMode as SessionPayload, SECRET_A);
+  checks.push(["a payload with no mode at all is rejected", (await decryptSession(missingModeCookie, SECRET_A)) === null]);
+
+  const invalidMode = { ...payload, mode: "admin" } as unknown as SessionPayload;
+  const invalidModeCookie = await encryptSession(invalidMode, SECRET_A);
+  checks.push(["a payload whose mode is not one of the three known modes is rejected", (await decryptSession(invalidModeCookie, SECRET_A)) === null]);
 
   let failures = 0;
   for (const [label, passed, detail] of checks) {

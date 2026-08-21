@@ -165,6 +165,17 @@ export interface SessionAccount {
   name: string;
 }
 
+// How `token` was obtained, which decides what happens when the session ends:
+// oauth revokes upstream via the OAuth client, auto self-deletes the pasted
+// token with itself as bearer, manual only ever clears the local cookie. All
+// three fill the same __Host-ov_session shape and the same /cf/* injection —
+// mode changes cleanup, never authorization.
+export type AuthMode = "oauth" | "auto" | "manual";
+
+function isAuthMode(value: unknown): value is AuthMode {
+  return value === "oauth" || value === "auto" || value === "manual";
+}
+
 export interface SessionPayload {
   token: string;
   scope: string[];
@@ -174,6 +185,7 @@ export interface SessionPayload {
   pkg: string;
   /** Unix seconds — the access token's own expiry, not the cookie's. */
   expiresAt: number;
+  mode: AuthMode;
 }
 
 function isSessionPayload(value: unknown): value is SessionPayload {
@@ -185,7 +197,8 @@ function isSessionPayload(value: unknown): value is SessionPayload {
     !v.scope.every((s) => typeof s === "string") ||
     !Array.isArray(v.accounts) ||
     typeof v.pkg !== "string" ||
-    typeof v.expiresAt !== "number"
+    typeof v.expiresAt !== "number" ||
+    !isAuthMode(v.mode)
   ) {
     return false;
   }
@@ -193,6 +206,34 @@ function isSessionPayload(value: unknown): value is SessionPayload {
   return v.accounts.every(
     (a) => a && typeof a === "object" && typeof (a as SessionAccount).id === "string" && typeof (a as SessionAccount).name === "string",
   );
+}
+
+export interface SessionView {
+  authorized: true;
+  scope: string[];
+  accounts: SessionAccount[];
+  accountId?: string;
+  pkg: string;
+  expiresAt: number;
+  mode: AuthMode;
+}
+
+/**
+ * What `/oauth/session` and `/auth/token` both hand back — every field of a
+ * session except the token itself. Every route that reads the session cookie
+ * and reports on it should build its response through this, not by hand, so
+ * a field can never be added to one response shape and forgotten in another.
+ */
+export function sessionView(session: SessionPayload): SessionView {
+  return {
+    authorized: true,
+    scope: session.scope,
+    accounts: session.accounts,
+    accountId: session.accountId,
+    pkg: session.pkg,
+    expiresAt: session.expiresAt,
+    mode: session.mode,
+  };
 }
 
 /** Cookie value: base64url(iv) + "." + base64url(AES-GCM ciphertext, tag included). */
