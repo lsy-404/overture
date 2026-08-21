@@ -186,7 +186,9 @@ const d1AndR2 = describePermissions([
   { key: "workers_r2", type: "read" },
 ]);
 const dangerRow = describePermissions([{ key: "account_api_tokens", type: "edit" }])[0];
-const billingRow = describePermissions([{ key: "billing", type: "read" }])[0];
+const billingRow = describePermissions([{ key: "billing", type: "edit" }])[0];
+const billingReadRow = describePermissions([{ key: "billing", type: "read" }])[0];
+const tokenReadRow = describePermissions([{ key: "account_api_tokens", type: "read" }])[0];
 
 const urlForEmpty = buildTokenLinkUrl([]);
 const urlForOne = buildTokenLinkUrl([{ key: "d1", type: "edit" }]);
@@ -255,8 +257,10 @@ const checks: Array<[string, boolean, string?]> = [
     !!decodedParam && decodedParam.length === 1 && decodedParam[0].key === "d1" && decodedParam[0].type === "edit"],
   ["permission rows carry the shared table's display name, not the raw key",
     d1AndR2[0].name === "D1" && d1AndR2[1].name === "Workers R2 Storage"],
-  ["a danger-tagged permission (account_api_tokens) is reported as dangerous", dangerRow.danger === true],
-  ["another danger-tagged permission (billing) is reported as dangerous too", billingRow.danger === true],
+  ["an edit on a flagged group (account_api_tokens) is reported as dangerous", dangerRow.danger === true],
+  ["an edit on another flagged group (billing) is reported as dangerous too", billingRow.danger === true],
+  ["a read on a flagged group (billing) is not dangerous — only writing it is", billingReadRow.danger === false],
+  ["a read on the token group (account_api_tokens) is not dangerous", tokenReadRow.danger === false],
   ["an ordinary permission (D1) is not reported as dangerous", d1AndR2[0].danger === false],
 ];
 

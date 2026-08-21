@@ -53,7 +53,9 @@
   },
   "repository": {
     "title": "Choose what to deploy",
-    "subtitle": "Pick an app, then the version to install. What it does and what it needs appears below once you pick one.",
+    "subtitleNoSource": "Select an app",
+    "subtitleNoVersion": "Select a version to install",
+    "subtitleReady": "Click Continue to proceed",
     "loadingPolicy": "Checking which apps are available…",
     "malformedSrc": "The link asked for “{value}”, which isn't an owner/repo pair. Pick a source below instead.",
     "rejectedTitle": "This source is not accepted here",
@@ -77,9 +79,9 @@
   },
   "license": {
     "title": "Terms and licence",
-    "subtitle": "This is the app's own terms and licence, not Overture's. If it requires acceptance, you need to read to the end first.",
-    "termsTab": "Terms of service",
-    "licenseTab": "Licence ({id})",
+    "subtitle": "Read and agree to this app's terms and licence.",
+    "termsSection": "Terms of service",
+    "licenseSection": "Licence ({id})",
     "licenseMissing": "This package ships no licence text.",
     "accept": "I have read and agree to the terms above",
     "scrollToEnd": "Scroll to the end of the terms to continue",
@@ -195,7 +197,8 @@
       "checking": "Checking…",
       "ok": "OK",
       "missing": "Missing or not enabled",
-      "error": "Couldn't check"
+      "error": "Couldn't check",
+      "notEnabled": "Not enabled"
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
@@ -204,13 +207,13 @@
     "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check.",
     "auto": {
       "title": "Create your own token",
-      "subtitle": "Open the link below to create a Cloudflare token with the right permissions already selected, then paste it in here.",
+      "subtitle": "Follow the link below to create a token on Cloudflare, then paste it here.",
       "intro": "This token deploys the app, and if the app needs a long-term credential afterward, this same token becomes it. Nothing is deleted or swapped out later — it stays your own token, and you can remove it from your Cloudflare dashboard whenever you want.",
       "tokenLabel": "Your token",
       "placeholder": "Paste the token here",
       "tokenLinkLabel": "Create the token on Cloudflare",
       "requirementsTitle": "Permissions to grant",
-      "requirementsIntro": "The link below requests these permissions. Required ones the app can't run without; optional ones you can uncheck to leave out. Then name the token and create it.",
+      "requirementsIntro": "Required permissions can't be removed; optional ones you can uncheck.",
       "permType": {
         "read": "Read",
         "edit": "Edit"

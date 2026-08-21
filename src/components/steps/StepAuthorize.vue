@@ -42,6 +42,12 @@ const dangerPermissions = computed(() => describePermissions(includedPermissions
 /** The token-creation link, pre-filled with the permissions still kept in. */
 const tokenLinkUrl = computed(() => buildTokenLinkUrl(includedPermissions.value));
 
+// After the token is accepted, auto mode confirms which permissions it was
+// created for. Cloudflare's verify call returns only that the token is active,
+// not its policies, so this reflects what the pre-filled link requested — the
+// permissions the user kept — rather than re-reading the token itself.
+const grantedRows = computed(() => describePermissions(includedPermissions.value));
+
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
 }
@@ -208,6 +214,15 @@ function detailOf(key: string): string {
   return statuses[key]?.detail || "";
 }
 
+// An optional account feature that simply isn't turned on is not a failure —
+// the app works without it — so it reads as "not enabled" rather than the red
+// "check failed" a required check gets.
+function effectiveStatus(check: { id: string; requirement: string }): string {
+  const status = statusOf(check.id);
+  if (check.requirement === "optional" && (status === "missing" || status === "error")) return "notEnabled";
+  return status;
+}
+
 const s3PairComplete = computed(() => {
   const key = wizard.credentials.r2AccessKeyId.trim();
   const secret = wizard.credentials.r2SecretAccessKey.trim();
@@ -350,10 +365,17 @@ function recheck() {
     <template v-else>
       <div class="guide-card">
         <h3>{{ t("authorize.grantedTitle") }}</h3>
-        <p class="field-help scope-codes" style="margin-top: 0">{{ wizard.oauthScope.join(" ") }}</p>
-        <WinButton v-if="wizard.authMode === 'oauth'" Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
-          {{ t("authorize.signInAgain") }}
-        </WinButton>
+        <template v-if="wizard.authMode === 'oauth'">
+          <p class="field-help scope-codes" style="margin-top: 0">{{ wizard.oauthScope.join(" ") }}</p>
+          <WinButton Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+            {{ t("authorize.signInAgain") }}
+          </WinButton>
+        </template>
+        <ul v-else class="plain-list" style="margin-top: 0">
+          <li v-for="row in grantedRows" :key="row.key">
+            {{ row.name }}<span class="field-tag optional">{{ t(`authorize.auto.permType.${row.type}`) }}</span>
+          </li>
+        </ul>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
       </div>
 
@@ -403,8 +425,8 @@ function recheck() {
                   </td>
                   <td>
                     <span v-if="hasAttempted" class="check-status" :title="detailOf(check.id)">
-                      <span class="check-dot" :class="`check-dot-${statusOf(check.id)}`" aria-hidden="true" />
-                      {{ t(`authorize.checkStatus.${statusOf(check.id)}`) }}
+                      <span class="check-dot" :class="`check-dot-${effectiveStatus(check)}`" aria-hidden="true" />
+                      {{ t(`authorize.checkStatus.${effectiveStatus(check)}`) }}
                     </span>
                     <span v-else class="check-status">—</span>
                   </td>
