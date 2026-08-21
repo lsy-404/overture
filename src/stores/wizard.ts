@@ -35,6 +35,7 @@ import { matchResource, type ResourceMatch } from "../lib/deploy/match";
 import { hostEndpointsFor } from "../lib/analyze/endpoints";
 import { scopesForEndpoints } from "../lib/analyze/permissions";
 import type { OAuthAccount, OAuthSessionState } from "../lib/relay";
+import { isKnownScope } from "../../shared/oauthScopes";
 import { usePolicy } from "./policy";
 
 /** Wizard page numbers, in the order the user walks them. */
@@ -163,9 +164,15 @@ export const useWizard = defineStore("wizard", () => {
 
   // What the recipe declares, narrowed by what this Overture instance can
   // actually complete: "auto" needs nothing from the operator, but "oauth"
-  // only works when they configured an OAuth client (policy.oauthEnabled).
+  // only works when they configured an OAuth client (policy.oauthEnabled) and
+  // that client was registered to hold every scope this deployment needs. When
+  // a needed scope sits outside the client's ceiling (oauthScopeShortfall),
+  // OAuth sign-in would fail at Cloudflare, so the mode is dropped here rather
+  // than offered and failed later — auto covers the deployment instead.
   const availableAuthModes = computed<AuthMode[]>(() =>
-    (recipe.value?.authModes ?? []).filter((mode) => mode === "auto" || policy.policy.oauthEnabled),
+    (recipe.value?.authModes ?? []).filter(
+      (mode) => mode === "auto" || (policy.policy.oauthEnabled && oauthScopeShortfall.value.length === 0),
+    ),
   );
   const hasAuthChoice = computed(() => availableAuthModes.value.length > 1);
   /** A recipe loaded, but nothing it declared is actually usable here. */
@@ -228,6 +235,15 @@ export const useWizard = defineStore("wizard", () => {
 
   /** The union an authorize request actually asks Cloudflare for. */
   const requestedScope = computed<string[]>(() => [...new Set([...appRequestedScope.value, ...hostBaselineScope.value])].sort());
+
+  /**
+   * The needed scopes the OAuth client was never registered to hold. Cloudflare
+   * would refuse an authorize request that names them, so their presence takes
+   * OAuth off the table for this deployment (see availableAuthModes). Empty is
+   * the normal case; a non-empty list is what the auth-method step shows when it
+   * explains why OAuth is not offered.
+   */
+  const oauthScopeShortfall = computed<string[]>(() => requestedScope.value.filter((scope) => !isKnownScope(scope)));
 
   const needsS3Keys = computed(() =>
     (recipe.value?.resources ?? []).some((resource) => resource.kind === "r2" && !!resource.s3Keys),
@@ -576,6 +592,7 @@ export const useWizard = defineStore("wizard", () => {
     appRequestedScope,
     hostBaselineScope,
     requestedScope,
+    oauthScopeShortfall,
     needsS3Keys,
     requiresS3Keys,
     workerName,

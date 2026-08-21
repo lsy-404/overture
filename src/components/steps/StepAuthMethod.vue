@@ -14,6 +14,11 @@ const wizard = useWizard();
 const ORDER: AuthMode[] = ["oauth", "auto"];
 const modes = computed(() => ORDER.filter((mode) => wizard.availableAuthModes.includes(mode)));
 
+// When the only reason nothing is offered is that OAuth would need scopes this
+// site's client cannot grant, the block says so and names them, instead of the
+// generic unavailable line.
+const scopeShortfall = computed(() => wizard.oauthScopeShortfall);
+
 function choose(mode: AuthMode) {
   wizard.setAuthMode(mode);
   wizard.goTo(STEPS.authorize);
@@ -27,7 +32,8 @@ function choose(mode: AuthMode) {
 
     <WinInfoBar v-if="wizard.noAuthModeAvailable" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
       <strong>{{ t("authMethod.notAvailable.title") }}</strong>
-      <p style="margin: 6px 0 0">{{ t("authMethod.notAvailable.body") }}</p>
+      <p v-if="scopeShortfall.length" style="margin: 6px 0 0">{{ t("authMethod.notAvailable.scopeShortfall", { scopes: scopeShortfall.join(" ") }) }}</p>
+      <p v-else style="margin: 6px 0 0">{{ t("authMethod.notAvailable.body") }}</p>
     </WinInfoBar>
 
     <button

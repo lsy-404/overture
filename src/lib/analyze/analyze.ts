@@ -29,6 +29,7 @@ import { METHOD_GATES } from "../sandbox/protocol";
 import type { Capability, Recipe, Requirement } from "../recipe/types";
 import { endpointPath, endpointsOfCapability, hostEndpointsFor } from "./endpoints";
 import { permissionsForEndpoints, scopeDeviation, scopesForEndpoints, type PermissionNeed } from "./permissions";
+import { isKnownScope } from "../../../shared/oauthScopes";
 import { scanRecipeScript, type NetworkTarget, type ScriptScan } from "./script";
 
 const MAX_FINDINGS = 60;
@@ -199,6 +200,17 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
   const { underReported, overReported } = scopeDeviation(reportedScopes, derivedScopes);
   if (underReported.length > 0) add("oauthScopeUnderReported", "warning", { scopes: clip(underReported.join(" ")) });
   if (overReported.length > 0) add("oauthScopeOverReported", "warning", { scopes: clip(overReported.join(" ")) });
+
+  // When the package offers OAuth sign-in, every scope its authorize request
+  // would carry has to sit within the scopes this Overture's OAuth client was
+  // registered to hold. Any that do not would make Cloudflare refuse the whole
+  // request, so the wizard drops OAuth for this deployment; recording them here
+  // is what tells the user why it was not offered.
+  if ((recipe.authModes ?? []).includes("oauth")) {
+    const wouldRequest = [...new Set([...reportedScopes, ...scopesForEndpoints(hostEndpointsFor(recipe))])];
+    const beyondCeiling = wouldRequest.filter((scope) => !isKnownScope(scope)).sort();
+    if (beyondCeiling.length > 0) add("oauthScopeBeyondCeiling", "warning", { scopes: clip(beyondCeiling.join(" ")) });
+  }
 
   // ---- account pre-flight checks ------------------------------------------
 
