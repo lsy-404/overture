@@ -131,7 +131,8 @@
       "passwordInVar": "「{input}」的值被写进了普通 Worker 变量 {var}，能进仪表盘的人都读得到。",
       "adoptsExisting": "这个应用会在你账户里找它已有的资源（{resources}），找到就直接写进去，而不是另建新的。",
       "oauthScopeUnderReported": "脚本似乎需要 {scopes}，但 recipe.json 声明的权限没有覆盖它们，登录时也就不会向 Cloudflare 申请这些权限。这些调用会在部署进行到一半时被拒绝。",
-      "oauthScopeOverReported": "recipe.json 声明的权限里要了 {scopes}，脚本里却没有用到。"
+      "oauthScopeOverReported": "recipe.json 声明的权限里要了 {scopes}，脚本里却没有用到。",
+      "oauthScopeBeyondCeiling": "此应用的 Cloudflare 登录会需要 {scopes}，而本 Overture 实例的登录未获授权授予这些权限。因此不提供登录方式，改用你自己粘贴的令牌安装。"
     },
     "uncertain": {
       "writeAssumed": "Cloudflare 在这里也列了只读组，但 recipe 要执行的语句需要写权限。",
@@ -153,7 +154,8 @@
     },
     "notAvailable": {
       "title": "这个应用无法在此连接",
-      "body": "这个应用只能通过“使用 Cloudflare 登录”连接，而这台 Overture 还没有配置这个功能。这里无法解决——换一台已经配置好的 Overture，或者请这台的管理者去配置。"
+      "body": "这个应用只能通过“使用 Cloudflare 登录”连接，而这台 Overture 还没有配置这个功能。这里无法解决——换一台已经配置好的 Overture，或者请这台的管理者去配置。",
+      "scopeShortfall": "这个应用需要的 Cloudflare 权限超出了这台 Overture 的“使用 Cloudflare 登录”获授权授予的范围：{scopes}。它没有声明其他连接方式，因此无法在这里安装——换一台 Overture，或者请这台的管理者放宽登录范围。"
     }
   },
   "authorize": {

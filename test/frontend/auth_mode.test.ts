@@ -103,6 +103,25 @@ policyA.policy.oauthEnabled = true;
 wizardA.adoptConfig(configWith(recipeWith(["oauth"])));
 const notBlockedOnceConfigured = wizardA.noAuthModeAvailable;
 
+// oauth is narrowed further by the client's own scope ceiling: a needed scope
+// the client was never registered to hold would fail at Cloudflare, so the mode
+// is dropped rather than offered. A made-up scope stands in for one outside any
+// real client's registration.
+policyA.policy.oauthEnabled = true;
+const scopeBeyond = { key: "beyond", requirement: "required" as const, oauthScopes: ["totally.madeup"] };
+wizardA.adoptConfig(configWith({ ...recipeWith(["oauth", "auto"]), permissions: [scopeBeyond] }));
+const oauthDroppedOnShortfall = [...wizardA.availableAuthModes];
+const shortfallListed = [...wizardA.oauthScopeShortfall];
+
+// The same shortfall when oauth is the only declared mode is a dead end to block.
+wizardA.adoptConfig(configWith({ ...recipeWith(["oauth"]), permissions: [scopeBeyond] }));
+const blockedOnShortfall = wizardA.noAuthModeAvailable;
+
+// A declared scope that is within the ceiling keeps oauth on offer.
+const scopeWithin = { key: "within", requirement: "required" as const, oauthScopes: ["d1.write"] };
+wizardA.adoptConfig(configWith({ ...recipeWith(["oauth", "auto"]), permissions: [scopeWithin] }));
+const oauthKeptWithinCeiling = [...wizardA.availableAuthModes];
+
 // No recipe loaded yet is not the same as "blocked" — nothing to block on.
 setActivePinia(createPinia());
 const notBlockedBeforeAnyRecipe = useWizard().noAuthModeAvailable;
@@ -186,6 +205,13 @@ const checks: Array<[string, boolean, string?]> = [
   ["a recipe declaring only auto is unaffected by the oauth flag", autoOnlyUnaffected.length === 1 && autoOnlyUnaffected[0] === "auto"],
   ["an oauth-only recipe on an unconfigured server has zero available modes", blockedWhenOauthOnlyAndUnconfigured === true],
   ["the same recipe is usable once the server configures oauth", notBlockedOnceConfigured === false],
+  ["a needed scope outside the oauth client's ceiling drops oauth but keeps auto",
+    oauthDroppedOnShortfall.length === 1 && oauthDroppedOnShortfall[0] === "auto"],
+  ["the out-of-ceiling scope is surfaced for the not-available copy",
+    shortfallListed.length === 1 && shortfallListed[0] === "totally.madeup"],
+  ["an oauth-only recipe needing an out-of-ceiling scope has zero available modes", blockedOnShortfall === true],
+  ["a declared scope within the ceiling keeps oauth available",
+    oauthKeptWithinCeiling.length === 2 && oauthKeptWithinCeiling.includes("oauth")],
   ["no recipe loaded is not treated as a blocked deployment", notBlockedBeforeAnyRecipe === false],
 
   ["adoptConfig resets authMode to null for the newly loaded recipe", modeAfterReset === null],
