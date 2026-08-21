@@ -292,11 +292,11 @@ function recheck() {
         <div class="guide-card">
           <h3>{{ t("authorize.auto.requirementsTitle") }}</h3>
           <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.requirementsBaseline") }}</p>
+          <p class="field-help">{{ t("authorize.auto.templateHint") }}</p>
           <template v-if="cfApiTokenSecret">
-            <p class="field-help">{{ t("authorize.auto.requirementsAppIntro") }}</p>
+            <p class="field-help">{{ t("authorize.auto.mintsIntro") }}</p>
             <p class="field-help scope-codes">{{ cfApiTokenSecret.groups?.join(", ") }}</p>
           </template>
-          <p v-else class="field-help">{{ t("authorize.auto.requirementsFallback") }}</p>
         </div>
         <p class="field-help">{{ t("authorize.auto.intro") }}</p>
         <a class="btn" :href="CF_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>

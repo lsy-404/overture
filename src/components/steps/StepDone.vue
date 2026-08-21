@@ -84,11 +84,16 @@ function finish() {
 
     <h1 class="step-title">{{ t("done.title", { app: wizard.recipe?.name || "" }) }}</h1>
 
-    <template v-if="result?.url">
-      <p class="field-help">{{ t("done.urlLabel") }}</p>
-      <p style="margin: 4px 0 16px; word-break: break-all">{{ result.url }}</p>
-      <a :href="result.url" target="_blank" rel="noreferrer" class="btn open-link">{{ t("done.openLink") }} ↗</a>
-    </template>
+    <div v-if="result?.url" class="guide-card url-card">
+      <h3>{{ t("done.urlLabel") }}</h3>
+      <code class="url-text">{{ result.url }}</code>
+      <div class="url-actions">
+        <WinButton @Click="copy(result.url, 'url')">
+          {{ copiedField === "url" ? t("common.copied") : t("common.copy") }}
+        </WinButton>
+        <a :href="result.url" target="_blank" rel="noreferrer" class="btn">{{ t("done.openLink") }} ↗</a>
+      </div>
+    </div>
 
     <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
       {{ t("done.propagationNotice") }}
@@ -134,8 +139,19 @@ function finish() {
 </template>
 
 <style scoped>
-.open-link {
-  width: 100%;
+.url-text {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  word-break: break-all;
+  color: var(--text-primary);
+  margin: 6px 0 12px;
+}
+
+.url-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .link-row {
