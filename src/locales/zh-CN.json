@@ -210,7 +210,7 @@
       "placeholder": "把令牌粘贴到这里",
       "tokenLinkLabel": "去 Cloudflare 创建令牌",
       "requirementsTitle": "要授予的权限",
-      "requirementsIntro": "下面的链接已经帮你选好了这些权限——只需要给令牌起个名字然后创建。",
+      "requirementsIntro": "下面的链接会申请这些权限。必需项是应用运行必须的；可选项可以取消勾选、不放进去。之后给令牌起个名字创建即可。",
       "permType": {
         "read": "只读",
         "edit": "可修改"
