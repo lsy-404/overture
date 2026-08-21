@@ -389,8 +389,17 @@ function check(errors: Errors, path: string, value: unknown): RecipeCheck | unde
   const label = localized(errors, `${path}.label`, raw.label, true);
   const cfPath = apiPath(errors, `${path}.path`, raw.path);
   const hint = raw.hint === undefined ? undefined : localized(errors, `${path}.hint`, raw.hint, false);
+  let actionUrl: string | undefined;
+  if (raw.actionUrl !== undefined) {
+    const value = str(errors, `${path}.actionUrl`, raw.actionUrl, false, MAX_NAME_CHARS);
+    if (value !== undefined && !value.startsWith("https://dash.cloudflare.com/")) {
+      errors.add(`${path}.actionUrl`, "must be a https://dash.cloudflare.com/ link");
+    } else {
+      actionUrl = value;
+    }
+  }
   if (!id || !requirement || !label || !cfPath) return undefined;
-  return { id, requirement, label, path: cfPath, ...(hint === undefined ? {} : { hint }) };
+  return { id, requirement, label, path: cfPath, ...(hint === undefined ? {} : { hint }), ...(actionUrl === undefined ? {} : { actionUrl }) };
 }
 
 /**

@@ -214,12 +214,14 @@ function detailOf(key: string): string {
   return statuses[key]?.detail || "";
 }
 
-// An optional account feature that simply isn't turned on is not a failure —
-// the app works without it — so it reads as "not enabled" rather than the red
-// "check failed" a required check gets.
-function effectiveStatus(check: { id: string; requirement: string }): string {
+// A feature that simply isn't turned on is not a failure — an optional one the
+// app works without, and a required one the user just has to switch on (a check
+// that carries an actionUrl points them straight at where). Either reads as
+// "not enabled" with the fix to hand, not the red "check failed" of a genuine
+// error.
+function effectiveStatus(check: { id: string; requirement: string; actionUrl?: string }): string {
   const status = statusOf(check.id);
-  if (check.requirement === "optional" && (status === "missing" || status === "error")) return "notEnabled";
+  if ((check.requirement === "optional" || check.actionUrl) && (status === "missing" || status === "error")) return "notEnabled";
   return status;
 }
 
@@ -423,6 +425,13 @@ function recheck() {
                   <td>
                     {{ localized(check.label, locale) }}
                     <p v-if="check.hint" class="group-list">{{ localized(check.hint, locale) }}</p>
+                    <a
+                      v-if="check.actionUrl && hasAttempted && effectiveStatus(check) === 'notEnabled'"
+                      :href="check.actionUrl"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="field-help"
+                    >{{ t("authorize.checkActionOpen") }}</a>
                   </td>
                   <td>
                     <span v-if="hasAttempted" class="check-status" :title="detailOf(check.id)">

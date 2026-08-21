@@ -111,6 +111,13 @@ export interface RecipeCheck {
   /** CF API path, `${accountId}` interpolated. */
   path: Interpolated;
   hint?: Localized;
+  /**
+   * A Cloudflare dashboard link that turns the checked feature on (e.g. the R2
+   * page when R2 is not enabled). Restricted to `dash.cloudflare.com` so a
+   * recipe cannot point it elsewhere. When present, a check that is not "ok"
+   * reads as "not enabled" with this as the fix, rather than a hard failure.
+   */
+  actionUrl?: string;
 }
 
 export type ResourceKind = "d1" | "r2" | "kv";

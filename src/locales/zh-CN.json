@@ -183,6 +183,7 @@
     "accountsHelp": "选择要安装到哪个 Cloudflare 账号。",
     "checksTitle": "账号预检",
     "checksHelp": "在创建任何资源之前，对你的账号做的只读检查。",
+    "checkActionOpen": "去 Cloudflare 开启 →",
     "checkLabel": "检查项",
     "recheck": "重测",
     "verifying": "检查中…",
