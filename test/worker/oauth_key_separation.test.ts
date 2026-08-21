@@ -54,6 +54,7 @@ async function run(): Promise<void> {
       accounts: [{ id: "0123456789abcdef0123456789abcdef", name: "Test Account" }],
       pkg: "a".repeat(64),
       expiresAt: Math.floor(Date.now() / 1000) + 3599,
+      mode: "oauth",
     },
     MASTER,
   );

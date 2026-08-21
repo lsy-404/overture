@@ -24,8 +24,6 @@ import type { Context } from "hono";
 import { formatScopeParam } from "../shared/oauthScopes";
 import { jsonResponse } from "./http";
 import {
-  decryptSession,
-  encryptSession,
   expireCookie,
   generateStateNonce,
   hashStateNonce,
@@ -33,12 +31,16 @@ import {
   parseAndValidateScope,
   parseCookies,
   serializeCookie,
+  sessionView,
   signStateCookie,
   STATE_COOKIE_MAX_AGE_SECONDS,
   stateNonceMatches,
   verifyStateCookie,
   type SessionAccount,
+  type SessionPayload,
 } from "./oauth";
+import { selfDeleteAccountToken } from "./cfTokens";
+import { OV_SESSION_COOKIE, readSession, sealSessionCookie, SESSION_COOKIE_OPTS } from "./session";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
@@ -47,19 +49,16 @@ const CF_TOKEN_URL = "https://dash.cloudflare.com/oauth2/token";
 const CF_REVOKE_URL = "https://dash.cloudflare.com/oauth2/revoke";
 const CF_ACCOUNTS_URL = "https://api.cloudflare.com/client/v4/accounts";
 
-// Both cookies carry the __Host- prefix: host-only, so a sibling host on the
-// same registrable domain (an attacker-controlled package deployed to
-// music.example.com against an Overture on deploy.example.com) cannot toss a
-// cookie of either name up to the parent domain. That is what stops a login-CSRF
-// fixation, so ov_state needs it as much as ov_session — and __Host- forces
-// Path=/, which is why the state cookie is no longer scoped to /oauth.
+// The state cookie carries the same __Host- prefix as ov_session
+// (worker/session.ts): host-only, so a sibling host on the same registrable
+// domain (an attacker-controlled package deployed to music.example.com
+// against an Overture on deploy.example.com) cannot toss a cookie of either
+// name up to the parent domain. That is what stops a login-CSRF fixation.
 const OV_STATE_COOKIE = "__Host-ov_state";
-const OV_SESSION_COOKIE = "__Host-ov_session";
 // SameSite=Lax on ov_state only: it has to survive the top-level, cross-site
 // navigation that Cloudflare's own consent-page redirect back to
 // /oauth/callback performs. ov_session has no such requirement and stays Strict.
 const STATE_COOKIE_OPTS = { path: "/", sameSite: "Lax" as const };
-const SESSION_COOKIE_OPTS = { path: "/", sameSite: "Strict" as const };
 
 function now(): number {
   return Math.floor(Date.now() / 1000);
@@ -120,6 +119,7 @@ const FAILURE = {
   badState: "This sign-in attempt could not be verified. Go back and try connecting to Cloudflare again.",
   tokenExchange: "Could not complete sign-in with Cloudflare. Go back and try again.",
   accounts: "Signed in, but could not read your Cloudflare account list. Go back and try again.",
+  selfDeleteFailed: "Could not automatically revoke this token. Delete it from your Cloudflare dashboard.",
 } as const;
 
 function callbackHeaders(): Headers {
@@ -223,17 +223,18 @@ export async function handleOauthCallback(c: RelayContext): Promise<Response> {
   // against the same known-scope directory.
   const grantedScope = parseAndValidateScope(token.scope || "") ?? statePayload.scope;
 
-  const sessionCookieValue = await encryptSession(
-    { token: token.access_token, scope: grantedScope, accounts, pkg: statePayload.pkg, expiresAt },
-    c.env.OAUTH_COOKIE_KEY,
-  );
+  const session: SessionPayload = {
+    token: token.access_token,
+    scope: grantedScope,
+    accounts,
+    pkg: statePayload.pkg,
+    expiresAt,
+    mode: "oauth",
+  };
 
   const headers = callbackHeaders();
   headers.append("Set-Cookie", clearState);
-  headers.append(
-    "Set-Cookie",
-    serializeCookie(OV_SESSION_COOKIE, sessionCookieValue, { ...SESSION_COOKIE_OPTS, maxAgeSeconds: expiresIn }),
-  );
+  headers.append("Set-Cookie", await sealSessionCookie(session, c.env.OAUTH_COOKIE_KEY));
 
   // No token, scope, or account data leaves this response — the opener reads
   // all of that back through GET /oauth/session, which never echoes the
@@ -246,36 +247,11 @@ export async function handleOauthCallback(c: RelayContext): Promise<Response> {
   return new Response(body, { status: 200, headers });
 }
 
-function sessionResponseBody(session: {
-  scope: string[];
-  accounts: SessionAccount[];
-  accountId?: string;
-  pkg: string;
-  expiresAt: number;
-}) {
-  return {
-    authorized: true,
-    scope: session.scope,
-    accounts: session.accounts,
-    accountId: session.accountId,
-    pkg: session.pkg,
-    expiresAt: session.expiresAt,
-  };
-}
-
-async function readSession(c: RelayContext) {
-  const cookie = parseCookies(c.req.header("Cookie"))[OV_SESSION_COOKIE];
-  if (!cookie) return null;
-  const session = await decryptSession(cookie, c.env.OAUTH_COOKIE_KEY);
-  if (!session || session.expiresAt <= now()) return null;
-  return session;
-}
-
 // GET /oauth/session — read-only session status. Never returns the token.
 export async function handleOauthSessionGet(c: RelayContext): Promise<Response> {
   const session = await readSession(c);
   if (!session) return jsonResponse(c, 200, { authorized: false });
-  return jsonResponse(c, 200, sessionResponseBody(session));
+  return jsonResponse(c, 200, sessionView(session));
 }
 
 // POST /oauth/session { accountId } — records which of the already-authorized
@@ -304,35 +280,51 @@ export async function handleOauthSessionPost(c: RelayContext): Promise<Response>
     return jsonResponse(c, 403, { ok: false, error: "accountId is not one of this session's authorized accounts" });
   }
 
-  const updated = { ...session, accountId };
-  const cookieValue = await encryptSession(updated, c.env.OAUTH_COOKIE_KEY);
+  const updated: SessionPayload = { ...session, accountId };
   const headers = new Headers({ "Content-Type": "application/json" });
-  headers.append(
-    "Set-Cookie",
-    serializeCookie(OV_SESSION_COOKIE, cookieValue, { ...SESSION_COOKIE_OPTS, maxAgeSeconds: updated.expiresAt - now() }),
-  );
-  return new Response(JSON.stringify(sessionResponseBody(updated)), { status: 200, headers });
+  headers.append("Set-Cookie", await sealSessionCookie(updated, c.env.OAUTH_COOKIE_KEY));
+  return new Response(JSON.stringify(sessionView(updated)), { status: 200, headers });
 }
 
-// POST /oauth/revoke — best-effort upstream revoke, unconditional local clear.
+// POST /oauth/revoke — clears the local cookie unconditionally, but how the
+// credential itself is torn down depends on how the session got it: oauth
+// revokes upstream through the OAuth client (best-effort — the token also
+// just expires on its own); auto self-deletes the pasted token with itself as
+// bearer, which is not best-effort — a long-lived token that failed to delete
+// is a real credential still sitting in the visitor's Cloudflare account, so
+// that failure is reported rather than swallowed; manual never touches the
+// user's own token.
 export async function handleOauthRevoke(c: RelayContext): Promise<Response> {
   const session = await readSession(c);
+  let ok = true;
+  let error: string | undefined;
+
   if (session) {
-    try {
-      await fetch(CF_REVOKE_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${basicAuth(c.env.OAUTH_CLIENT_ID, c.env.OAUTH_CLIENT_SECRET)}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: new URLSearchParams({ token_type_hint: "access_token", token: session.token }).toString(),
-      });
-    } catch {
-      // The local cookie clears regardless — see the function comment above.
+    if (session.mode === "oauth") {
+      try {
+        await fetch(CF_REVOKE_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Basic ${basicAuth(c.env.OAUTH_CLIENT_ID, c.env.OAUTH_CLIENT_SECRET)}`,
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: new URLSearchParams({ token_type_hint: "access_token", token: session.token }).toString(),
+        });
+      } catch {
+        // Best-effort: the local cookie clears regardless.
+      }
+    } else if (session.mode === "auto") {
+      const accountId = session.accountId ?? session.accounts[0]?.id;
+      const deleted = accountId ? await selfDeleteAccountToken(session.token, accountId) : false;
+      if (!deleted) {
+        ok = false;
+        error = FAILURE.selfDeleteFailed;
+      }
     }
+    // manual: the pasted token is the user's own; only the local cookie clears.
   }
 
-  const headers = new Headers();
+  const headers = new Headers({ "Content-Type": "application/json" });
   headers.append("Set-Cookie", expireCookie(OV_SESSION_COOKIE, SESSION_COOKIE_OPTS));
-  return new Response(null, { status: 204, headers });
+  return new Response(JSON.stringify({ ok, ...(error ? { error } : {}) }), { status: 200, headers });
 }
