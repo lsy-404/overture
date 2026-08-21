@@ -138,6 +138,24 @@
       "zoneMayBeNeeded": "绑自定义域会连带动到 zone 的 DNS 和证书，可能还需要 zone 级的权限。"
     }
   },
+  "authMethod": {
+    "title": "选择连接方式",
+    "subtitle": "选择这个应用要如何获得在你 Cloudflare 账号里操作的权限。",
+    "modes": {
+      "oauth": {
+        "title": "标准",
+        "description": "登录你的 Cloudflare 账号。这是最简单的方式——不用创建或粘贴任何东西。"
+      },
+      "auto": {
+        "title": "自动",
+        "description": "只需粘贴一个令牌，其余的都会自动完成，事后也不会留下任何东西。"
+      },
+      "manual": {
+        "title": "手动",
+        "description": "会告诉你要创建什么，你自己创建令牌，然后粘贴进来。"
+      }
+    }
+  },
   "authorize": {
     "title": "登录 Cloudflare",
     "subtitle": "登录你的 Cloudflare 账号，才能把这个应用安装进去。你需要批准下面列出的这些权限。",
@@ -175,7 +193,35 @@
     "r2SecretAccessKey": "R2 Secret Access Key",
     "r2KeyHelp": "R2 的 S3 密钥对。之所以要填，是因为这个包会用它直连存储桶。",
     "r2KeysPairRequired": "两个 R2 密钥字段要么都填，要么都留空。",
-    "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。"
+    "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。",
+    "auto": {
+      "title": "粘贴一个安装令牌",
+      "subtitle": "粘贴一个 Cloudflare 令牌，这个应用才能安装。之后的步骤 Overture 会自动完成。",
+      "intro": "这个令牌只用来完成安装。安装完成后，Overture 会自动删除它。",
+      "tokenLabel": "安装令牌",
+      "placeholder": "把令牌粘贴到这里",
+      "tokenLinkLabel": "去 Cloudflare 创建令牌",
+      "requirementsTitle": "这个令牌需要什么权限",
+      "requirementsBaseline": "这个令牌必须包含 Account API Tokens Write。有了它，Overture 才能为这个应用另外创建一个更小、长期使用的令牌。",
+      "requirementsAppIntro": "以及下面这些，这样应用安装完之后才能继续运行：",
+      "requirementsFallback": "这个应用不需要自己的长期令牌，按上面已经列出的权限来就够了。",
+      "selfDeleteNote": "安装完成后，这个令牌会自动删除，不会留下任何东西。",
+      "submit": "继续",
+      "submitting": "连接中…"
+    },
+    "manual": {
+      "title": "创建你自己的令牌",
+      "subtitle": "创建一个包含下列全部权限的 Cloudflare 令牌，然后粘贴到这里。",
+      "intro": "创建一个 Cloudflare 令牌，涵盖这个应用需要的一切——用它来部署，之后如果应用需要长期凭证，用的也是它。",
+      "tokenLabel": "你的令牌",
+      "placeholder": "把令牌粘贴到这里",
+      "tokenLinkLabel": "去 Cloudflare 创建令牌",
+      "requirementsTitle": "要授予的权限",
+      "requirementsAppIntro": "创建令牌时，勾选下面这些权限：",
+      "requirementsFallback": "没有确切的权限清单——请尽量对照上面已经列出的权限来创建，越接近越好。",
+      "submit": "继续",
+      "submitting": "连接中…"
+    }
   },
   "target": {
     "title": "Worker 与存储",
@@ -264,7 +310,8 @@
     "secretSources": {
       "accountId": "你的 Cloudflare Account ID",
       "r2AccessKeyId": "你的 R2 Access Key ID",
-      "r2SecretAccessKey": "你的 R2 Secret Access Key"
+      "r2SecretAccessKey": "你的 R2 Secret Access Key",
+      "cfApiToken": "你的 Cloudflare 令牌，为这个应用创建"
     },
     "confirm": "开始部署",
     "confirmWait": "开始部署（{seconds}s）"
@@ -276,6 +323,7 @@
     "failedTitle": "部署失败",
     "failedAt": "失败步骤：{step}",
     "retryFromHere": "重试会从头再跑一遍整个部署，已经建好的资源会被复用。",
+    "autoTokenCleanupFailed": "这次部署已经成功，但安装令牌未能自动删除，仍然有效——请自己去 Cloudflare 控制台把它删掉。",
     "hostSteps": {
       "health": "检查部署是否响应"
     },

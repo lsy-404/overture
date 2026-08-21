@@ -138,6 +138,24 @@
       "zoneMayBeNeeded": "Attaching a custom domain also touches the zone's DNS and certificate, so a zone-level permission may be needed as well."
     }
   },
+  "authMethod": {
+    "title": "Choose how to connect",
+    "subtitle": "Pick how this app gets permission to work in your Cloudflare account.",
+    "modes": {
+      "oauth": {
+        "title": "Standard",
+        "description": "Sign in with your Cloudflare account. It's the simplest option — nothing to create or paste."
+      },
+      "auto": {
+        "title": "Automatic",
+        "description": "Paste one token once. Overture handles everything else automatically, and nothing is left behind afterward."
+      },
+      "manual": {
+        "title": "Manual",
+        "description": "You're shown exactly what to create. Build the token yourself and paste it in."
+      }
+    }
+  },
   "authorize": {
     "title": "Sign in to Cloudflare",
     "subtitle": "Sign in with your Cloudflare account so this app can be installed into it. You'll be asked to approve the permissions listed below.",
@@ -175,7 +193,35 @@
     "r2SecretAccessKey": "R2 Secret Access Key",
     "r2KeyHelp": "An R2 S3 key pair, asked for because this package uses one for direct bucket access.",
     "r2KeysPairRequired": "Provide both R2 key fields, or leave both empty.",
-    "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check."
+    "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check.",
+    "auto": {
+      "title": "Paste a setup token",
+      "subtitle": "Paste a Cloudflare token so this app can be installed. Overture handles the rest automatically.",
+      "intro": "This token is only used to complete the install. Once it's done, Overture deletes it automatically.",
+      "tokenLabel": "Setup token",
+      "placeholder": "Paste the token here",
+      "tokenLinkLabel": "Create a token on Cloudflare",
+      "requirementsTitle": "What this token needs",
+      "requirementsBaseline": "The token must include Account API Tokens Write. That's what lets Overture create a smaller, long-term token for the app.",
+      "requirementsAppIntro": "And everything below, so the app can keep working after install:",
+      "requirementsFallback": "This app doesn't need a long-term token of its own, so the permissions already listed above are all that's required.",
+      "selfDeleteNote": "Once the install finishes, this token deletes itself. Nothing is kept.",
+      "submit": "Continue",
+      "submitting": "Connecting…"
+    },
+    "manual": {
+      "title": "Create your own token",
+      "subtitle": "Create a Cloudflare token with the exact permissions listed below, then paste it in.",
+      "intro": "You'll create one Cloudflare token that covers everything this app needs — to deploy now, and as its own credential afterward if it needs one.",
+      "tokenLabel": "Your token",
+      "placeholder": "Paste the token here",
+      "tokenLinkLabel": "Create a token on Cloudflare",
+      "requirementsTitle": "Permissions to grant",
+      "requirementsAppIntro": "Check exactly these permissions when you create the token:",
+      "requirementsFallback": "There's no exact list for this app — match the permissions already listed above as closely as Cloudflare's token screen allows.",
+      "submit": "Continue",
+      "submitting": "Connecting…"
+    }
   },
   "target": {
     "title": "Worker and storage",
@@ -264,7 +310,8 @@
     "secretSources": {
       "accountId": "Your Cloudflare account ID",
       "r2AccessKeyId": "Your R2 access key ID",
-      "r2SecretAccessKey": "Your R2 secret access key"
+      "r2SecretAccessKey": "Your R2 secret access key",
+      "cfApiToken": "Your Cloudflare token for this app"
     },
     "confirm": "Deploy now",
     "confirmWait": "Deploy now ({seconds}s)"
@@ -276,6 +323,7 @@
     "failedTitle": "Deployment failed",
     "failedAt": "Failed at step: {step}",
     "retryFromHere": "Retrying restarts the whole deployment. Anything already created is reused.",
+    "autoTokenCleanupFailed": "The setup token could not delete itself after this deploy and is still active. Delete it yourself from the Cloudflare dashboard.",
     "hostSteps": {
       "health": "Check that the deployment answers"
     },
