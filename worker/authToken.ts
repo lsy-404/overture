@@ -13,23 +13,22 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// POST /auth/token accepts a Cloudflare API token the visitor pasted in
-// (auto: expected to carry Account API Tokens Write; manual: already narrow)
-// and — after verifying it against Cloudflare itself, never trusting its
-// shape alone — seals it into the same __Host-ov_session cookie the OAuth
-// callback fills, so worker/cfProxy.ts injects it into /cf/* exactly the same
-// way regardless of mode. POST /auth/token/revoke-self ends an auto-mode
-// session by deleting the pasted token with itself as bearer; the deploy
-// orchestrator calls it once the minted application token (worker/mintToken.ts)
-// is already written into the app's own Secret, never before, since that PUT
-// is itself authorized by this same session.
+// POST /auth/token accepts a Cloudflare API token the visitor pasted in —
+// their own long-lived credential, expected to carry exactly the permission
+// groups the recipe declared — and, after verifying it against Cloudflare
+// itself, never trusting its shape alone, seals it into the same
+// __Host-ov_session cookie the OAuth callback fills, so worker/cfProxy.ts
+// injects it into /cf/* exactly the same way regardless of mode. There is no
+// minting and no self-delete: the pasted token is the user's own object, and
+// it is also the app's runtime credential once the deploy writes it into the
+// app's Secret.
 
 import type { Context } from "hono";
-import { expireCookie, isValidPackageHash, sessionView, type SessionPayload } from "./oauth";
-import { OV_SESSION_COOKIE, readSession, sealSessionCookie, SESSION_COOKIE_OPTS } from "./session";
+import { isValidPackageHash, sessionView, type SessionPayload } from "./oauth";
+import { sealSessionCookie } from "./session";
 import { jsonResponse } from "./http";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
-import { listAccountsForToken, selfDeleteAccountToken, verifyAccountToken } from "./cfTokens";
+import { listAccountsForToken, verifyAccountToken } from "./cfTokens";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
@@ -41,12 +40,11 @@ const MAX_TOKEN_CHARS = 4096;
 
 const FAILURE = {
   invalidToken: "Could not verify this token with Cloudflare. Check that it is active and try again.",
-  selfDeleteFailed: "Could not automatically revoke this token. Delete it from your Cloudflare dashboard.",
 } as const;
 
 interface AuthTokenRequest {
   token: string;
-  mode: "auto" | "manual";
+  mode: "auto";
   pkg: string;
 }
 
@@ -60,7 +58,7 @@ function isPlausibleToken(value: unknown): value is string {
 function isAuthTokenRequest(body: unknown): body is AuthTokenRequest {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  return isPlausibleToken(b.token) && (b.mode === "auto" || b.mode === "manual") && typeof b.pkg === "string";
+  return isPlausibleToken(b.token) && b.mode === "auto" && typeof b.pkg === "string";
 }
 
 export async function handleAuthToken(c: RelayContext): Promise<Response> {
@@ -121,25 +119,4 @@ export async function handleAuthToken(c: RelayContext): Promise<Response> {
   const headers = new Headers({ "Content-Type": "application/json" });
   headers.append("Set-Cookie", await sealSessionCookie(session, c.env.OAUTH_COOKIE_KEY));
   return new Response(JSON.stringify(sessionView(session)), { status: 200, headers });
-}
-
-// POST /auth/token/revoke-self — only ever meaningful in auto mode: manual's
-// token is the user's own, and oauth has no Account API Token to delete.
-export async function handleRevokeSelf(c: RelayContext): Promise<Response> {
-  const session = await readSession(c);
-  if (!session || session.mode !== "auto") {
-    return jsonResponse(c, 403, { ok: false, error: "Self-revoke is only available for the automatic authentication mode" });
-  }
-
-  const accountId = session.accountId ?? session.accounts[0]?.id;
-  const deleted = accountId ? await selfDeleteAccountToken(session.token, accountId) : false;
-
-  const headers = new Headers({ "Content-Type": "application/json" });
-  headers.append("Set-Cookie", expireCookie(OV_SESSION_COOKIE, SESSION_COOKIE_OPTS));
-  if (!deleted) {
-    // Not silent: the powerful token is still live in the visitor's Cloudflare
-    // account, and this Worker keeps no record to retry the deletion with.
-    return new Response(JSON.stringify({ ok: false, error: FAILURE.selfDeleteFailed }), { status: 200, headers });
-  }
-  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
 }

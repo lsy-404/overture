@@ -39,7 +39,6 @@ import {
   type SessionAccount,
   type SessionPayload,
 } from "./oauth";
-import { selfDeleteAccountToken } from "./cfTokens";
 import { OV_SESSION_COOKIE, readSession, sealSessionCookie, SESSION_COOKIE_OPTS } from "./session";
 
 type RelayContext = Context<{ Bindings: Env }>;
@@ -119,7 +118,6 @@ const FAILURE = {
   badState: "This sign-in attempt could not be verified. Go back and try connecting to Cloudflare again.",
   tokenExchange: "Could not complete sign-in with Cloudflare. Go back and try again.",
   accounts: "Signed in, but could not read your Cloudflare account list. Go back and try again.",
-  selfDeleteFailed: "Could not automatically revoke this token. Delete it from your Cloudflare dashboard.",
 } as const;
 
 function callbackHeaders(): Headers {
@@ -286,45 +284,31 @@ export async function handleOauthSessionPost(c: RelayContext): Promise<Response>
   return new Response(JSON.stringify(sessionView(updated)), { status: 200, headers });
 }
 
-// POST /oauth/revoke — clears the local cookie unconditionally, but how the
-// credential itself is torn down depends on how the session got it: oauth
-// revokes upstream through the OAuth client (best-effort — the token also
-// just expires on its own); auto self-deletes the pasted token with itself as
-// bearer, which is not best-effort — a long-lived token that failed to delete
-// is a real credential still sitting in the visitor's Cloudflare account, so
-// that failure is reported rather than swallowed; manual never touches the
-// user's own token.
+// POST /oauth/revoke — clears the local cookie unconditionally. Only oauth
+// mode also tears down the credential itself, best-effort, through the OAuth
+// client's upstream revoke (the token also just expires on its own). auto's
+// pasted token is the user's own long-lived credential — the same object
+// that is also the app's runtime credential once deployed — so Overture has
+// no business deleting it; revoke only ever clears the local cookie there.
 export async function handleOauthRevoke(c: RelayContext): Promise<Response> {
   const session = await readSession(c);
-  let ok = true;
-  let error: string | undefined;
 
-  if (session) {
-    if (session.mode === "oauth") {
-      try {
-        await fetch(CF_REVOKE_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Basic ${basicAuth(c.env.OAUTH_CLIENT_ID, c.env.OAUTH_CLIENT_SECRET)}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
-          body: new URLSearchParams({ token_type_hint: "access_token", token: session.token }).toString(),
-        });
-      } catch {
-        // Best-effort: the local cookie clears regardless.
-      }
-    } else if (session.mode === "auto") {
-      const accountId = session.accountId ?? session.accounts[0]?.id;
-      const deleted = accountId ? await selfDeleteAccountToken(session.token, accountId) : false;
-      if (!deleted) {
-        ok = false;
-        error = FAILURE.selfDeleteFailed;
-      }
+  if (session?.mode === "oauth") {
+    try {
+      await fetch(CF_REVOKE_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${basicAuth(c.env.OAUTH_CLIENT_ID, c.env.OAUTH_CLIENT_SECRET)}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({ token_type_hint: "access_token", token: session.token }).toString(),
+      });
+    } catch {
+      // Best-effort: the local cookie clears regardless.
     }
-    // manual: the pasted token is the user's own; only the local cookie clears.
   }
 
   const headers = new Headers({ "Content-Type": "application/json" });
   headers.append("Set-Cookie", expireCookie(OV_SESSION_COOKIE, SESSION_COOKIE_OPTS));
-  return new Response(JSON.stringify({ ok, ...(error ? { error } : {}) }), { status: 200, headers });
+  return new Response(JSON.stringify({ ok: true }), { status: 200, headers });
 }

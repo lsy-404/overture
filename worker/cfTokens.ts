@@ -17,9 +17,10 @@
 // different namespace from both the dotted OAuth scopes (shared/oauthScopes.ts)
 // and the classic user-token endpoints. Every function here is authenticated
 // with whatever token the caller passes in and scoped to one account; none of
-// them ever see the __Host-ov_session cookie or a Hono Context. Cloudflare
-// itself refuses to let a minted token hold token-management permissions
-// (error 1001), so a token this file mints can never call itself.
+// them ever see the __Host-ov_session cookie or a Hono Context. Used only to
+// confirm a pasted token is real before it is sealed into the session
+// (worker/authToken.ts) — there is no minting here, since auto mode's token
+// is the user's own long-lived object, not something Overture creates.
 
 const CF_API_BASE = "https://api.cloudflare.com/client/v4";
 
@@ -76,95 +77,4 @@ export async function verifyAccountToken(token: string, accountId: string): Prom
     return null;
   }
   return { id: envelope.result.id };
-}
-
-interface PermissionGroupsEnvelope {
-  success?: boolean;
-  result?: Array<{ id?: string; name?: string }>;
-}
-
-/** Title-Case permission-group name -> id, resolved against one account. Null on any upstream failure. */
-export async function fetchPermissionGroupIds(token: string, accountId: string): Promise<Map<string, string> | null> {
-  let res: Response;
-  try {
-    res = await fetch(`${CF_API_BASE}/accounts/${accountId}/tokens/permission_groups`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  } catch {
-    return null;
-  }
-  let envelope: PermissionGroupsEnvelope;
-  try {
-    envelope = (await res.json()) as PermissionGroupsEnvelope;
-  } catch {
-    return null;
-  }
-  if (!res.ok || !envelope.success || !Array.isArray(envelope.result)) return null;
-  const byName = new Map<string, string>();
-  for (const group of envelope.result) {
-    if (typeof group.id === "string" && typeof group.name === "string") byName.set(group.name, group.id);
-  }
-  return byName;
-}
-
-interface MintEnvelope {
-  success?: boolean;
-  result?: { value?: string };
-}
-
-/**
- * Mints a token on `accountId` scoped to exactly `groupIds`, full account
- * resource. Returns the minted value — Cloudflare hands it back only this
- * once — or null on any failure. Never includes a token-management group:
- * Cloudflare itself would refuse that (error 1001) on a token minted by a
- * token rather than a user.
- */
-export async function mintAccountToken(powerfulToken: string, accountId: string, groupIds: string[]): Promise<string | null> {
-  let res: Response;
-  try {
-    res = await fetch(`${CF_API_BASE}/accounts/${accountId}/tokens`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${powerfulToken}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: `overture-app-${crypto.randomUUID()}`,
-        policies: [
-          {
-            effect: "allow",
-            resources: { [`com.cloudflare.api.account.${accountId}`]: "*" },
-            permission_groups: groupIds.map((id) => ({ id })),
-          },
-        ],
-      }),
-    });
-  } catch {
-    return null;
-  }
-  let envelope: MintEnvelope;
-  try {
-    envelope = (await res.json()) as MintEnvelope;
-  } catch {
-    return null;
-  }
-  if (!res.ok || !envelope.success || typeof envelope.result?.value !== "string") return null;
-  return envelope.result.value;
-}
-
-interface DeleteEnvelope {
-  success?: boolean;
-}
-
-/** Deletes `token` using itself as bearer. True only on a confirmed upstream success. */
-export async function selfDeleteAccountToken(token: string, accountId: string): Promise<boolean> {
-  const verified = await verifyAccountToken(token, accountId);
-  if (!verified) return false;
-  try {
-    const res = await fetch(`${CF_API_BASE}/accounts/${accountId}/tokens/${verified.id}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const envelope = (await res.json()) as DeleteEnvelope;
-    return res.ok && envelope.success === true;
-  } catch {
-    return false;
-  }
 }

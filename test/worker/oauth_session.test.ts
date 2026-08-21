@@ -75,11 +75,11 @@ async function run(): Promise<void> {
   ]);
 
   // mode is the discriminant the unified session cookie added for the auto
-  // and manual authentication modes (worker/authToken.ts) alongside oauth
+  // authentication mode (worker/authToken.ts) alongside oauth
   // (worker/oauthHandlers.ts) — every mode must round-trip, and anything
-  // missing or outside the three known literals must still be rejected the
+  // missing or outside the two known literals must still be rejected the
   // same way a missing `accounts` array already is above.
-  for (const mode of ["oauth", "auto", "manual"] as const) {
+  for (const mode of ["oauth", "auto"] as const) {
     const modePayload: SessionPayload = { ...payload, mode };
     const modeCookie = await encryptSession(modePayload, SECRET_A);
     const modeDecrypted = await decryptSession(modeCookie, SECRET_A);
@@ -96,7 +96,11 @@ async function run(): Promise<void> {
 
   const invalidMode = { ...payload, mode: "admin" } as unknown as SessionPayload;
   const invalidModeCookie = await encryptSession(invalidMode, SECRET_A);
-  checks.push(["a payload whose mode is not one of the three known modes is rejected", (await decryptSession(invalidModeCookie, SECRET_A)) === null]);
+  checks.push(["a payload whose mode is not one of the two known modes is rejected", (await decryptSession(invalidModeCookie, SECRET_A)) === null]);
+
+  const removedManualMode = { ...payload, mode: "manual" } as unknown as SessionPayload;
+  const removedManualModeCookie = await encryptSession(removedManualMode, SECRET_A);
+  checks.push(['mode "manual" was removed and is now rejected like any other unknown mode', (await decryptSession(removedManualModeCookie, SECRET_A)) === null]);
 
   let failures = 0;
   for (const [label, passed, detail] of checks) {

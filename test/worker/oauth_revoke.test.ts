@@ -14,10 +14,10 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // worker/oauthHandlers.ts's POST /oauth/revoke, mode-branched: oauth revokes
-// upstream through the OAuth client (best-effort), auto self-deletes the
-// pasted token with itself as bearer and reports failure rather than
-// swallowing it, manual never calls Cloudflare at all since the token is the
-// user's own. The local cookie always clears, regardless of mode or outcome.
+// upstream through the OAuth client (best-effort); auto never calls Cloudflare
+// at all, since the pasted token is the user's own long-lived credential and
+// also the app's runtime credential once deployed — Overture has no business
+// deleting it. The local cookie always clears, regardless of mode or outcome.
 
 import app from "../../worker/index";
 import { encryptSession, type SessionPayload } from "../../worker/oauth";
@@ -32,7 +32,6 @@ const ENV = {
 const SELF_ORIGIN = "https://relay.example";
 const RELAY_HEADERS = { "Overture-Relay": "1", Origin: SELF_ORIGIN };
 const ACCOUNT_ID = "0123456789abcdef0123456789abcdef";
-const OWN_TOKEN_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 let fetchCalls: string[] = [];
 
@@ -99,42 +98,14 @@ async function run(): Promise<void> {
   checks.push(["oauth-mode revoke is best-effort: an upstream failure still reports ok: true", oauthUpstreamDown.status === 200 && oauthDownBody.ok === true]);
   checks.push(["oauth-mode revoke still clears the cookie when upstream is unreachable", isCleared(oauthUpstreamDown)]);
 
-  // --- auto mode: self-deletes, and failure is never silent ---
-  stubFetch((url, method) => {
-    if (url.endsWith("/tokens/verify")) {
-      return new Response(JSON.stringify({ success: true, result: { id: OWN_TOKEN_ID, status: "active" } }), { status: 200 });
-    }
-    if (method === "DELETE") {
-      return new Response(JSON.stringify({ success: true }), { status: 200 });
-    }
-    return new Response(JSON.stringify({ success: false }), { status: 404 });
-  });
-  const autoSuccess = await revoke(await sealedSession({ mode: "auto" }));
-  const autoSuccessBody = (await autoSuccess.json()) as { ok: boolean };
-  checks.push(["auto-mode revoke reports ok: true when self-delete succeeds", autoSuccess.status === 200 && autoSuccessBody.ok === true]);
-  checks.push(["auto-mode revoke issues a DELETE against the token's own id", fetchCalls.some((c) => c.startsWith("DELETE") && c.includes(OWN_TOKEN_ID))]);
-  checks.push(["auto-mode revoke never calls the OAuth revoke endpoint", !fetchCalls.some((c) => c.includes("oauth2/revoke"))]);
-  checks.push(["auto-mode revoke clears the cookie on success", isCleared(autoSuccess)]);
-
-  stubFetch((url) => {
-    if (url.endsWith("/tokens/verify")) {
-      return new Response(JSON.stringify({ success: true, result: { id: OWN_TOKEN_ID, status: "active" } }), { status: 200 });
-    }
-    return new Response(JSON.stringify({ success: false }), { status: 500 });
-  });
-  const autoFail = await revoke(await sealedSession({ mode: "auto" }));
-  const autoFailBody = (await autoFail.json()) as { ok: boolean; error?: string };
-  checks.push(["auto-mode revoke reports ok: false when self-delete fails — not silent", autoFail.status === 200 && autoFailBody.ok === false]);
-  checks.push(["auto-mode revoke's failure carries an actionable message", typeof autoFailBody.error === "string" && autoFailBody.error.length > 0]);
-  checks.push(["auto-mode revoke still clears the cookie even when self-delete fails", isCleared(autoFail)]);
-
-  // --- manual mode: the token is the user's own — nothing is called ---
+  // --- auto mode: the pasted token is the user's own — nothing is called ---
   stubFetch(() => new Response(JSON.stringify({ success: true }), { status: 200 }));
-  const manualMode = await revoke(await sealedSession({ mode: "manual" }));
-  const manualBody = (await manualMode.json()) as { ok: boolean };
-  checks.push(["manual-mode revoke reports ok: true", manualMode.status === 200 && manualBody.ok === true]);
-  checks.push(["manual-mode revoke never calls Cloudflare — the token is the user's own", fetchCalls.length === 0]);
-  checks.push(["manual-mode revoke still clears the local cookie", isCleared(manualMode)]);
+  const autoMode = await revoke(await sealedSession({ mode: "auto" }));
+  const autoBody = (await autoMode.json()) as { ok: boolean };
+  checks.push(["auto-mode revoke reports ok: true", autoMode.status === 200 && autoBody.ok === true]);
+  checks.push(["auto-mode revoke never calls Cloudflare — the token is the user's own", fetchCalls.length === 0]);
+  checks.push(["auto-mode revoke never calls the OAuth revoke endpoint", !fetchCalls.some((c) => c.includes("oauth2/revoke"))]);
+  checks.push(["auto-mode revoke still clears the local cookie", isCleared(autoMode)]);
 
   // --- csrfGate still covers this route ---
   stubFetch(() => new Response(JSON.stringify({ success: true }), { status: 200 }));
