@@ -183,6 +183,7 @@
     "accountsHelp": "Pick the Cloudflare account this should be installed into.",
     "checksTitle": "Account pre-checks",
     "checksHelp": "Read-only checks of your account, run before anything is created.",
+    "checkActionOpen": "Turn it on in Cloudflare →",
     "checkLabel": "Check",
     "recheck": "Re-check",
     "verifying": "Checking…",
