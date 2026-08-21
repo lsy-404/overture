@@ -26,7 +26,7 @@
     "sections": {
       "auth": {
         "heading": "身份认证",
-        "body": "鉴权方式由包声明决定：标准 Cloudflare OAuth，或由你自己创建并粘贴的 Cloudflare API 令牌。两种模式下凭证均由服务端密封处理，不会到达本页面的 JavaScript。你粘贴的令牌即是应用自身的凭证——按应用预填链接申请的确切权限原样写入已部署的应用；Overture 不会代你铸造或删除任何令牌。"
+        "body": "使用哪种鉴权方式由所安装的包决定：标准 Cloudflare OAuth，或者是你自己创建并粘贴的 Cloudflare API 令牌。两种方式下，凭证都在服务端处理，不会到达本页面的 JavaScript。粘贴的令牌就是应用自身的长期凭证，会原样写入已部署的应用，并且权限精确对应应用创建链接所申请的范围——Overture 既不会铸造更小范围的令牌，也不会删除它。"
       },
       "privacy": {
         "heading": "不保留任何记录",

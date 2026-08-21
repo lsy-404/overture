@@ -26,7 +26,7 @@
     "sections": {
       "auth": {
         "heading": "Authentication",
-        "body": "The package determines the auth mode: standard Cloudflare OAuth, or a Cloudflare API token you create and paste yourself. In both modes the credential is sealed server-side and never reaches this page's JavaScript. A token you paste is the app's own credential — written into the deployed app unchanged, scoped to exactly the permissions the app's pre-filled link requests; Overture never mints or deletes a token for you."
+        "body": "The package determines the authentication mode: standard Cloudflare OAuth, or a Cloudflare API token you create and paste yourself. Either way, the credential is handled server-side and never reaches this page's JavaScript. A pasted token becomes the app's own long-lived credential, written into the deployed app unchanged and scoped to exactly the permissions the app's creation link requested — Overture neither mints nor deletes it."
       },
       "privacy": {
         "heading": "No Data Retention",
