@@ -46,7 +46,7 @@
       },
       "license": {
         "heading": "License and Availability",
-        "body": "Overture is free software released under the GNU Affero General Public License (AGPL-3.0-or-later). Its source code is publicly available. Overture is never sold; any offer of paid access is fraudulent."
+        "body": "Overture is free software. Its own source code is released under AGPL-3.0-or-later; the distributed software incorporates components under GPL-3.0, so the combined work as distributed is AGPL-3.0. Source code is publicly available. Overture is never sold; any offer of paid access is fraudulent."
       }
     },
     "accept": "I have read and agree to these terms"
@@ -202,9 +202,9 @@
       "placeholder": "Paste the token here",
       "tokenLinkLabel": "Create a token on Cloudflare",
       "requirementsTitle": "What this token needs",
-      "requirementsBaseline": "The token must include Account API Tokens Write. That's what lets Overture create a smaller, long-term token for the app.",
-      "requirementsAppIntro": "And everything below, so the app can keep working after install:",
-      "requirementsFallback": "This app doesn't need a long-term token of its own, so the permissions already listed above are all that's required.",
+      "requirementsBaseline": "This token needs just one permission: Account API Tokens Write. Nothing else — Overture builds everything the app needs from it.",
+      "templateHint": "Fastest way: on Cloudflare's Create Token page, choose “View all templates”, then “Create Account Tokens”.",
+      "mintsIntro": "Overture uses your token to create a separate, smaller token for the app — you don’t grant these yourself. The app will be able to:",
       "selfDeleteNote": "Once the install finishes, this token deletes itself. Nothing is kept.",
       "submit": "Continue",
       "submitting": "Connecting…"

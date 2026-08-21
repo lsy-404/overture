@@ -46,7 +46,7 @@
       },
       "license": {
         "heading": "许可证与可用性",
-        "body": "Overture 是以 GNU Affero 通用公共许可证（AGPL-3.0 或更高版本）发布的自由软件，源代码对所有人公开。Overture 从不出售，任何以金钱换取访问权限的行为均属欺诈。"
+        "body": "Overture 是自由软件。其自有源码采用 AGPL-3.0 或更高版本发布；发布的软件中包含 GPL-3.0 许可的组件，因此发行版整体适用 AGPL-3.0。源代码对所有人公开。Overture 从不出售，任何以金钱换取访问权限的行为均属欺诈。"
       }
     },
     "accept": "我已阅读并同意以上条款"
@@ -202,9 +202,9 @@
       "placeholder": "把令牌粘贴到这里",
       "tokenLinkLabel": "去 Cloudflare 创建令牌",
       "requirementsTitle": "这个令牌需要什么权限",
-      "requirementsBaseline": "这个令牌必须包含 Account API Tokens Write。有了它，Overture 才能为这个应用另外创建一个更小、长期使用的令牌。",
-      "requirementsAppIntro": "以及下面这些，这样应用安装完之后才能继续运行：",
-      "requirementsFallback": "这个应用不需要自己的长期令牌，按上面已经列出的权限来就够了。",
+      "requirementsBaseline": "这个令牌只需要一项权限：Account API Tokens Write。别的都不用——Overture 会用它自动搭出应用所需的一切。",
+      "templateHint": "最快的做法：在 Cloudflare 的创建令牌页选「查看所有模板」，再选「Create Account Tokens」。",
+      "mintsIntro": "Overture 会用你的令牌为应用另外创建一个更小的令牌——这些你不用自己授予。应用将能够：",
       "selfDeleteNote": "安装完成后，这个令牌会自动删除，不会留下任何东西。",
       "submit": "继续",
       "submitting": "连接中…"
