@@ -1,9 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { onMounted, ref, toRaw } from "vue";
+import { computed, onMounted, ref, toRaw } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { runRecipe } from "../../lib/engine/run";
+import { mintAppToken, revokeAuthToken } from "../../lib/relay";
 import { DeployError, HOST_STEP_HEALTH } from "../../lib/deploy/types";
 import { localized } from "../../lib/recipe/types";
 import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
@@ -25,6 +26,8 @@ function labelFor(id: string): string {
   return step ? localized(step.label, locale.value) : id;
 }
 
+const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
+
 async function start() {
   const config = wizard.config;
   const dataPackage = wizard.dataPackage;
@@ -36,6 +39,15 @@ async function start() {
   wizard.resetExecution();
   running.value = true;
   try {
+    // Auto mode's app token is minted from the pasted powerful one before the
+    // recipe runs, so it is already in `credentials` by the time the recipe's
+    // declared host secrets get pushed — the same channel the R2 keys use.
+    // Minting never touches the powerful token's ability to keep provisioning:
+    // that only happens after the whole deployment below has succeeded.
+    if (wizard.authMode === "auto" && cfApiTokenSecret.value) {
+      wizard.credentials.cfApiToken = await mintAppToken(wizard.credentials.accountId, cfApiTokenSecret.value.groups ?? []);
+    }
+
     const result = await runRecipe({
       config,
       dataPackage: toRaw(dataPackage),
@@ -47,6 +59,15 @@ async function start() {
       onProgress: (id, fraction) => wizard.setStepProgress(id, fraction),
     });
     wizard.result = result;
+
+    // The powerful pasted token has done its job now that the deployment
+    // succeeded — it deletes itself. A failed self-delete is not silent: the
+    // done page has to tell the user it is still live in their account.
+    if (wizard.authMode === "auto") {
+      const outcome = await revokeAuthToken();
+      if (!outcome.ok) wizard.result.notes = [...wizard.result.notes, t("deploy.autoTokenCleanupFailed")];
+    }
+
     await delay(1200);
     wizard.goTo(STEPS.done);
   } catch (e) {

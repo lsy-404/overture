@@ -4,14 +4,37 @@ import { computed, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
-import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount } from "../../lib/relay";
+import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
 import { WinButton } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
 
-// ---- sign-in popup ---------------------------------------------------------
+// Cloudflare's own token management page — there is no stable deep link into
+// the creation form itself, so this is as far as a link can safely take the
+// user; the rest is the page's own copy telling them what to build.
+const CF_TOKENS_URL = "https://dash.cloudflare.com/profile/api-tokens";
+
+const titleKey = computed(() => {
+  if (wizard.authMode === "auto") return "authorize.auto.title";
+  if (wizard.authMode === "manual") return "authorize.manual.title";
+  return "authorize.title";
+});
+const subtitleKey = computed(() => {
+  if (wizard.authMode === "auto") return "authorize.auto.subtitle";
+  if (wizard.authMode === "manual") return "authorize.manual.subtitle";
+  return "authorize.subtitle";
+});
+
+/** The long-lived token this app wants, when the recipe declares one. */
+const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
+
+function goBack() {
+  wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
+}
+
+// ---- sign-in popup (oauth mode) --------------------------------------------
 
 const signingIn = ref(false);
 const popupError = ref("");
@@ -103,6 +126,42 @@ onUnmounted(() => {
   window.removeEventListener("message", onMessage);
   stopPopupWatch();
 });
+
+// ---- pasted token (auto and manual modes) ----------------------------------
+// The value lives only in this local ref, never in the wizard store: it is
+// posted to the relay and dropped from this component the moment the request
+// settles, success or failure alike.
+
+const pasteToken = ref("");
+const submitting = ref(false);
+const submitError = ref("");
+
+const canSubmitToken = computed(() => pasteToken.value.trim().length > 0 && !submitting.value);
+
+async function submitToken() {
+  const recipe = wizard.recipe;
+  const mode = wizard.authMode;
+  if (!recipe || (mode !== "auto" && mode !== "manual")) return;
+  const value = pasteToken.value.trim();
+  if (!value) return;
+  submitting.value = true;
+  submitError.value = "";
+  try {
+    const session = await submitAuthToken(value, mode, recipe.package.sha256);
+    wizard.applyOAuthSession(session);
+    // Manual mode's one token covers both deploy and the app's own long-lived
+    // credential, so the value the user just typed is what gets handed to the
+    // app later — unlike auto mode's pasted value, which is powerful and never
+    // kept past this request.
+    if (mode === "manual") wizard.credentials.cfApiToken = value;
+    await autoSelectAccount();
+  } catch (e) {
+    submitError.value = e instanceof Error ? e.message : String(e);
+  } finally {
+    pasteToken.value = "";
+    submitting.value = false;
+  }
+}
 
 // ---- account -----------------------------------------------------------
 
@@ -202,8 +261,8 @@ function recheck() {
 
 <template>
   <div>
-    <h1 class="step-title">{{ t("authorize.title") }}</h1>
-    <p class="step-subtitle">{{ t("authorize.subtitle") }}</p>
+    <h1 class="step-title">{{ t(titleKey) }}</h1>
+    <p class="step-subtitle">{{ t(subtitleKey) }}</p>
 
     <div class="guide-card">
       <h3>{{ t("authorize.appScopesTitle") }}</h3>
@@ -222,17 +281,77 @@ function recheck() {
     </div>
 
     <template v-if="!wizard.sessionMatchesPackage">
-      <WinButton Style="AccentButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
-        {{ signingIn ? t("authorize.signingIn") : t("authorize.signInButton") }}
-      </WinButton>
-      <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
+      <template v-if="wizard.authMode === 'oauth'">
+        <WinButton Style="AccentButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+          {{ signingIn ? t("authorize.signingIn") : t("authorize.signInButton") }}
+        </WinButton>
+        <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
+      </template>
+
+      <template v-else-if="wizard.authMode === 'auto'">
+        <div class="guide-card">
+          <h3>{{ t("authorize.auto.requirementsTitle") }}</h3>
+          <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.requirementsBaseline") }}</p>
+          <template v-if="cfApiTokenSecret">
+            <p class="field-help">{{ t("authorize.auto.requirementsAppIntro") }}</p>
+            <p class="field-help scope-codes">{{ cfApiTokenSecret.groups?.join(", ") }}</p>
+          </template>
+          <p v-else class="field-help">{{ t("authorize.auto.requirementsFallback") }}</p>
+        </div>
+        <p class="field-help">{{ t("authorize.auto.intro") }}</p>
+        <a class="btn" :href="CF_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
+        <div class="field">
+          <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>
+          <input
+            id="autoToken"
+            v-model="pasteToken"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            :placeholder="t('authorize.auto.placeholder')"
+          />
+          <p class="field-help">{{ t("authorize.auto.selfDeleteNote") }}</p>
+        </div>
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
+          {{ submitting ? t("authorize.auto.submitting") : t("authorize.auto.submit") }}
+        </WinButton>
+        <p v-if="submitError" class="field-help tone-bad">{{ submitError }}</p>
+      </template>
+
+      <template v-else-if="wizard.authMode === 'manual'">
+        <div class="guide-card">
+          <h3>{{ t("authorize.manual.requirementsTitle") }}</h3>
+          <template v-if="cfApiTokenSecret">
+            <p class="field-help" style="margin-top: 0">{{ t("authorize.manual.requirementsAppIntro") }}</p>
+            <p class="field-help scope-codes">{{ cfApiTokenSecret.groups?.join(", ") }}</p>
+          </template>
+          <p v-else class="field-help" style="margin-top: 0">{{ t("authorize.manual.requirementsFallback") }}</p>
+        </div>
+        <p class="field-help">{{ t("authorize.manual.intro") }}</p>
+        <a class="btn" :href="CF_TOKENS_URL" target="_blank" rel="noopener noreferrer">{{ t("authorize.manual.tokenLinkLabel") }}</a>
+        <div class="field">
+          <label for="manualToken">{{ t("authorize.manual.tokenLabel") }}</label>
+          <input
+            id="manualToken"
+            v-model="pasteToken"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+            :placeholder="t('authorize.manual.placeholder')"
+          />
+        </div>
+        <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
+          {{ submitting ? t("authorize.manual.submitting") : t("authorize.manual.submit") }}
+        </WinButton>
+        <p v-if="submitError" class="field-help tone-bad">{{ submitError }}</p>
+      </template>
     </template>
 
     <template v-else>
       <div class="guide-card">
         <h3>{{ t("authorize.grantedTitle") }}</h3>
         <p class="field-help scope-codes" style="margin-top: 0">{{ wizard.oauthScope.join(" ") }}</p>
-        <WinButton Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+        <WinButton v-if="wizard.authMode === 'oauth'" Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
           {{ t("authorize.signInAgain") }}
         </WinButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
@@ -332,7 +451,7 @@ function recheck() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.license)">{{ t("common.back") }}</WinButton>
+        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
         <div class="spacer" />
         <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.target)">
           {{ t("common.next") }}

@@ -28,6 +28,7 @@
 
 import { sourceSlug, type SourceRef } from "../../shared/package";
 import { formatScopeParam } from "../../shared/oauthScopes";
+import type { AuthMode } from "./recipe/types";
 
 /** Every call that reads or writes the session cookie carries this — the
  *  relay's second CSRF gate, alongside `SameSite` and the Origin check. */
@@ -255,6 +256,8 @@ export interface OAuthSessionState {
   pkg: string | null;
   /** Unix seconds the session cookie stops being honoured. */
   expiresAt: number | null;
+  /** How this session was authorized. Absent from a pre-mode server treated as "oauth". */
+  mode: AuthMode | null;
 }
 
 function parseOAuthSession(body: unknown): OAuthSessionState {
@@ -265,6 +268,7 @@ function parseOAuthSession(body: unknown): OAuthSessionState {
         .map((entry) => ({ id: String(entry.id ?? "").trim(), name: String(entry.name ?? "") }))
         .filter((entry) => entry.id.length > 0)
     : [];
+  const mode = raw.mode === "oauth" || raw.mode === "auto" || raw.mode === "manual" ? raw.mode : null;
   return {
     authorized: raw.authorized === true,
     // The wire shape is an array (worker/oauthHandlers.ts sessionResponseBody).
@@ -273,6 +277,7 @@ function parseOAuthSession(body: unknown): OAuthSessionState {
     accountId: typeof raw.accountId === "string" && raw.accountId ? raw.accountId : null,
     pkg: typeof raw.pkg === "string" && raw.pkg ? raw.pkg : null,
     expiresAt: typeof raw.expiresAt === "number" && Number.isFinite(raw.expiresAt) ? raw.expiresAt : null,
+    mode,
   };
 }
 
@@ -339,4 +344,81 @@ export async function revokeOAuthSession(options?: { keepalive?: boolean }): Pro
   } catch {
     // Nothing to recover to — the tab is closing or the relay is unreachable.
   }
+}
+
+/**
+ * Auto mode only, called once the minted application token is already written
+ * into the deployed app's own Secret: self-deletes the pasted powerful token
+ * with itself as bearer, entirely inside the Worker, and clears the session.
+ * A distinct route from `revokeOAuthSession` above — that one is the
+ * fire-and-forget version for page unload or a plain sign-out; this one has
+ * to report whether the deletion actually happened, because a powerful token
+ * left alive in the visitor's account is something they have to hear about.
+ */
+export async function revokeAuthToken(): Promise<{ ok: boolean }> {
+  let response: Response;
+  try {
+    response = await fetch(`${relayBase()}/auth/token/revoke-self`, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: RELAY_HEADER,
+    });
+  } catch {
+    return { ok: false };
+  }
+  if (!response.ok) return { ok: false };
+  try {
+    const body = (await response.json()) as { ok?: boolean };
+    return { ok: body.ok === true };
+  } catch {
+    return { ok: false };
+  }
+}
+
+/**
+ * Posts a user-pasted Cloudflare API token to be verified and sealed into the
+ * session cookie — the auto and manual counterpart to the OAuth popup flow.
+ * The token itself is never returned; the reply is the same read-only session
+ * shape `GET /oauth/session` gives back.
+ */
+export async function submitAuthToken(token: string, mode: "auto" | "manual", pkg: string): Promise<OAuthSessionState> {
+  const response = await fetchRelay(`${relayBase()}/auth/token`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...RELAY_HEADER },
+    body: JSON.stringify({ token, mode, pkg }),
+  });
+  return readOAuthSessionResponse(response, "Couldn't verify that token");
+}
+
+/**
+ * Auto mode only, called once a deployment succeeds: mints the app's own
+ * narrow long-lived token from the pasted powerful one, entirely inside the
+ * Worker. Only the minted value comes back — the powerful token that
+ * authorized minting it never leaves the Worker's request memory. This is the
+ * Worker's own JSON shape, not a Cloudflare passthrough, so it is a plain
+ * fetch rather than `callCfJson`'s `{success,result}` envelope.
+ */
+export async function mintAppToken(accountId: string, groups: readonly string[]): Promise<string> {
+  const response = await fetchRelay(`${relayBase()}/cf/mint-app-token`, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "Content-Type": "application/json", ...RELAY_HEADER },
+    body: JSON.stringify({ accountId, groups }),
+  });
+  let body: { ok?: boolean; token?: string; error?: string };
+  try {
+    body = await response.json();
+  } catch {
+    throw new CfApiError(`The relay returned a non-JSON response (HTTP ${response.status})`, response.status, undefined, "mint-app-token");
+  }
+  if (!response.ok || body.ok !== true || typeof body.token !== "string") {
+    throw new CfApiError(
+      body.error || `Couldn't create the application token (HTTP ${response.status})`,
+      response.status,
+      undefined,
+      "mint-app-token",
+    );
+  }
+  return body.token;
 }
