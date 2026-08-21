@@ -17,10 +17,9 @@ import type { Context } from "hono";
 import { matchEndpoint } from "../shared/cfAllowlist";
 import { jsonResponse } from "./http";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
-import { decryptSession, parseCookies } from "./oauth";
+import { readSession } from "./session";
 
 const CF_API_BASE = "https://api.cloudflare.com/client/v4";
-const OV_SESSION_COOKIE = "__Host-ov_session";
 
 // Never forward these upstream. Host/Content-Length describe the inbound hop,
 // cf-*/x-forwarded-* describe the hop to this relay, and Cookie/Origin/
@@ -88,9 +87,12 @@ export async function handleCfProxy(c: RelayContext): Promise<Response> {
     }
     headers.set("Authorization", callerAuth);
   } else {
-    const sessionCookie = parseCookies(c.req.header("Cookie"))[OV_SESSION_COOKIE];
-    const session = sessionCookie ? await decryptSession(sessionCookie, c.env.OAUTH_COOKIE_KEY) : null;
-    if (!session || session.expiresAt <= Math.floor(Date.now() / 1000)) {
+    // Mode-agnostic on purpose: readSession returns the same shape whether
+    // the cookie was filled by the OAuth callback, POST /auth/token (auto),
+    // or POST /auth/token (manual) — session.token is always the credential
+    // to inject and session.accountId is always the account it is bound to.
+    const session = await readSession(c);
+    if (!session) {
       return jsonResponse(c, 403, { ok: false, error: "Not signed in" });
     }
     // An `accounts/{id}` call must name the one account this session
