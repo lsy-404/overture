@@ -41,16 +41,19 @@ before anything is downloaded.
 
   // How this package can authenticate to Cloudflare. One mode is used per
   // deployment; it provides all the account authority the deploy needs.
-  //   "oauth"  — sign in with Cloudflare (best UX; no long-lived app credential)
-  //   "auto"   — the user hands over one powerful token once; the host mints a
-  //              narrow long-lived token for the app, then that powerful token
-  //              deletes itself
-  //   "manual" — the user creates the tokens the wizard lists and pastes them
-  // Declare every mode the package supports. The wizard shows a chooser when
-  // more than one is declared and skips it when exactly one is. A package that
-  // needs a cfApiToken host secret (below) must offer "auto" and/or "manual",
-  // since "oauth" cannot furnish an app a long-lived credential.
-  "authModes": ["oauth", "auto", "manual"],
+  //   "oauth" — sign in with Cloudflare (best UX; no long-lived app credential).
+  //             Only available when the operator has configured an OAuth client.
+  //   "auto"  — the user creates a token against a pre-filled deep link (exactly
+  //             the permissions below) and pastes it; it deploys and becomes the
+  //             app's own credential. No token is minted or handled by the host
+  //             beyond the deploy session.
+  // Declare every mode the package supports. The wizard offers the intersection
+  // of these and what this deployment can actually do (oauth needs the operator
+  // to have set it up): it skips the chooser when only one is available, and
+  // shows "not available here" when none are. A package that needs a cfApiToken
+  // host secret (below) must offer "auto", since "oauth" cannot furnish an app a
+  // long-lived credential.
+  "authModes": ["oauth", "auto"],
 
   // The authority table shown before any credential is asked for. `oauthScopes`
   // are Cloudflare OAuth scope names — dotted and lowercase, a different
@@ -124,15 +127,17 @@ before anything is downloaded.
   //
   // `source` is one of: "accountId", "r2AccessKeyId", "r2SecretAccessKey", or
   // "cfApiToken". The last is the app's own long-lived Cloudflare token: it
-  // carries `groups` (Cloudflare permission-group names — Title Case, a
-  // different namespace from oauthScopes above). In "auto" mode the host mints a
-  // token holding exactly these; in "manual" mode they are the list the user is
-  // shown to build a token against. It is never the deploy session credential.
+  // carries `permissions`, each a Cloudflare token-template `{ key, type }` from
+  // shared/cfTokenPermissions.ts (a key outside that table is rejected). In auto
+  // mode the "create a token" deep link pre-fills exactly these, the user pastes
+  // the token, and it becomes the app's credential — never the deploy session's.
+  // A permission Cloudflare marks high-impact (token management, billing,
+  // account governance) is flagged to the user before they agree.
   "hostSecrets": [
     { "name": "CF_ACCOUNT_ID", "source": "accountId", "requirement": "required",
       "reason": { "en": "Self-update and transcoding call the account's own API" } },
     { "name": "CF_API_TOKEN", "source": "cfApiToken", "requirement": "required",
-      "groups": ["Workers Scripts Write", "Workers R2 Storage Write"],
+      "permissions": [{ "key": "workers_scripts", "type": "edit" }, { "key": "workers_r2", "type": "edit" }],
       "reason": { "en": "The app manages its own cron and storage after deploy" } }
   ],
 

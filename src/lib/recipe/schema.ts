@@ -26,6 +26,7 @@
 
 import { PACKAGE_ARTIFACT_NAME } from "../../../shared/package";
 import { isKnownScope } from "../../../shared/oauthScopes";
+import { isKnownTokenPermission } from "../../../shared/cfTokenPermissions";
 import { METHOD_GATES } from "../sandbox/protocol";
 import {
   RECIPE_LIMITS,
@@ -33,6 +34,7 @@ import {
   type Capability,
   type DeployMode,
   type AuthMode,
+  type CfTokenPermissionRequest,
   type HostSecretSource,
   type InputKind,
   type Localized,
@@ -60,7 +62,8 @@ const MAX_PATH_CHARS = 256;
 const MAX_NAME_CHARS = 128;
 const MAX_LOCALE_ENTRIES = 30;
 const MAX_PERMISSION_SCOPES = 24;
-const MAX_TOKEN_GROUPS = 24;
+const MAX_TOKEN_PERMISSIONS = 32;
+const TOKEN_PERM_TYPES = ["read", "edit"] as const;
 const MAX_COMPAT_FLAGS = 20;
 const MAX_INPUT_OPTIONS = 40;
 const MAX_API_PATH_CHARS = 512;
@@ -79,7 +82,7 @@ const PERMISSION_SCOPES = ["account", "zone", "allBuckets"] as const;
 const PERMISSION_LEVELS = ["read", "write", "readWrite"] as const;
 const CONTAINER_MODES = ["ask", "always", "never"] as const;
 const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey", "cfApiToken"] as const;
-const AUTH_MODES = ["oauth", "auto", "manual"] as const;
+const AUTH_MODES = ["oauth", "auto"] as const;
 
 // Derived from the bridge itself, so a capability the host cannot gate can never
 // be declared.
@@ -610,23 +613,34 @@ function hostSecret(errors: Errors, path: string, value: unknown): RecipeHostSec
   const reason = localized(errors, `${path}.reason`, raw.reason, true);
   const requirement = oneOf<Requirement>(errors, `${path}.requirement`, raw.requirement, REQUIREMENTS, true);
 
-  // `groups` names the permission groups the app's own minted/pasted token must
-  // carry — it belongs to `cfApiToken` and to nothing else. Requiring it there
-  // and forbidding it elsewhere keeps the two host-secret shapes from blurring.
-  let groups: string[] | undefined;
+  // `permissions` is the app token's own permission request, in template
+  // `{ key, type }` form — it belongs to `cfApiToken` and to nothing else. A key
+  // outside CF_TOKEN_PERMISSIONS could never resolve on Cloudflare's own token
+  // page, so a package naming one is rejected here rather than silently missing
+  // from the pre-fill.
+  let permissions: CfTokenPermissionRequest[] | undefined;
   if (source === "cfApiToken") {
-    groups = items(errors, `${path}.groups`, raw.groups, MAX_TOKEN_GROUPS, true, (entry, itemPath) =>
-      str(errors, itemPath, entry, true, MAX_NAME_CHARS),
-    );
-    if (groups && groups.length === 0) errors.add(`${path}.groups`, "must name at least one permission group");
-    if (groups) requireUnique(errors, `${path}.groups`, groups, (entry) => entry, "permission group");
-  } else if (raw.groups !== undefined) {
-    errors.add(`${path}.groups`, "is only valid on a cfApiToken host secret");
+    permissions = items(errors, `${path}.permissions`, raw.permissions, MAX_TOKEN_PERMISSIONS, true, (entry, itemPath) => {
+      const r = bag(errors, itemPath, entry, true);
+      if (!r) return undefined;
+      const key = str(errors, `${itemPath}.key`, r.key, true, MAX_NAME_CHARS);
+      const type = oneOf<"read" | "edit">(errors, `${itemPath}.type`, r.type, TOKEN_PERM_TYPES, true);
+      if (key !== undefined && !isKnownTokenPermission(key)) {
+        errors.add(`${itemPath}.key`, "is not a Cloudflare token permission this deployment can request");
+        return undefined;
+      }
+      if (key === undefined || !type) return undefined;
+      return { key, type };
+    });
+    if (permissions && permissions.length === 0) errors.add(`${path}.permissions`, "must name at least one permission");
+    if (permissions) requireUnique(errors, `${path}.permissions`, permissions, (e) => `${e.key}:${e.type}`, "permission");
+  } else if (raw.permissions !== undefined) {
+    errors.add(`${path}.permissions`, "is only valid on a cfApiToken host secret");
   }
 
   if (!name || !source || !reason || !requirement) return undefined;
-  if (source === "cfApiToken" && (!groups || groups.length === 0)) return undefined;
-  return { name, source, reason, requirement, ...(groups === undefined ? {} : { groups }) };
+  if (source === "cfApiToken" && (!permissions || permissions.length === 0)) return undefined;
+  return { name, source, reason, requirement, ...(permissions === undefined ? {} : { permissions }) };
 }
 
 function step(errors: Errors, path: string, value: unknown): RecipeStep | undefined {
@@ -829,9 +843,9 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     authModes &&
     authModes.length > 0 &&
     hostSecrets.some((secret) => secret.source === "cfApiToken") &&
-    !authModes.some((mode) => mode === "auto" || mode === "manual")
+    !authModes.some((mode) => mode === "auto")
   ) {
-    errors.add("authModes", "must include \"auto\" or \"manual\" when a cfApiToken host secret is declared");
+    errors.add("authModes", "must include \"auto\" when a cfApiToken host secret is declared");
   }
 
   if (

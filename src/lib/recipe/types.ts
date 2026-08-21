@@ -243,9 +243,20 @@ export type HostSecretSource = "accountId" | "r2AccessKeyId" | "r2SecretAccessKe
  * How the deployment authenticates to Cloudflare. Mutually exclusive per run:
  * whichever mode is chosen provides all the account authority the deployment
  * uses. `oauth` cannot furnish an app a long-lived credential, so a recipe that
- * needs one (a `cfApiToken` host secret) must offer `auto` and/or `manual`.
+ * needs one (a `cfApiToken` host secret) must offer `auto`.
  */
-export type AuthMode = "oauth" | "auto" | "manual";
+export type AuthMode = "oauth" | "auto";
+
+/**
+ * One permission the app's own token must carry, in Cloudflare's token-template
+ * form: a `key` from shared/cfTokenPermissions.ts and a `type`. These are what
+ * the "create a token" deep link pre-fills, so the user builds exactly the
+ * token the app needs. A key outside the table is rejected at load time.
+ */
+export interface CfTokenPermissionRequest {
+  key: string;
+  type: "read" | "edit";
+}
 
 /**
  * A Workers Secret whose *value* comes from the host, not the recipe — the way
@@ -258,13 +269,12 @@ export interface RecipeHostSecret {
   reason: Localized;
   requirement: Requirement;
   /**
-   * Only for `source: "cfApiToken"` — the Cloudflare permission-group names the
-   * app's own long-lived token must carry (Title Case, resolved to ids at mint
-   * time; a different namespace from the dotted OAuth scopes). In auto mode the
-   * host mints a token holding exactly these; in manual mode they are the list
-   * the user is told to create a token against. Absent for every other source.
+   * Only for `source: "cfApiToken"` — the permissions the app's own long-lived
+   * token must carry, in template `{ key, type }` form. In auto mode the user
+   * creates a token against exactly these (a deep link pre-fills them) and
+   * pastes it. Absent for every other source.
    */
-  groups?: string[];
+  permissions?: CfTokenPermissionRequest[];
 }
 
 /**

@@ -113,30 +113,38 @@ const checks: Array<[string, boolean, string?]> = [
   ["an empty authModes is rejected", rejects(tweak((r) => (r.authModes = [])))],
   ["an unknown authMode is rejected", rejects(tweak((r) => (r.authModes = ["oauth", "nope"])))],
   ["a duplicated authMode is rejected", rejects(tweak((r) => (r.authModes = ["oauth", "oauth"])))],
-  ["all three modes together validate", accepts(tweak((r) => (r.authModes = ["oauth", "auto", "manual"])))],
+  ["both modes together validate", accepts(tweak((r) => (r.authModes = ["oauth", "auto"])))],
+  ["the removed manual mode is rejected", rejects(tweak((r) => (r.authModes = ["manual"])))],
 
   // A cfApiToken host secret is a long-lived app credential; oauth alone cannot
-  // furnish it, and the groups list is required and exclusive to that source.
-  ["a cfApiToken host secret with groups and an auto/manual mode validates",
+  // furnish it, and its permissions (template `{key,type}`) are required and
+  // exclusive to that source, each key within the CF_TOKEN_PERMISSIONS ceiling.
+  ["a cfApiToken host secret with permissions and an auto mode validates",
     accepts(tweak((r) => {
-      r.authModes = ["auto", "manual"];
-      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", groups: ["Workers Scripts Write"],
+      r.authModes = ["auto"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", permissions: [{ key: "workers_scripts", type: "edit" }],
         reason: { en: "self-manage" }, requirement: "required" }];
     }))],
   ["a cfApiToken host secret under oauth-only is rejected",
     rejects(tweak((r) => {
       r.authModes = ["oauth"];
-      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", groups: ["Workers Scripts Write"],
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", permissions: [{ key: "workers_scripts", type: "edit" }],
         reason: { en: "self-manage" }, requirement: "required" }];
     }))],
-  ["a cfApiToken host secret without groups is rejected",
+  ["a cfApiToken host secret without permissions is rejected",
     rejects(tweak((r) => {
       r.authModes = ["auto"];
       r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", reason: { en: "x" }, requirement: "required" }];
     }))],
-  ["groups on a non-cfApiToken host secret is rejected",
+  ["a cfApiToken permission key outside the table is rejected",
     rejects(tweak((r) => {
-      r.hostSecrets = [{ name: "CF_ACCOUNT_ID", source: "accountId", groups: ["x"], reason: { en: "x" }, requirement: "required" }];
+      r.authModes = ["auto"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", permissions: [{ key: "not_a_real_key", type: "edit" }],
+        reason: { en: "x" }, requirement: "required" }];
+    }))],
+  ["permissions on a non-cfApiToken host secret is rejected",
+    rejects(tweak((r) => {
+      r.hostSecrets = [{ name: "CF_ACCOUNT_ID", source: "accountId", permissions: [{ key: "d1", type: "read" }], reason: { en: "x" }, requirement: "required" }];
     }))],
   ["a non-object input is rejected", rejects(null) && rejects("{}") && rejects([]) && rejects(42)],
 
