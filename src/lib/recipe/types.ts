@@ -256,6 +256,12 @@ export type AuthMode = "oauth" | "auto";
 export interface CfTokenPermissionRequest {
   key: string;
   type: "read" | "edit";
+  /** How much this permission matters. Defaults to "required" when omitted; an
+   *  "optional" one is offered as a checkbox the user can leave out of the
+   *  pre-filled token link. */
+  requirement?: Requirement;
+  /** What the app uses this permission for, shown next to it on the token step. */
+  scenario?: Localized;
 }
 
 /**

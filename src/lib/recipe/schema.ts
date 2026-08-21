@@ -625,12 +625,14 @@ function hostSecret(errors: Errors, path: string, value: unknown): RecipeHostSec
       if (!r) return undefined;
       const key = str(errors, `${itemPath}.key`, r.key, true, MAX_NAME_CHARS);
       const type = oneOf<"read" | "edit">(errors, `${itemPath}.type`, r.type, TOKEN_PERM_TYPES, true);
+      const requirement = r.requirement === undefined ? undefined : oneOf<Requirement>(errors, `${itemPath}.requirement`, r.requirement, REQUIREMENTS, true);
+      const scenario = r.scenario === undefined ? undefined : localized(errors, `${itemPath}.scenario`, r.scenario, true);
       if (key !== undefined && !isKnownTokenPermission(key)) {
         errors.add(`${itemPath}.key`, "is not a Cloudflare token permission this deployment can request");
         return undefined;
       }
       if (key === undefined || !type) return undefined;
-      return { key, type };
+      return { key, type, ...(requirement ? { requirement } : {}), ...(scenario ? { scenario } : {}) };
     });
     if (permissions && permissions.length === 0) errors.add(`${path}.permissions`, "must name at least one permission");
     if (permissions) requireUnique(errors, `${path}.permissions`, permissions, (e) => `${e.key}:${e.type}`, "permission");

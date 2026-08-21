@@ -20,10 +20,27 @@ const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret
 
 /** Every permission the app's token needs, with its display name and danger flag. */
 const permissionRows = computed(() => describePermissions(cfApiTokenSecret.value?.permissions ?? []));
-const dangerPermissions = computed(() => permissionRows.value.filter((row) => row.danger));
 
-/** The token-creation link, pre-filled with those same permissions. */
-const tokenLinkUrl = computed(() => buildTokenLinkUrl(cfApiTokenSecret.value?.permissions ?? []));
+// Optional permissions the user has chosen to leave out. They stay in the list
+// but drop out of the pre-filled link, so the token the user creates asks for
+// only what they kept.
+const excludedKeys = ref<Set<string>>(new Set());
+function isOptional(row: { requirement?: string }): boolean {
+  return row.requirement === "optional";
+}
+function togglePermission(key: string): void {
+  const next = new Set(excludedKeys.value);
+  next.has(key) ? next.delete(key) : next.add(key);
+  excludedKeys.value = next;
+}
+
+const includedPermissions = computed(() =>
+  (cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
+);
+const dangerPermissions = computed(() => describePermissions(includedPermissions.value).filter((row) => row.danger));
+
+/** The token-creation link, pre-filled with the permissions still kept in. */
+const tokenLinkUrl = computed(() => buildTokenLinkUrl(includedPermissions.value));
 
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
@@ -259,7 +276,7 @@ function recheck() {
     <h1 class="step-title">{{ t(titleKey) }}</h1>
     <p class="step-subtitle">{{ t(subtitleKey) }}</p>
 
-    <div class="guide-card">
+    <div v-if="wizard.authMode === 'oauth'" class="guide-card">
       <h3>{{ t("authorize.appScopesTitle") }}</h3>
       <ul class="plain-list">
         <li v-for="permission in wizard.recipe?.permissions ?? []" :key="permission.key">
@@ -284,15 +301,20 @@ function recheck() {
       </template>
 
       <template v-else-if="wizard.authMode === 'auto'">
-        <p class="field-help">{{ t("authorize.auto.intro") }}</p>
-
         <div v-if="permissionRows.length > 0" class="guide-card">
           <h3>{{ t("authorize.auto.requirementsTitle") }}</h3>
-          <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.requirementsIntro") }}</p>
           <ul class="plain-list">
             <li v-for="permission in permissionRows" :key="permission.key">
-              {{ permission.name }}
-              <span class="field-tag optional">{{ t(`authorize.auto.permType.${permission.type}`) }}</span>
+              <label v-if="isOptional(permission)" class="perm-check">
+                <input type="checkbox" :checked="!excludedKeys.has(permission.key)" @change="togglePermission(permission.key)" />
+                <span>{{ permission.name }}</span>
+                <span class="field-tag optional">{{ t("authorize.requirements.optional") }}</span>
+              </label>
+              <template v-else>
+                {{ permission.name }}
+                <span class="field-tag optional">{{ t(`authorize.auto.permType.${permission.type}`) }}</span>
+              </template>
+              <p v-if="permission.scenario" class="field-help" style="margin: 2px 0 0">{{ localized(permission.scenario, locale) }}</p>
             </li>
           </ul>
         </div>

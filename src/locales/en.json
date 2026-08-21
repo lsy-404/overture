@@ -126,8 +126,8 @@
       "opaqueNetwork": "{count} of the script's network calls build their address while running, so where they go could not be read.",
       "dynamicCode": "The script tries to turn data into code while it runs. That's not allowed — only the code that shipped in the package can run — so those attempts fail.",
       "computedAccess": "Part of the script decides at runtime which action to call, so this analysis may not have caught everything it does.",
-      "hostSecretCredential": "The deployed app is handed your {source} as the Workers Secret {name}, and holds it for as long as it stays deployed.",
-      "hostSecretAccountId": "The deployed app is handed your Cloudflare account id as the Workers Secret {name}.",
+      "hostSecretCredential": "The deployed app is given your {source} and keeps it for as long as it stays deployed.",
+      "hostSecretAccountId": "The deployed app is given your Cloudflare account ID.",
       "passwordInVar": "The value of “{input}” is written into the plain Worker variable {var}, where anyone with dashboard access can read it.",
       "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones.",
       "oauthScopeUnderReported": "The script appears to need {scopes}, but the package's declared permissions don't cover them, so those permissions are never requested when you sign in. Those calls are refused part-way through the deployment.",
@@ -137,6 +137,12 @@
     "uncertain": {
       "writeAssumed": "Cloudflare also lists the read-only group here, but what this app does needs write access.",
       "zoneMayBeNeeded": "Attaching a custom domain also touches the zone's DNS and certificate, so a zone-level permission may be needed as well."
+    },
+    "sourceName": {
+      "cfApiToken": "Cloudflare API token",
+      "r2AccessKeyId": "R2 access key ID",
+      "r2SecretAccessKey": "R2 secret access key",
+      "accountId": "Cloudflare account ID"
     }
   },
   "authMethod": {
