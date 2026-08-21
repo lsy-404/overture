@@ -26,7 +26,7 @@
     "sections": {
       "auth": {
         "heading": "Authentication",
-        "body": "Your Cloudflare session is managed by your browser through standard OAuth. This page's own code cannot read or access it. The session expires automatically when you leave or within approximately one hour, whichever occurs first."
+        "body": "The package determines the auth mode: standard Cloudflare OAuth, or a Cloudflare API token you create and paste yourself. In both modes the credential is sealed server-side and never reaches this page's JavaScript. A token you paste is the app's own credential — written into the deployed app unchanged, scoped to exactly the permissions the app's pre-filled link requests; Overture never mints or deletes a token for you."
       },
       "privacy": {
         "heading": "No Data Retention",
@@ -46,7 +46,7 @@
       },
       "license": {
         "heading": "License and Availability",
-        "body": "Overture is free software. Its own source code is released under AGPL-3.0-or-later; the distributed software incorporates components under GPL-3.0, so the combined work as distributed is AGPL-3.0. Source code is publicly available. Overture is never sold; any offer of paid access is fraudulent."
+        "body": "Overture's own code is AGPL-3.0-or-later; the distributed package incorporates GPL-3.0 components, making the combined work AGPL-3.0. Source code is publicly available. Overture is never sold; any offer of paid access is fraudulent."
       }
     },
     "accept": "I have read and agree to these terms"
