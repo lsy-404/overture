@@ -206,8 +206,8 @@ const checks: Array<[string, boolean, string?]> = [
     !/appendLog|logLines|log-block/.test(executeSource)
   ), executeFiles.join(", ")],
 
-  ["a step component's copy references the package's own terms-of-service tab",
-    stepFiles.length > 0 && /\.termsTab\b/.test(stepsSource),
+  ["a step component's copy references the package's own terms-of-service section",
+    stepFiles.length > 0 && /\.termsSection\b/.test(stepsSource),
     stepFiles.join(", ")],
 ];
 

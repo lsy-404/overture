@@ -53,6 +53,9 @@ export interface PermissionRow extends CfTokenPermissionRequest {
 export function describePermissions(permissions: readonly CfTokenPermissionRequest[]): PermissionRow[] {
   return permissions.map((permission) => {
     const known: CfTokenPermission | undefined = CF_TOKEN_PERMISSIONS[permission.key];
-    return { ...permission, name: known?.name ?? permission.key, danger: known?.danger === true };
+    // The escalation risk in the flagged groups (managing tokens, members,
+    // billing, Access) is in *writing* them; read on the same group is only
+    // visibility, so only an "edit" request is called out as dangerous.
+    return { ...permission, name: known?.name ?? permission.key, danger: known?.danger === true && permission.type === "edit" };
   });
 }

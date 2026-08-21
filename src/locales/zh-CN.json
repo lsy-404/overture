@@ -53,7 +53,9 @@
   },
   "repository": {
     "title": "选择要部署的应用",
-    "subtitle": "先选一个应用，再选择要安装的版本。选好后，它的功能和所需权限会显示在下面。",
+    "subtitleNoSource": "请选择一个应用",
+    "subtitleNoVersion": "请选择要安装的版本",
+    "subtitleReady": "点击「继续」进行下一步",
     "loadingPolicy": "正在获取可部署的应用…",
     "malformedSrc": "链接里给的是“{value}”，它不是 owner/repo 形式。请在下面另选一个来源。",
     "rejectedTitle": "这台部署器不接受该来源",
@@ -77,9 +79,9 @@
   },
   "license": {
     "title": "条款与许可证",
-    "subtitle": "这是这个应用自己的条款和许可证，不是 Overture 的。如果需要同意，你得先读到末尾。",
-    "termsTab": "服务条款",
-    "licenseTab": "许可证（{id}）",
+    "subtitle": "请阅读并同意此应用的使用条款和许可证。",
+    "termsSection": "使用条款",
+    "licenseSection": "许可证（{id}）",
     "licenseMissing": "这个包没有附带许可证文本。",
     "accept": "我已阅读并同意以上条款",
     "scrollToEnd": "请先滚动阅读完以上条款",
@@ -195,7 +197,8 @@
       "checking": "检查中…",
       "ok": "通过",
       "missing": "缺失或未启用",
-      "error": "检查失败"
+      "error": "检查失败",
+      "notEnabled": "未启用"
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
@@ -204,13 +207,13 @@
     "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。",
     "auto": {
       "title": "创建你自己的令牌",
-      "subtitle": "点击下面的链接创建一个 Cloudflare 令牌，权限已经帮你选好了，然后粘贴到这里。",
+      "subtitle": "打开下面的链接，在 Cloudflare 上创建令牌，然后粘贴到这里。",
       "intro": "这个令牌用来部署这个应用；如果应用之后还需要一个长期凭证，用的也是它。之后不会有任何删除或替换——它一直是你自己的令牌，你可以随时在 Cloudflare 控制台里把它删掉。",
       "tokenLabel": "你的令牌",
       "placeholder": "把令牌粘贴到这里",
       "tokenLinkLabel": "去 Cloudflare 创建令牌",
       "requirementsTitle": "要授予的权限",
-      "requirementsIntro": "下面的链接会申请这些权限。必需项是应用运行必须的；可选项可以取消勾选、不放进去。之后给令牌起个名字创建即可。",
+      "requirementsIntro": "必需权限不可去掉，可选权限可以取消勾选。",
       "permType": {
         "read": "只读",
         "edit": "可修改"
