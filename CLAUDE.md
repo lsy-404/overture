@@ -17,14 +17,15 @@ These are not style preferences. A change that breaks one of them is a vulnerabi
   exact `Origin` match are required (GET included), and the relay refuses any account-scoped path
   whose account id is not the one the session selected. The OAuth client secret and both cookie keys
   are Workers Secrets, never vars.
-- The three auth modes all seal their credential into the same `__Host-ov_session` cookie, and none of
-  them ever returns a token to the page. In auto mode the user's powerful token exists only inside that
-  cookie and the Worker's per-request memory: `POST /cf/mint-app-token` hands back only the *minted*
-  narrow token, and the powerful token is deleted by `POST /auth/token/revoke-self` after the deploy has
-  written the minted token into the app's Secret — a failed self-delete is reported, never swallowed. The
-  minted app token carries no token-management group (Cloudflare error 1001), so it cannot escalate even
-  if it leaks. `cfApiToken` is a host-secret source for that minted-or-pasted *app* token only; `apiToken`
-  (the session credential) remains forbidden as a host-secret source.
+- Both auth modes (`oauth` and `auto`) seal their credential into the same `__Host-ov_session` cookie, and
+  neither ever returns a token to the page. Auto mode mints nothing and deletes nothing: the one token the
+  user pastes both authenticates the deploy and — when the recipe declares a `cfApiToken` host secret — *is*
+  the app's long-lived credential, written into the app's Worker Secret unchanged. The user creates that
+  token themselves from the recipe's pre-filled creation link, scoped to exactly the permissions the recipe
+  declared (validated against `shared/cfTokenPermissions.ts`, the one authoritative key→name/danger table),
+  so a leak is bounded by what they granted, not by anything Overture could widen. `cfApiToken` is a
+  host-secret source for that pasted *app* token only; `apiToken` (the session credential) remains forbidden
+  as a host-secret source. Revoke deletes nothing in auto mode — the token is the user's own.
 - A package's `recipe.js` runs only inside `<iframe sandbox="allow-scripts">` (opaque origin, no
   `allow-same-origin`), and reaches the outside world only through the capability bridge.
 - Every capability call is gated on the recipe having declared that capability, and every Cloudflare
