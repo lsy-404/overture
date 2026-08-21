@@ -210,7 +210,7 @@
       "placeholder": "Paste the token here",
       "tokenLinkLabel": "Create the token on Cloudflare",
       "requirementsTitle": "Permissions to grant",
-      "requirementsIntro": "The link below already has these permissions selected — just give the token a name and create it.",
+      "requirementsIntro": "The link below requests these permissions. Required ones the app can't run without; optional ones you can uncheck to leave out. Then name the token and create it.",
       "permType": {
         "read": "Read",
         "edit": "Edit"
