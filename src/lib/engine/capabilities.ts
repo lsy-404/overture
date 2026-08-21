@@ -262,6 +262,8 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         return creds.r2AccessKeyId;
       case "r2SecretAccessKey":
         return creds.r2SecretAccessKey;
+      case "cfApiToken":
+        return creds.cfApiToken;
     }
   };
 

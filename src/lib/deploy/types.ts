@@ -47,6 +47,13 @@ export interface DeployCredentials {
   accountId: string;
   r2AccessKeyId: string;
   r2SecretAccessKey: string;
+  /**
+   * The app's own long-lived Cloudflare token, when a recipe declares a
+   * `cfApiToken` host secret: minted host-side in auto mode, pasted by the user
+   * in manual mode. It is the app's credential, never the deploy session's —
+   * empty until one of those modes supplies it.
+   */
+  cfApiToken: string;
 }
 
 /**

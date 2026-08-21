@@ -58,7 +58,7 @@ interface StoredR2Keys {
 }
 
 function emptyCredentials(): DeployCredentials {
-  return { accountId: "", r2AccessKeyId: "", r2SecretAccessKey: "" };
+  return { accountId: "", r2AccessKeyId: "", r2SecretAccessKey: "", cfApiToken: "" };
 }
 
 /**

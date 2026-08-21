@@ -230,19 +230,41 @@ export type Capability =
 // never read back even if the host offered it, so a recipe cannot declare a
 // host secret sourced from it — only the account id and the R2 S3 key pair,
 // which stay in the host regardless of the OAuth session, may be handed over.
-export type HostSecretSource = "accountId" | "r2AccessKeyId" | "r2SecretAccessKey";
+/**
+ * Where a host-provided Workers Secret's value comes from. `apiToken` (the
+ * deploying session credential) is deliberately absent and must stay so — a
+ * recipe that could name it would exfiltrate the session token. `cfApiToken` is
+ * a different object: a narrow token minted or pasted *for the app*, never the
+ * session credential.
+ */
+export type HostSecretSource = "accountId" | "r2AccessKeyId" | "r2SecretAccessKey" | "cfApiToken";
+
+/**
+ * How the deployment authenticates to Cloudflare. Mutually exclusive per run:
+ * whichever mode is chosen provides all the account authority the deployment
+ * uses. `oauth` cannot furnish an app a long-lived credential, so a recipe that
+ * needs one (a `cfApiToken` host secret) must offer `auto` and/or `manual`.
+ */
+export type AuthMode = "oauth" | "auto" | "manual";
 
 /**
  * A Workers Secret whose *value* comes from the host, not the recipe — the way
- * an app receives the deploying account's own credentials without the recipe
- * script ever reading them. Declared here so the review page can state plainly
- * that this app will hold the user's Cloudflare API token.
+ * an app receives a credential without the recipe script ever reading it.
+ * Declared here so the review page can state plainly what the app will hold.
  */
 export interface RecipeHostSecret {
   name: string;
   source: HostSecretSource;
   reason: Localized;
   requirement: Requirement;
+  /**
+   * Only for `source: "cfApiToken"` — the Cloudflare permission-group names the
+   * app's own long-lived token must carry (Title Case, resolved to ids at mint
+   * time; a different namespace from the dotted OAuth scopes). In auto mode the
+   * host mints a token holding exactly these; in manual mode they are the list
+   * the user is told to create a token against. Absent for every other source.
+   */
+  groups?: string[];
 }
 
 /**
@@ -276,6 +298,8 @@ export interface Recipe {
   package: PackageRef;
   license: RecipeLicense;
   terms?: RecipeTerms;
+  /** Which authentication modes this package supports; the wizard offers these. */
+  authModes: AuthMode[];
   permissions: RecipePermission[];
   checks?: RecipeCheck[];
   resources: RecipeResource[];
