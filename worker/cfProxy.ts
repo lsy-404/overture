@@ -88,9 +88,9 @@ export async function handleCfProxy(c: RelayContext): Promise<Response> {
     headers.set("Authorization", callerAuth);
   } else {
     // Mode-agnostic on purpose: readSession returns the same shape whether
-    // the cookie was filled by the OAuth callback, POST /auth/token (auto),
-    // or POST /auth/token (manual) — session.token is always the credential
-    // to inject and session.accountId is always the account it is bound to.
+    // the cookie was filled by the OAuth callback or POST /auth/token (auto)
+    // — session.token is always the credential to inject and
+    // session.accountId is always the account it is bound to.
     const session = await readSession(c);
     if (!session) {
       return jsonResponse(c, 403, { ok: false, error: "Not signed in" });
