@@ -166,14 +166,15 @@ export interface SessionAccount {
 }
 
 // How `token` was obtained, which decides what happens when the session ends:
-// oauth revokes upstream via the OAuth client, auto self-deletes the pasted
-// token with itself as bearer, manual only ever clears the local cookie. All
-// three fill the same __Host-ov_session shape and the same /cf/* injection —
-// mode changes cleanup, never authorization.
-export type AuthMode = "oauth" | "auto" | "manual";
+// oauth revokes upstream via the OAuth client; auto's token is a long-lived
+// credential the user pasted in themselves, so it is also the app's runtime
+// credential, and Overture never deletes it — revoke only ever clears the
+// local cookie in that mode. Both fill the same __Host-ov_session shape and
+// the same /cf/* injection — mode changes cleanup, never authorization.
+export type AuthMode = "oauth" | "auto";
 
 function isAuthMode(value: unknown): value is AuthMode {
-  return value === "oauth" || value === "auto" || value === "manual";
+  return value === "oauth" || value === "auto";
 }
 
 export interface SessionPayload {

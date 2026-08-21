@@ -13,15 +13,14 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// worker/authToken.ts's two routes, exercised through the real app so
+// worker/authToken.ts's POST /auth/token, exercised through the real app so
 // csrfGate and route registration (worker/index.ts) are covered along with
-// the handlers: POST /auth/token (verify a pasted token, seal it into the
-// unified session cookie) and POST /auth/token/revoke-self (auto-mode-only
-// self-delete). global.fetch is stubbed per Cloudflare endpoint so nothing
-// here reaches a real account.
+// the handler: verify a pasted token against Cloudflare, then seal it into
+// the unified session cookie. global.fetch is stubbed per Cloudflare endpoint
+// so nothing here reaches a real account.
 
 import app from "../../worker/index";
-import { decryptSession, encryptSession, type SessionPayload } from "../../worker/oauth";
+import { decryptSession } from "../../worker/oauth";
 
 const ENV = {
   OAUTH_CLIENT_ID: "test-client-id",
@@ -72,20 +71,6 @@ function setCookieValue(res: Response): string {
   return match ? match[1] : "";
 }
 
-async function sealedSession(overrides: Partial<SessionPayload> = {}): Promise<string> {
-  const full: SessionPayload = {
-    token: "auto-pasted-powerful-token",
-    scope: [],
-    accounts: [{ id: ACCOUNT_ID, name: "Test Account" }],
-    accountId: ACCOUNT_ID,
-    pkg: PKG,
-    expiresAt: Math.floor(Date.now() / 1000) + 3599,
-    mode: "auto",
-    ...overrides,
-  };
-  return `__Host-ov_session=${await encryptSession(full, ENV.OAUTH_COOKIE_KEY)}`;
-}
-
 const checks: Array<[string, boolean, string?]> = [];
 
 async function run(): Promise<void> {
@@ -111,6 +96,14 @@ async function run(): Promise<void> {
     body: JSON.stringify({ token: "cfat_abc", mode: "oauth", pkg: PKG }),
   });
   checks.push(['mode "oauth" is rejected on this route with 400 — oauth only ever comes from the callback', badMode.status === 400]);
+
+  stubRoutes(ACTIVE_TOKEN_ROUTES);
+  const manualMode = await call("/auth/token", {
+    method: "POST",
+    headers: { ...RELAY_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ token: "cfat_abc", mode: "manual", pkg: PKG }),
+  });
+  checks.push(['mode "manual" no longer exists — rejected with 400', manualMode.status === 400]);
 
   stubRoutes(ACTIVE_TOKEN_ROUTES);
   const missingMode = await call("/auth/token", {
@@ -155,7 +148,7 @@ async function run(): Promise<void> {
   const inactiveToken = await call("/auth/token", {
     method: "POST",
     headers: { ...RELAY_HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify({ token: "cfat_expired", mode: "manual", pkg: PKG }),
+    body: JSON.stringify({ token: "cfat_expired", mode: "auto", pkg: PKG }),
   });
   checks.push(["a token that verifies but is not active is refused with 403", inactiveToken.status === 403]);
 
@@ -183,78 +176,6 @@ async function run(): Promise<void> {
   const readBackBody = (await readBack.json()) as Record<string, unknown>;
   checks.push(["GET /oauth/session reads the mode back from a token-filled session", readBackBody.mode === "auto"]);
   checks.push(["GET /oauth/session still never returns the token", !("token" in readBackBody)]);
-
-  // manual mode round-trips the same way
-  stubRoutes(ACTIVE_TOKEN_ROUTES);
-  const manualAccepted = await call("/auth/token", {
-    method: "POST",
-    headers: { ...RELAY_HEADERS, "Content-Type": "application/json" },
-    body: JSON.stringify({ token: "cfat_manual_narrow_token", mode: "manual", pkg: PKG }),
-  });
-  const manualBody = (await manualAccepted.json()) as Record<string, unknown>;
-  checks.push(['mode "manual" is accepted and reported back', manualAccepted.status === 200 && manualBody.mode === "manual"]);
-
-  // --- POST /auth/token/revoke-self ---
-  stubRoutes(ACTIVE_TOKEN_ROUTES);
-  const revokeNoSession = await call("/auth/token/revoke-self", { method: "POST", headers: RELAY_HEADERS });
-  checks.push(["revoke-self with no session at all is rejected with 403", revokeNoSession.status === 403]);
-
-  stubRoutes(ACTIVE_TOKEN_ROUTES);
-  const revokeManualMode = await call("/auth/token/revoke-self", {
-    method: "POST",
-    headers: { ...RELAY_HEADERS, Cookie: await sealedSession({ mode: "manual" }) },
-  });
-  checks.push(["revoke-self on a manual-mode session is rejected with 403 — it is the user's own token", revokeManualMode.status === 403]);
-  checks.push(["revoke-self rejecting a non-auto session never calls Cloudflare", fetchCalls.length === 0]);
-
-  stubRoutes(ACTIVE_TOKEN_ROUTES);
-  const revokeOauthMode = await call("/auth/token/revoke-self", {
-    method: "POST",
-    headers: { ...RELAY_HEADERS, Cookie: await sealedSession({ mode: "oauth" }) },
-  });
-  checks.push(["revoke-self on an oauth-mode session is rejected with 403 — there is no Account API Token to delete", revokeOauthMode.status === 403]);
-
-  // self-delete succeeds: verify then a successful DELETE
-  routes = new Map(Object.entries(ACTIVE_TOKEN_ROUTES));
-  fetchCalls = [];
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    const method = init?.method || "GET";
-    fetchCalls.push(`${method} ${url}`);
-    if (url.endsWith("/tokens/verify")) {
-      return new Response(JSON.stringify({ success: true, result: { id: OWN_TOKEN_ID, status: "active" } }), { status: 200 });
-    }
-    if (method === "DELETE" && url.includes(`/tokens/${OWN_TOKEN_ID}`)) {
-      return new Response(JSON.stringify({ success: true }), { status: 200 });
-    }
-    return new Response(JSON.stringify({ success: false }), { status: 404 });
-  }) as typeof fetch;
-  const revokeSuccess = await call("/auth/token/revoke-self", {
-    method: "POST",
-    headers: { ...RELAY_HEADERS, Cookie: await sealedSession({ mode: "auto" }) },
-  });
-  const revokeSuccessBody = (await revokeSuccess.json()) as { ok: boolean };
-  checks.push(["a successful self-delete reports ok: true", revokeSuccess.status === 200 && revokeSuccessBody.ok === true]);
-  checks.push(["a successful self-delete still clears the session cookie", (revokeSuccess.headers.get("Set-Cookie") || "").includes("Max-Age=0")]);
-  checks.push(["self-delete actually issued a DELETE against the token's own id", fetchCalls.some((c) => c.startsWith("DELETE") && c.includes(OWN_TOKEN_ID))]);
-
-  // self-delete fails: the powerful token cannot be removed — must not be silent
-  globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
-    const url = String(input);
-    if (url.endsWith("/tokens/verify")) {
-      return new Response(JSON.stringify({ success: true, result: { id: OWN_TOKEN_ID, status: "active" } }), { status: 200 });
-    }
-    return new Response(JSON.stringify({ success: false, errors: [{ code: 1000, message: "internal" }] }), { status: 500 });
-  }) as typeof fetch;
-  const revokeFail = await call("/auth/token/revoke-self", {
-    method: "POST",
-    headers: { ...RELAY_HEADERS, Cookie: await sealedSession({ mode: "auto" }) },
-  });
-  const revokeFailBody = (await revokeFail.json()) as { ok: boolean; error?: string };
-  checks.push(["a failed self-delete reports ok: false, not a silent success", revokeFail.status === 200 && revokeFailBody.ok === false]);
-  checks.push(["a failed self-delete still carries a non-empty error the user can act on", typeof revokeFailBody.error === "string" && revokeFailBody.error.length > 0]);
-  checks.push(["a failed self-delete still clears the session cookie regardless", (revokeFail.headers.get("Set-Cookie") || "").includes("Max-Age=0")]);
-  checks.push(["the failure message never echoes the upstream error body", !JSON.stringify(revokeFailBody).includes("internal")]);
 
   let failures = 0;
   for (const [label, passed, detail] of checks) {
