@@ -178,6 +178,7 @@
     "signInAgain": "重新登录",
     "popupBlocked": "浏览器的弹窗拦截阻止了登录窗口打开。请允许这个网站弹出窗口，然后重试。",
     "grantedTitle": "已授予的权限",
+    "grantedUnknown": "没能读回令牌的权限——它可能没包含上面那条 API Tokens 只读。没关系，部署照常进行。",
     "accountsTitle": "选择账号",
     "accountsHelp": "选择要安装到哪个 Cloudflare 账号。",
     "checksTitle": "账号预检",
@@ -214,6 +215,8 @@
       "tokenLinkLabel": "去 Cloudflare 创建令牌",
       "requirementsTitle": "要授予的权限",
       "requirementsIntro": "必需权限不可去掉，可选权限可以取消勾选。",
+      "overtureReadName": "API Tokens（只读）—— Overture 需要",
+      "overtureReadNote": "让 Overture 在你粘贴后确认令牌最终获得了哪些权限。只读：不能创建或删除令牌。",
       "permType": {
         "read": "只读",
         "edit": "可修改"

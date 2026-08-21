@@ -28,7 +28,7 @@ import { isValidPackageHash, sessionView, type SessionPayload } from "./oauth";
 import { sealSessionCookie } from "./session";
 import { jsonResponse } from "./http";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
-import { listAccountsForToken, verifyAccountToken } from "./cfTokens";
+import { listAccountsForToken, readTokenPermissionGroups, verifyAccountToken } from "./cfTokens";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
@@ -107,9 +107,15 @@ export async function handleAuthToken(c: RelayContext): Promise<Response> {
     return jsonResponse(c, 403, { ok: false, error: FAILURE.invalidToken });
   }
 
+  // Read back what the token actually grants, so the page can confirm it rather
+  // than only echo what the pre-filled link asked for. Empty when the token did
+  // not include the "Account API Tokens Read" Overture requests for this — the
+  // deploy is unaffected, the confirmation just falls back to showing nothing.
+  const scope = await readTokenPermissionGroups(token, accounts[0].id, verified.id);
+
   const session: SessionPayload = {
     token,
-    scope: [],
+    scope,
     accounts,
     pkg,
     expiresAt: Math.floor(Date.now() / 1000) + TOKEN_SESSION_MAX_AGE_SECONDS,

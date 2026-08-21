@@ -59,6 +59,10 @@ function stubRoutes(table: Record<string, Route>): void {
 const ACTIVE_TOKEN_ROUTES: Record<string, Route> = {
   "/accounts": { status: 200, body: { success: true, result: [{ id: ACCOUNT_ID, name: "Test Account" }] } },
   "/tokens/verify": { status: 200, body: { success: true, result: { id: OWN_TOKEN_ID, status: "active" } } },
+  [`/tokens/${OWN_TOKEN_ID}`]: {
+    status: 200,
+    body: { success: true, result: { policies: [{ permission_groups: [{ name: "Workers Scripts Write" }, { name: "D1 Write" }] }] } },
+  },
 };
 
 async function call(path: string, init: RequestInit = {}): Promise<Response> {
@@ -165,6 +169,24 @@ async function run(): Promise<void> {
   checks.push(['the response reports mode "auto"', acceptedBody.mode === "auto"]);
   checks.push(["the response reports authorized: true", acceptedBody.authorized === true]);
   checks.push(["the response carries the account list Cloudflare returned", Array.isArray(acceptedBody.accounts) && (acceptedBody.accounts as unknown[]).length === 1]);
+  checks.push([
+    "the session scope is the token's own permission-group names, read back and sorted",
+    JSON.stringify(acceptedBody.scope) === JSON.stringify(["D1 Write", "Workers Scripts Write"]),
+    JSON.stringify(acceptedBody.scope),
+  ]);
+  checks.push(["the token's own details were read to confirm the grant", fetchCalls.some((c) => c.endsWith(`/tokens/${OWN_TOKEN_ID}`))]);
+
+  // A token that did not include the API Tokens read still seals a session; the
+  // scope confirmation just comes back empty rather than blocking.
+  stubRoutes({ ...ACTIVE_TOKEN_ROUTES, [`/tokens/${OWN_TOKEN_ID}`]: { status: 403, body: { success: false } } });
+  const noReadBack = await call("/auth/token", {
+    method: "POST",
+    headers: { ...RELAY_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ token: "cfat_no_token_read", mode: "auto", pkg: PKG }),
+  });
+  const noReadBackBody = (await noReadBack.json()) as Record<string, unknown>;
+  checks.push(["a token without API Tokens read is still accepted with 200", noReadBack.status === 200]);
+  checks.push(["its scope confirmation falls back to empty", Array.isArray(noReadBackBody.scope) && (noReadBackBody.scope as unknown[]).length === 0]);
 
   const cookie = setCookieValue(accepted);
   checks.push(["a session cookie was actually set", cookie.length > 0]);
