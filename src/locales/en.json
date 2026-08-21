@@ -178,6 +178,7 @@
     "signInAgain": "Sign in again",
     "popupBlocked": "Your browser's popup blocker stopped the sign-in window from opening. Allow popups for this site, then try again.",
     "grantedTitle": "Permissions granted",
+    "grantedUnknown": "Couldn't read the token's permissions back — it may not include the API Tokens read above. That's fine; the deploy still works.",
     "accountsTitle": "Choose an account",
     "accountsHelp": "Pick the Cloudflare account this should be installed into.",
     "checksTitle": "Account pre-checks",
@@ -214,6 +215,8 @@
       "tokenLinkLabel": "Create the token on Cloudflare",
       "requirementsTitle": "Permissions to grant",
       "requirementsIntro": "Required permissions can't be removed; optional ones you can uncheck.",
+      "overtureReadName": "API Tokens (read) — for Overture",
+      "overtureReadNote": "Lets Overture confirm which permissions your token ended up with once you paste it. Read-only: it cannot create or delete tokens.",
       "permType": {
         "read": "Read",
         "edit": "Edit"

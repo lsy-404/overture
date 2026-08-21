@@ -21,11 +21,14 @@ These are not style preferences. A change that breaks one of them is a vulnerabi
   neither ever returns a token to the page. Auto mode mints nothing and deletes nothing: the one token the
   user pastes both authenticates the deploy and — when the recipe declares a `cfApiToken` host secret — *is*
   the app's long-lived credential, written into the app's Worker Secret unchanged. The user creates that
-  token themselves from the recipe's pre-filled creation link, scoped to exactly the permissions the recipe
-  declared (validated against `shared/cfTokenPermissions.ts`, the one authoritative key→name/danger table),
-  so a leak is bounded by what they granted, not by anything Overture could widen. `cfApiToken` is a
-  host-secret source for that pasted *app* token only; `apiToken` (the session credential) remains forbidden
-  as a host-secret source. Revoke deletes nothing in auto mode — the token is the user's own.
+  token themselves from the recipe's pre-filled creation link — the permissions the recipe declared
+  (validated against `shared/cfTokenPermissions.ts`, the one authoritative key→name/danger table), plus one
+  Overture adds and always discloses on that same page: `account_api_tokens` **read**. That read, and only
+  read, is what lets the Worker call `GET .../tokens/{id}` after the paste to confirm what the token actually
+  grants; it can never create, modify, or delete a token, and the deploy proceeds even when the user leaves
+  it out. So a leak is still bounded by what they granted, not by anything Overture could widen. `cfApiToken`
+  is a host-secret source for that pasted *app* token only; `apiToken` (the session credential) remains
+  forbidden as a host-secret source. Revoke deletes nothing in auto mode — the token is the user's own.
 - A package's `recipe.js` runs only inside `<iframe sandbox="allow-scripts">` (opaque origin, no
   `allow-same-origin`), and reaches the outside world only through the capability bridge.
 - Every capability call is gated on the recipe having declared that capability, and every Cloudflare

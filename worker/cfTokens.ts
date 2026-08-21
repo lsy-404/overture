@@ -78,3 +78,42 @@ export async function verifyAccountToken(token: string, accountId: string): Prom
   }
   return { id: envelope.result.id };
 }
+
+interface TokenDetailsEnvelope {
+  success?: boolean;
+  result?: { policies?: Array<{ permission_groups?: Array<{ name?: string }> }> };
+}
+
+/**
+ * The human-readable permission-group names the token actually carries, read
+ * from its own details (`GET .../tokens/{id}`). This needs the token to hold
+ * "Account API Tokens Read" — Overture asks for that read on the pre-filled
+ * link precisely so it can confirm here what the user granted. Returns an empty
+ * list rather than throwing when the read is refused or the shape is off, so a
+ * token that simply did not grant the read still deploys; the confirmation is a
+ * courtesy, never a gate.
+ */
+export async function readTokenPermissionGroups(token: string, accountId: string, tokenId: string): Promise<string[]> {
+  let res: Response;
+  try {
+    res = await fetch(`${CF_API_BASE}/accounts/${accountId}/tokens/${tokenId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch {
+    return [];
+  }
+  let envelope: TokenDetailsEnvelope;
+  try {
+    envelope = (await res.json()) as TokenDetailsEnvelope;
+  } catch {
+    return [];
+  }
+  if (!res.ok || !envelope.success || !Array.isArray(envelope.result?.policies)) return [];
+  const names = new Set<string>();
+  for (const policy of envelope.result.policies) {
+    for (const group of policy.permission_groups ?? []) {
+      if (typeof group.name === "string" && group.name) names.add(group.name);
+    }
+  }
+  return [...names].sort();
+}

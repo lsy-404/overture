@@ -39,14 +39,14 @@ const includedPermissions = computed(() =>
 );
 const dangerPermissions = computed(() => describePermissions(includedPermissions.value).filter((row) => row.danger));
 
-/** The token-creation link, pre-filled with the permissions still kept in. */
-const tokenLinkUrl = computed(() => buildTokenLinkUrl(includedPermissions.value));
+// Overture's own read: with "Account API Tokens" read on the token, the deployer
+// can read the token back after it is pasted and confirm what it actually
+// grants (see the granted list below). It is a read, added on top of the app's
+// own permissions and always disclosed — never a write, never hidden.
+const OVERTURE_TOKEN_PERM = { key: "account_api_tokens", type: "read" } as const;
 
-// After the token is accepted, auto mode confirms which permissions it was
-// created for. Cloudflare's verify call returns only that the token is active,
-// not its policies, so this reflects what the pre-filled link requested — the
-// permissions the user kept — rather than re-reading the token itself.
-const grantedRows = computed(() => describePermissions(includedPermissions.value));
+/** The token-creation link: the permissions kept in, plus Overture's own read. */
+const tokenLinkUrl = computed(() => buildTokenLinkUrl([...includedPermissions.value, OVERTURE_TOKEN_PERM]));
 
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
@@ -332,6 +332,11 @@ function recheck() {
               </template>
               <p v-if="permission.scenario" class="field-help" style="margin: 2px 0 0">{{ localized(permission.scenario, locale) }}</p>
             </li>
+            <li>
+              <span class="field-tag required">{{ t("authorize.requirements.required") }}</span>
+              {{ t("authorize.auto.overtureReadName") }}
+              <p class="field-help" style="margin: 2px 0 0">{{ t("authorize.auto.overtureReadNote") }}</p>
+            </li>
           </ul>
         </div>
 
@@ -365,17 +370,13 @@ function recheck() {
     <template v-else>
       <div class="guide-card">
         <h3>{{ t("authorize.grantedTitle") }}</h3>
-        <template v-if="wizard.authMode === 'oauth'">
-          <p class="field-help scope-codes" style="margin-top: 0">{{ wizard.oauthScope.join(" ") }}</p>
-          <WinButton Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
-            {{ t("authorize.signInAgain") }}
-          </WinButton>
-        </template>
-        <ul v-else class="plain-list" style="margin-top: 0">
-          <li v-for="row in grantedRows" :key="row.key">
-            {{ row.name }}<span class="field-tag optional">{{ t(`authorize.auto.permType.${row.type}`) }}</span>
-          </li>
+        <ul v-if="wizard.oauthScope.length > 0" class="plain-list" style="margin-top: 0">
+          <li v-for="grant in wizard.oauthScope" :key="grant">{{ grant }}</li>
         </ul>
+        <p v-else class="field-help" style="margin-top: 0">{{ t("authorize.grantedUnknown") }}</p>
+        <WinButton v-if="wizard.authMode === 'oauth'" Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+          {{ t("authorize.signInAgain") }}
+        </WinButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
       </div>
 
