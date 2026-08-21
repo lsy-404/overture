@@ -16,15 +16,16 @@ const SEVERITY_BARS: Record<Severity, string> = {
 
 const barSeverity = computed(() => (props.analysis.worst ? SEVERITY_BARS[props.analysis.worst] : "Success"));
 
-/** "Overture itself" reads better than the reserved id it is stored under. */
-function viaLabel(via: string): string {
-  return via === "host" ? t("analyze.viaHost") : via;
+// Findings that name a credential source carry the raw internal id (e.g.
+// "cfApiToken"); swap it for the human name before it reaches the sentence.
+function findingText(code: string, values?: Record<string, string>): string {
+  if (values && values.source) {
+    return t(`analyze.findings.${code}`, { ...values, source: t(`analyze.sourceName.${values.source}`) });
+  }
+  return t(`analyze.findings.${code}`, values || {});
 }
 
-/** Scopes are granted together, not as alternatives. */
-function scopeList(scopes: string[]): string {
-  return scopes.join(" ");
-}
+const hasEgress = computed(() => props.analysis.network.length > 0 || props.analysis.script.opaqueNetwork > 0);
 </script>
 
 <template>
@@ -39,58 +40,23 @@ function scopeList(scopes: string[]): string {
     <ul v-if="analysis.findings.length > 0" class="plain-list finding-list">
       <li v-for="(finding, index) in analysis.findings" :key="`${finding.code}-${index}`">
         <span class="field-tag" :class="`severity-${finding.severity}`">{{ t(`analyze.severity.${finding.severity}`) }}</span>
-        {{ t(`analyze.findings.${finding.code}`, finding.values || {}) }}
+        {{ findingText(finding.code, finding.values) }}
       </li>
     </ul>
 
-    <h4>{{ t("analyze.permissionsTitle") }}</h4>
-    <p class="field-help" style="margin-top: 0">{{ t("analyze.permissionsIntro") }}</p>
-    <ul class="plain-list">
-      <li v-for="need in analysis.permissions" :key="need.scopes.join('|')">
-        <code>{{ scopeList(need.scopes) }}</code>
-        <p v-if="need.uncertain" class="field-help tone-warn" style="margin: 4px 0 0">
-          {{ t(`analyze.uncertain.${need.uncertain}`) }}
-        </p>
-      </li>
-      <li v-if="analysis.permissions.length === 0">{{ t("analyze.permissionsNone") }}</li>
-    </ul>
-
-    <details class="report-details">
-      <summary>{{ t("analyze.endpointsTitle", { count: analysis.endpoints.length }) }}</summary>
+    <template v-if="hasEgress">
+      <h4>{{ t("analyze.networkTitle") }}</h4>
+      <p class="field-help" style="margin-top: 0">{{ t("analyze.networkIntro") }}</p>
       <ul class="plain-list">
-        <li v-for="endpoint in analysis.endpoints" :key="endpoint.id">
-          <code>{{ endpoint.method }} {{ endpoint.path }}</code>
-          <span class="field-help"> — {{ endpoint.via.map(viaLabel).join(", ") }}</span>
+        <li v-for="target in analysis.network" :key="`${target.via}-${target.origin}`">
+          <code>{{ target.origin }}</code>
+          <span v-if="target.partial" class="field-help tone-warn"> {{ t("analyze.networkPartial") }}</span>
         </li>
-      </ul>
-    </details>
-
-    <template v-if="analysis.checks.length > 0">
-      <h4>{{ t("analyze.checksTitle") }}</h4>
-      <ul class="plain-list">
-        <li v-for="check in analysis.checks" :key="check.id">
-          <code>{{ check.path }}</code>
-          <span :class="`requirement-${check.requirement}`">({{ t(`authorize.requirements.${check.requirement}`) }})</span>
-          <span v-if="check.malformed" class="field-help tone-bad"> — {{ t("analyze.checkMalformed") }}</span>
-          <span v-else-if="!check.endpoint" class="field-help tone-bad"> — {{ t("analyze.checkUnknown") }}</span>
-          <span v-else class="field-help tone-ok"> — {{ t("analyze.checkKnown") }}</span>
+        <li v-if="analysis.script.opaqueNetwork > 0" class="tone-warn">
+          {{ t("analyze.networkOpaque", { count: analysis.script.opaqueNetwork }) }}
         </li>
       </ul>
     </template>
-
-    <h4>{{ t("analyze.networkTitle") }}</h4>
-    <p class="field-help" style="margin-top: 0">{{ t("analyze.networkIntro") }}</p>
-    <ul class="plain-list">
-      <li v-for="target in analysis.network" :key="`${target.via}-${target.origin}`">
-        <code>{{ target.origin }}</code>
-        <span class="field-help"> — {{ t("analyze.networkVia", { via: target.via }) }}</span>
-        <span v-if="target.partial" class="field-help tone-warn"> {{ t("analyze.networkPartial") }}</span>
-      </li>
-      <li v-if="analysis.network.length === 0 && analysis.script.opaqueNetwork === 0">{{ t("analyze.networkNone") }}</li>
-      <li v-if="analysis.script.opaqueNetwork > 0" class="tone-warn">
-        {{ t("analyze.networkOpaque", { count: analysis.script.opaqueNetwork }) }}
-      </li>
-    </ul>
   </div>
 </template>
 
@@ -115,13 +81,5 @@ function scopeList(scopes: string[]): string {
 
 .severity-note {
   background: color-mix(in srgb, currentColor 10%, transparent);
-}
-
-.report-details {
-  margin-top: 18px;
-}
-
-.report-details summary {
-  cursor: pointer;
 }
 </style>

@@ -157,36 +157,6 @@ const passwordVar = analyzePackage(
   DEPLOY('  await ctx.d1.provision("db");'),
 );
 
-// Declares a capability ("secrets") whose endpoint (worker.secretPut →
-// workers-scripts.write) is never asked for in oauthScopes — Cloudflare would
-// refuse that call mid-deployment.
-const underReportedScope = analyzePackage(
-  build({
-    capabilities: ["d1", "secrets"],
-    hostSecrets: [{ name: "GREETING", source: "accountId", requirement: "optional", reason: { "*": "Say hi" } }],
-  }),
-  DEPLOY('  await ctx.d1.provision("db");\n  await ctx.secrets.putHostValue("GREETING");'),
-);
-
-// Asks for a scope ("zone.read") no declared capability's endpoints derive —
-// visible to the user, not a reason to block the deploy.
-const overReportedScope = analyzePackage(
-  build({
-    permissions: [
-      {
-        key: "database",
-        requirement: "required",
-        oauthScopes: ["d1.write", "zone.read"],
-        label: { "*": "D1 database" },
-        scenario: { "*": "Create and query the database" },
-        scope: "account",
-        level: "write",
-      },
-    ],
-  }),
-  DEPLOY('  await ctx.d1.provision("db");'),
-);
-
 const checks: Array<[string, boolean, string?]> = [
   ["a matching declaration and script raises nothing", plain.findings.length === 0, plain.findings.map((f) => f.code).join(", ")],
   ["the declared capability is reported as used", plain.capabilities.some((entry) => entry.capability === "d1" && entry.used)],
@@ -275,33 +245,6 @@ const checks: Array<[string, boolean, string?]> = [
     undeclared.findings.length > 0 && undeclared.findings[0].severity === "critical" && undeclared.worst === "critical",
   ],
 
-  [
-    "a capability whose endpoint scope was never self-reported is flagged as under-reported",
-    underReportedScope.findings.some((finding) => finding.code === "oauthScopeUnderReported" && finding.severity === "warning"),
-    underReportedScope.findings.map((f) => f.code).join(", "),
-  ],
-  [
-    "the under-report finding names the missing scope",
-    underReportedScope.findings.some(
-      (finding) => finding.code === "oauthScopeUnderReported" && String(finding.values?.scopes).includes("workers-scripts.write"),
-    ),
-  ],
-  [
-    "a self-reported scope no declared capability derives is flagged as over-reported",
-    overReportedScope.findings.some((finding) => finding.code === "oauthScopeOverReported" && finding.severity === "warning"),
-    overReportedScope.findings.map((f) => f.code).join(", "),
-  ],
-  [
-    "the over-report finding names the extra scope",
-    overReportedScope.findings.some(
-      (finding) => finding.code === "oauthScopeOverReported" && String(finding.values?.scopes).includes("zone.read"),
-    ),
-  ],
-  [
-    "a self-report matching the derived set raises neither scope finding",
-    !plain.findings.some((finding) => finding.code === "oauthScopeUnderReported" || finding.code === "oauthScopeOverReported"),
-    plain.findings.map((f) => f.code).join(", "),
-  ],
 ];
 
 let failures = 0;

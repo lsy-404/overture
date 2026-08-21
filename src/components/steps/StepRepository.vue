@@ -10,7 +10,6 @@ import { loadInstallConfig } from "../../lib/package/config";
 import { loadDataPackage } from "../../lib/package/artifact";
 import { analyzePackage } from "../../lib/analyze/analyze";
 import { localized } from "../../lib/recipe/types";
-import PackageReport from "../PackageReport.vue";
 import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
@@ -396,7 +395,6 @@ onMounted(async () => {
             <p style="margin: 6px 0 0">{{ packageError }}</p>
             <WinButton style="margin-top: 10px" @Click="loadPackage()">{{ t("common.retry") }}</WinButton>
           </WinInfoBar>
-          <PackageReport v-else-if="wizard.analysis" :analysis="wizard.analysis" />
         </template>
       </template>
 

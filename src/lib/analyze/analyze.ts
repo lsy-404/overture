@@ -28,7 +28,7 @@ import { matchEndpoint, pathSegments, CF_ENDPOINTS } from "../../../shared/cfAll
 import { METHOD_GATES } from "../sandbox/protocol";
 import type { Capability, Recipe, Requirement } from "../recipe/types";
 import { endpointPath, endpointsOfCapability, hostEndpointsFor } from "./endpoints";
-import { permissionsForEndpoints, scopeDeviation, scopesForEndpoints, type PermissionNeed } from "./permissions";
+import { permissionsForEndpoints, scopesForEndpoints, type PermissionNeed } from "./permissions";
 import { isKnownScope } from "../../../shared/oauthScopes";
 import { scanRecipeScript, type NetworkTarget, type ScriptScan } from "./script";
 
@@ -185,21 +185,10 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
     endpoints.push({ id: rule.id, method: rule.method, path: endpointPath(rule), via: sources });
   }
 
-  // ---- self-reported OAuth scopes against what the code actually reaches ---
-  //
   // `recipe.permissions[].oauthScopes` is the author's own word for what this
   // package needs; the authorize request asks for exactly that (unioned with
-  // Overture's own baseline). Comparing it against the scopes its *declared
-  // capabilities* would need on their own — read off the code, not asked of the
-  // author — catches the two ways that word can be wrong: too little, which
-  // Cloudflare will refuse mid-deployment, and too much, which is simply worth
-  // being able to see.
+  // Overture's own baseline).
   const reportedScopes = [...new Set((recipe.permissions || []).flatMap((permission) => permission.oauthScopes))];
-  const derivedScopeEndpoints = endpoints.filter((entry) => entry.via.some((source) => source !== "host")).map((entry) => entry.id);
-  const derivedScopes = scopesForEndpoints(derivedScopeEndpoints);
-  const { underReported, overReported } = scopeDeviation(reportedScopes, derivedScopes);
-  if (underReported.length > 0) add("oauthScopeUnderReported", "warning", { scopes: clip(underReported.join(" ")) });
-  if (overReported.length > 0) add("oauthScopeOverReported", "warning", { scopes: clip(overReported.join(" ")) });
 
   // When the package offers OAuth sign-in, every scope its authorize request
   // would carry has to sit within the scopes this Overture's OAuth client was

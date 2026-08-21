@@ -126,8 +126,8 @@
       "opaqueNetwork": "脚本有 {count} 处网络调用的地址是运行时拼出来的，读不出它们会去哪。",
       "dynamicCode": "脚本试图在运行时把数据变成代码。这是不允许的——只有随包一起送来的代码才能运行——这些尝试都会失败。",
       "computedAccess": "脚本有一部分行为是运行时才决定调用什么，这次分析可能没能覆盖到它做的所有事。",
-      "hostSecretCredential": "被部署的应用会拿到你的 {source}，以 Workers Secret「{name}」的形式保存，只要它还在线就一直持有。",
-      "hostSecretAccountId": "被部署的应用会拿到你的 Cloudflare 账户 ID，以 Workers Secret「{name}」的形式保存。",
+      "hostSecretCredential": "被部署的应用会拿到你的 {source}，并在其运行期间一直持有。",
+      "hostSecretAccountId": "被部署的应用会拿到你的 Cloudflare 账户 ID。",
       "passwordInVar": "「{input}」的值被写进了普通 Worker 变量 {var}，能进仪表盘的人都读得到。",
       "adoptsExisting": "这个应用会在你账户里找它已有的资源（{resources}），找到就直接写进去，而不是另建新的。",
       "oauthScopeUnderReported": "脚本似乎需要 {scopes}，但这个包声明的权限没有覆盖它们，登录时也就不会申请这些权限。这些调用会在部署进行到一半时被拒绝。",
@@ -137,6 +137,12 @@
     "uncertain": {
       "writeAssumed": "Cloudflare 在这里也列了只读组，但这个应用要做的事需要写权限。",
       "zoneMayBeNeeded": "绑自定义域会连带动到 zone 的 DNS 和证书，可能还需要 zone 级的权限。"
+    },
+    "sourceName": {
+      "cfApiToken": "Cloudflare API 令牌",
+      "r2AccessKeyId": "R2 Access Key ID",
+      "r2SecretAccessKey": "R2 Secret Access Key",
+      "accountId": "Cloudflare 账户 ID"
     }
   },
   "authMethod": {
