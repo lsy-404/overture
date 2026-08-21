@@ -22,9 +22,7 @@
 //   GET  /oauth/callback       exchanges the code, writes the session cookie
 //   /oauth/session             read (GET) or pick an account for (POST) the session
 //   POST /oauth/revoke         mode-branched credential teardown + unconditional cookie clear
-//   POST /auth/token           verifies a pasted Cloudflare token (auto/manual) into the session
-//   POST /auth/token/revoke-self  auto-mode-only: self-deletes the pasted token, clears the session
-//   POST /cf/mint-app-token    auto-mode-only: mints a narrow, long-lived app token
+//   POST /auth/token           verifies a pasted Cloudflare token (auto) into the session
 //   /cf/*                      allow-listed passthrough to api.cloudflare.com
 //   POST /r2/verify-keys       signed probe against R2's S3 endpoint
 //   GET  /github/release-asset policy-checked package download
@@ -39,12 +37,11 @@
 //
 
 import { Hono } from "hono";
-import { handleAuthToken, handleRevokeSelf } from "./authToken";
+import { handleAuthToken } from "./authToken";
 import { handleCfProxy } from "./cfProxy";
 import { csrfGate } from "./csrf";
 import { handleGithubAsset } from "./githubAsset";
 import { jsonResponse } from "./http";
-import { handleMintAppToken } from "./mintToken";
 import { handleOauthAuthorize, handleOauthCallback, handleOauthRevoke, handleOauthSessionGet, handleOauthSessionPost } from "./oauthHandlers";
 import { handleGetPolicy } from "./policy";
 import { handleVerifyR2Keys } from "./r2Verify";
@@ -61,14 +58,7 @@ app.use("/oauth/session", csrfGate);
 app.use("/oauth/revoke", csrfGate);
 app.use("/r2/verify-keys", csrfGate);
 app.use("/auth/token", csrfGate);
-app.use("/auth/token/revoke-self", csrfGate);
 
-// Registered ahead of the /cf/* wildcard: Hono runs handlers in registration
-// order and the wildcard's own handler never calls next(), so a literal route
-// under the same prefix must come first to be reachable at all. The csrfGate
-// above still applies to it either way, since middleware application only
-// depends on the request path matching /cf/*, not on handler order.
-app.post("/cf/mint-app-token", handleMintAppToken);
 app.all("/cf/*", handleCfProxy);
 app.get("/oauth/authorize", handleOauthAuthorize);
 app.get("/oauth/callback", handleOauthCallback);
@@ -76,7 +66,6 @@ app.get("/oauth/session", handleOauthSessionGet);
 app.post("/oauth/session", handleOauthSessionPost);
 app.post("/oauth/revoke", handleOauthRevoke);
 app.post("/auth/token", handleAuthToken);
-app.post("/auth/token/revoke-self", handleRevokeSelf);
 app.post("/r2/verify-keys", handleVerifyR2Keys);
 app.get("/github/release-asset", handleGithubAsset);
 app.get("/policy", handleGetPolicy);

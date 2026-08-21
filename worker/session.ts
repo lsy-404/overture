@@ -14,11 +14,11 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 // The one __Host-ov_session name, cookie options, and read/reseal logic every
-// route shares, regardless of which of the three auth modes filled it:
-// oauthHandlers.ts's callback, authToken.ts's paste-a-token route, cfProxy.ts's
-// /cf/* injection, and mintToken.ts's mint route all read or write the exact
-// same cookie. worker/oauth.ts holds the crypto; this file is what a route
-// does with a Hono Context around it.
+// route shares, regardless of which of the two auth modes filled it:
+// oauthHandlers.ts's callback, authToken.ts's paste-a-token route, and
+// cfProxy.ts's /cf/* injection all read or write the exact same cookie.
+// worker/oauth.ts holds the crypto; this file is what a route does with a
+// Hono Context around it.
 
 import type { Context } from "hono";
 import { decryptSession, encryptSession, parseCookies, serializeCookie, type SessionPayload } from "./oauth";

@@ -127,10 +127,10 @@ async function run(): Promise<void> {
     forwardedAuth() === "Bearer cfoat_session_token",
   ]);
 
-  // --- mode-agnostic: auto and manual sessions get the same account-segment
-  // binding as oauth, since cfProxy.ts injects session.token regardless of
-  // how the session was filled ---
-  for (const mode of ["auto", "manual"] as const) {
+  // --- mode-agnostic: an auto session gets the same account-segment binding
+  // as oauth, since cfProxy.ts injects session.token regardless of how the
+  // session was filled ---
+  for (const mode of ["auto"] as const) {
     stubFetch();
     const wrongAccountForMode = await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {
       Cookie: await sessionCookie({ accountId: ACCOUNT_B, mode }),
