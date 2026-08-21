@@ -147,13 +147,13 @@
         "description": "登录你的 Cloudflare 账号。这是最简单的方式——不用创建或粘贴任何东西。"
       },
       "auto": {
-        "title": "自动",
-        "description": "只需粘贴一个令牌，其余的都会自动完成，事后也不会留下任何东西。"
-      },
-      "manual": {
-        "title": "手动",
-        "description": "会告诉你要创建什么，你自己创建令牌，然后粘贴进来。"
+        "title": "令牌",
+        "description": "用一个已经选好权限的链接创建 Cloudflare 令牌，然后粘贴进来。"
       }
+    },
+    "notAvailable": {
+      "title": "这个应用无法在此连接",
+      "body": "这个应用只能通过“使用 Cloudflare 登录”连接，而这台 Overture 还没有配置这个功能。这里无法解决——换一台已经配置好的 Overture，或者请这台的管理者去配置。"
     }
   },
   "authorize": {
@@ -195,30 +195,20 @@
     "r2KeysPairRequired": "两个 R2 密钥字段要么都填，要么都留空。",
     "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。",
     "auto": {
-      "title": "粘贴一个安装令牌",
-      "subtitle": "粘贴一个 Cloudflare 令牌，这个应用才能安装。之后的步骤 Overture 会自动完成。",
-      "intro": "这个令牌只用来完成安装。安装完成后，Overture 会自动删除它。",
-      "tokenLabel": "安装令牌",
-      "placeholder": "把令牌粘贴到这里",
-      "tokenLinkLabel": "去 Cloudflare 创建令牌",
-      "requirementsTitle": "这个令牌需要什么权限",
-      "requirementsBaseline": "这个令牌只需要一项权限：Account API Tokens Write。别的都不用——Overture 会用它自动搭出应用所需的一切。",
-      "templateHint": "这个链接打开 Cloudflare 时会把那项权限帮你填好——给令牌起个名字创建即可。",
-      "mintsIntro": "Overture 会用你的令牌为应用另外创建一个更小的令牌——这些你不用自己授予。应用将能够：",
-      "selfDeleteNote": "安装完成后，这个令牌会自动删除，不会留下任何东西。",
-      "submit": "继续",
-      "submitting": "连接中…"
-    },
-    "manual": {
       "title": "创建你自己的令牌",
-      "subtitle": "创建一个包含下列全部权限的 Cloudflare 令牌，然后粘贴到这里。",
-      "intro": "创建一个 Cloudflare 令牌，涵盖这个应用需要的一切——用它来部署，之后如果应用需要长期凭证，用的也是它。",
+      "subtitle": "点击下面的链接创建一个 Cloudflare 令牌，权限已经帮你选好了，然后粘贴到这里。",
+      "intro": "这个令牌用来部署这个应用；如果应用之后还需要一个长期凭证，用的也是它。之后不会有任何删除或替换——它一直是你自己的令牌，你可以随时在 Cloudflare 控制台里把它删掉。",
       "tokenLabel": "你的令牌",
       "placeholder": "把令牌粘贴到这里",
       "tokenLinkLabel": "去 Cloudflare 创建令牌",
       "requirementsTitle": "要授予的权限",
-      "requirementsAppIntro": "创建令牌时，勾选下面这些权限：",
-      "requirementsFallback": "没有确切的权限清单——请尽量对照上面已经列出的权限来创建，越接近越好。",
+      "requirementsIntro": "下面的链接已经帮你选好了这些权限——只需要给令牌起个名字然后创建。",
+      "permType": {
+        "read": "只读",
+        "edit": "可修改"
+      },
+      "dangerTitle": "请求了敏感权限",
+      "dangerIntro": "这个应用请求的权限是大多数应用都不需要的——比如管理令牌、账单或账号设置。请确认你信任这个应用，再创建带有这些权限的令牌：",
       "submit": "继续",
       "submitting": "连接中…"
     }
@@ -323,8 +313,6 @@
     "failedTitle": "部署失败",
     "failedAt": "失败步骤：{step}",
     "retryFromHere": "重试会从头再跑一遍整个部署，已经建好的资源会被复用。",
-    "autoTokenCleanupFailed": "这次部署已经成功，但安装令牌未能自动删除，仍然有效——请自己去 Cloudflare 控制台把它删掉。",
-    "autoTokenStillLive": "你粘贴的安装令牌仍在你的 Cloudflare 账号里有效。部署一旦成功它就会自动删除，所以重试成功即会清理。如果你就此放弃，请自己去 Cloudflare 控制台把它删掉。",
     "hostSteps": {
       "health": "检查部署是否响应"
     },

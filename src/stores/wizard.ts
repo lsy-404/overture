@@ -35,6 +35,7 @@ import { matchResource, type ResourceMatch } from "../lib/deploy/match";
 import { hostEndpointsFor } from "../lib/analyze/endpoints";
 import { scopesForEndpoints } from "../lib/analyze/permissions";
 import type { OAuthAccount, OAuthSessionState } from "../lib/relay";
+import { usePolicy } from "./policy";
 
 /** Wizard page numbers, in the order the user walks them. */
 export const STEPS = {
@@ -83,6 +84,7 @@ function emptyLive(): LiveScriptFacts {
 }
 
 export const useWizard = defineStore("wizard", () => {
+  const policy = usePolicy();
   const step = ref<number>(STEPS.tos);
 
   function goTo(target: number) {
@@ -154,16 +156,24 @@ export const useWizard = defineStore("wizard", () => {
   }
 
   // ---- authentication mode -------------------------------------------------
-  // Which of the three flows this deployment uses. Chosen on the selector page
-  // when a recipe declares more than one, or filled in without asking when it
-  // declares exactly one. Reset per recipe, same as everything else adoptConfig
-  // touches.
+  // Which of the two flows this deployment uses. Chosen on the selector page
+  // when more than one is available, or filled in without asking when exactly
+  // one is. Reset per recipe, same as everything else adoptConfig touches.
   const authMode = ref<AuthMode | null>(null);
-  const hasAuthChoice = computed(() => (recipe.value?.authModes.length ?? 0) > 1);
+
+  // What the recipe declares, narrowed by what this Overture instance can
+  // actually complete: "auto" needs nothing from the operator, but "oauth"
+  // only works when they configured an OAuth client (policy.oauthEnabled).
+  const availableAuthModes = computed<AuthMode[]>(() =>
+    (recipe.value?.authModes ?? []).filter((mode) => mode === "auto" || policy.policy.oauthEnabled),
+  );
+  const hasAuthChoice = computed(() => availableAuthModes.value.length > 1);
+  /** A recipe loaded, but nothing it declared is actually usable here. */
+  const noAuthModeAvailable = computed(() => !!recipe.value && availableAuthModes.value.length === 0);
 
   /**
    * Sets which mode this deployment uses. Also drops any `cfApiToken` a
-   * previous mode already collected — a manual paste that stays in memory
+   * previous mode already collected — a pasted token that stays in memory
    * across a mode switch would otherwise be pushed as the app's credential
    * under a mode the user never actually confirmed it for.
    */
@@ -175,8 +185,7 @@ export const useWizard = defineStore("wizard", () => {
   // ---- OAuth session -------------------------------------------------------
   // Never a token: everything here is what `GET /oauth/session` is willing to
   // say about the `ov_session` cookie, which this frame cannot read directly.
-  // The name predates auto/manual mode; the cookie and this state are shared by
-  // all three now.
+  // The name predates auto mode; the cookie and this state are shared by both.
   const authorized = ref(false);
   const oauthScope = ref<string[]>([]);
   const oauthAccounts = ref<OAuthAccount[]>([]);
@@ -553,7 +562,9 @@ export const useWizard = defineStore("wizard", () => {
     accountVerified,
     clearCredentials,
     authMode,
+    availableAuthModes,
     hasAuthChoice,
+    noAuthModeAvailable,
     setAuthMode,
     authorized,
     oauthScope,
