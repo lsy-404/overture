@@ -44,7 +44,11 @@ async function start() {
     // declared host secrets get pushed — the same channel the R2 keys use.
     // Minting never touches the powerful token's ability to keep provisioning:
     // that only happens after the whole deployment below has succeeded.
-    if (wizard.authMode === "auto" && cfApiTokenSecret.value) {
+    //
+    // Guarded on an empty value so a retry reuses the token minted on the first
+    // attempt rather than minting a fresh one each time — the powerful token
+    // self-deletes on success and could never clean up the orphans otherwise.
+    if (wizard.authMode === "auto" && cfApiTokenSecret.value && !wizard.credentials.cfApiToken) {
       wizard.credentials.cfApiToken = await mintAppToken(wizard.credentials.accountId, cfApiTokenSecret.value.groups ?? []);
     }
 
@@ -122,6 +126,7 @@ function retry() {
       <strong>{{ t("deploy.failedTitle") }}</strong>
       <p v-if="wizard.failedStep" style="margin: 6px 0 0">{{ t("deploy.failedAt", { step: labelFor(wizard.failedStep) }) }}</p>
       <p style="margin: 6px 0 0">{{ wizard.failedMessage }}</p>
+      <p v-if="wizard.authMode === 'auto'" style="margin: 6px 0 0">{{ t("deploy.autoTokenStillLive") }}</p>
     </WinInfoBar>
 
     <p v-if="wizard.deployFailed" class="field-help">{{ t("deploy.retryFromHere") }}</p>

@@ -204,7 +204,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   // read, so it cannot leak into an error message either.
   const scrub = (message: string): string => {
     let out = message;
-    const secrets = [creds.r2SecretAccessKey, creds.r2AccessKeyId, accountId, ...assetSessions.values()];
+    const secrets = [creds.cfApiToken, creds.r2SecretAccessKey, creds.r2AccessKeyId, accountId, ...assetSessions.values()];
     for (const secret of secrets) {
       if (typeof secret === "string" && secret.length >= 8) out = out.split(secret).join("[redacted]");
     }
