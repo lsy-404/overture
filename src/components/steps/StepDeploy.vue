@@ -91,14 +91,12 @@ function retry() {
           </template>
           <template v-else>{{ t(`deploy.status.${state.status}`) }}</template>
           <p v-if="state.detail && state.status === 'failed'" class="field-help" style="margin: 4px 0 0">{{ state.detail }}</p>
-          <!-- Only steps that report a fraction get a bar; the rest read better
-               as the spinner alone. -->
-          <WinProgressBar
-            v-if="state.status === 'running' && state.progress !== undefined"
-            :Value="state.progress * 100"
-            style="margin-top: 6px"
-          />
         </dd>
+        <WinProgressBar
+          v-if="state.status === 'running' && state.progress !== undefined"
+          :Value="state.progress * 100"
+          class="execute-step-progress"
+        />
       </div>
     </dl>
 

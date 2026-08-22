@@ -14,10 +14,6 @@ const mustAccept = computed(() => hasTerms.value && wizard.recipe?.terms?.requir
 const termsHtml = computed(() => renderMarkdown(wizard.termsText));
 const licenseHtml = computed(() => renderMarkdown(wizard.licenseText));
 
-// The repository step never lets this one mount until its package is read, and
-// going back to pick a different release remounts this step fresh — so there
-// is one recipe this component ever shows, fixed for its whole lifetime.
-const pane = ref<"terms" | "license">(hasTerms.value ? "terms" : "license");
 wizard.termsAccepted = false;
 
 const termsPane = ref<HTMLElement | null>(null);
@@ -55,36 +51,30 @@ function goNext() {
     <h1 class="step-title">{{ t("license.title") }}</h1>
     <p class="step-subtitle">{{ t("license.subtitle") }}</p>
 
-    <div class="pane-tabs">
-      <button v-if="hasTerms" type="button" class="pane-tab" :class="{ active: pane === 'terms' }" @click="pane = 'terms'">
-        {{ t("license.termsTab") }}
-      </button>
-      <button type="button" class="pane-tab" :class="{ active: pane === 'license' }" @click="pane = 'license'">
-        {{ t("license.licenseTab", { id: wizard.recipe?.license.id }) }}
-      </button>
-    </div>
+    <template v-if="hasTerms">
+      <h3 class="section-heading">{{ t("license.termsSection") }}</h3>
+      <div
+        ref="termsPane"
+        class="text-pane markdown-pane"
+        tabindex="0"
+        @scroll="checkTermsRead"
+        v-html="termsHtml"
+      ></div>
+      <div v-if="mustAccept" class="accept-row">
+        <WinCheckBox v-model="wizard.termsAccepted" :IsEnabled="termsRead">
+          <span><span class="required-star" aria-hidden="true">*</span>{{ t("license.accept") }}</span>
+        </WinCheckBox>
+        <span v-if="!termsRead" class="field-help accept-hint">{{ t("license.scrollToEnd") }}</span>
+      </div>
+      <p v-else class="field-help accept-hint">{{ t("license.acceptOptional") }}</p>
+    </template>
 
-    <div
-      v-show="pane === 'terms' && hasTerms"
-      ref="termsPane"
-      class="text-pane markdown-pane"
-      tabindex="0"
-      @scroll="checkTermsRead"
-      v-html="termsHtml"
-    ></div>
-    <div v-show="pane === 'license'" class="text-pane" tabindex="0">
+    <h3 class="section-heading">{{ t("license.licenseSection", { id: wizard.recipe?.license.id }) }}</h3>
+    <div class="text-pane" tabindex="0">
       <div v-if="wizard.licenseText" class="markdown-pane" v-html="licenseHtml"></div>
       <p v-else>{{ t("license.licenseMissing") }}</p>
     </div>
-
-    <div v-if="mustAccept" class="accept-row">
-      <WinCheckBox v-model="wizard.termsAccepted" :IsEnabled="termsRead">
-        <span><span class="required-star" aria-hidden="true">*</span>{{ t("license.accept") }}</span>
-      </WinCheckBox>
-      <span v-if="!termsRead" class="field-help accept-hint">{{ t("license.scrollToEnd") }}</span>
-    </div>
-    <p v-else-if="hasTerms" class="field-help accept-hint">{{ t("license.acceptOptional") }}</p>
-    <p v-else class="field-help accept-hint">{{ t("license.noTerms") }}</p>
+    <p v-if="!hasTerms" class="field-help accept-hint">{{ t("license.noTerms") }}</p>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
