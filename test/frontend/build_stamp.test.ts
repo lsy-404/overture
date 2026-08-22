@@ -38,6 +38,13 @@ const bundle = readdirSync(ASSETS)
   .join("\n");
 
 const pkg = JSON.parse(readFileSync(join(ROOT, "package.json"), "utf8"));
+let checkedOutCommit: string | null = null;
+try {
+  checkedOutCommit = execFileSync("git", ["rev-parse", "--short", "HEAD"], { cwd: ROOT, encoding: "utf8" }).trim() || null;
+} catch {
+  // Release archives legitimately have no Git metadata. Placeholder checks
+  // above still verify that their build supplied the static identity values.
+}
 
 const placeholders = ["__BUILD_VERSION__", "__BUILD_COMMIT__", "__BUILD_REPOSITORY__"].filter((name) =>
   bundle.includes(name),
@@ -48,6 +55,7 @@ checks.push(["every build placeholder is substituted", placeholders.length === 0
 checks.push(["the built bundle carries the package version", bundle.includes(pkg.version)]);
 checks.push(["the built bundle carries the repository address", bundle.includes(pkg.repository)]);
 checks.push(["package.json declares a repository to link to", typeof pkg.repository === "string" && pkg.repository.startsWith("https://")]);
+checks.push(["the built bundle reports the checked-out commit", !checkedOutCommit || bundle.includes(checkedOutCommit), checkedOutCommit || undefined]);
 
 let failures = 0;
 for (const [label, passed, detail] of checks) {
