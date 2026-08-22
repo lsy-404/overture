@@ -557,6 +557,19 @@ function inputField(errors: Errors, path: string, value: unknown): RecipeInput |
   const required = raw.required === undefined ? undefined : bool(errors, `${path}.required`, raw.required, true);
   const onlyMode =
     raw.onlyMode === undefined ? undefined : oneOf<DeployMode>(errors, `${path}.onlyMode`, raw.onlyMode, DEPLOY_MODES, true);
+  let visibleWhen: RecipeInput["visibleWhen"];
+  if (raw.visibleWhen !== undefined) {
+    const condition = bag(errors, `${path}.visibleWhen`, raw.visibleWhen, true);
+    if (condition) {
+      const input = matching(errors, `${path}.visibleWhen.input`, condition.input, RECIPE_LIMITS.idPattern, true);
+      const equals = condition.equals;
+      if (typeof equals !== "string" && typeof equals !== "boolean") {
+        errors.add(`${path}.visibleWhen.equals`, "must be a string or boolean");
+      } else if (input) {
+        visibleWhen = { input, equals };
+      }
+    }
+  }
 
   let fallback: string | boolean | undefined;
   if (raw.default !== undefined) {
@@ -610,6 +623,7 @@ function inputField(errors: Errors, path: string, value: unknown): RecipeInput |
     ...(pattern === undefined ? {} : { pattern }),
     ...(options === undefined ? {} : { options }),
     ...(onlyMode === undefined ? {} : { onlyMode }),
+    ...(visibleWhen === undefined ? {} : { visibleWhen }),
     ...(generate === undefined ? {} : { generate }),
   };
 }
@@ -844,6 +858,14 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     requireUnique(errors, "resources", resources, (entry) => entry.binding, "resource binding");
   }
   if (inputs) requireUnique(errors, "inputs", inputs, (entry) => entry.id, "input id");
+  if (inputs) {
+    const knownInputIds = new Set(inputs.map((entry) => entry.id));
+    for (const [index, entry] of inputs.entries()) {
+      if (entry.visibleWhen && !knownInputIds.has(entry.visibleWhen.input)) {
+        errors.add(`inputs[${index}].visibleWhen.input`, "must name a declared input");
+      }
+    }
+  }
   if (capabilities) requireUnique(errors, "capabilities", capabilities, (entry) => entry, "capability");
   if (hostSecrets) requireUnique(errors, "hostSecrets", hostSecrets, (entry) => entry.name, "host secret name");
 

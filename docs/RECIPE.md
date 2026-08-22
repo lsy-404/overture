@@ -113,8 +113,8 @@ before anything is downloaded.
 
   // Questions the wizard asks on the options page.
   "inputs": [
-    { "id": "adminUsername", "kind": "text", "default": "admin", "label": { "en": "Administrator" } },
-    { "id": "adminPassword", "kind": "password", "generate": 12, "label": { "en": "Password" } }
+    { "id": "admin_username", "kind": "text", "default": "admin", "label": { "en": "Administrator" } },
+    { "id": "admin_password", "kind": "password", "generate": 12, "label": { "en": "Password" } }
   ],
 
   // What recipe.js is allowed to reach. Anything not listed does not exist for it.
@@ -153,6 +153,23 @@ before anything is downloaded.
   "health": { "path": "/edgesonic/version" },
   "done": { "links": [{ "label": { "en": "Open the app" }, "href": "${url}" }] }
 }
+```
+
+### Conditional inputs
+
+Use `onlyMode` to limit an input to a fresh or overwrite deployment. Use
+`visibleWhen` when a field is meaningful only after another option is selected.
+The predicate names a declared input and compares its scalar value exactly;
+hidden fields are neither validated as required nor sent to `recipe.js`.
+
+```json
+[
+  { "id": "reset_admin", "kind": "toggle", "onlyMode": "overwrite", "label": { "en": "Reset administrator" } },
+  { "id": "admin_username", "kind": "text", "onlyMode": "overwrite",
+    "visibleWhen": { "input": "reset_admin", "equals": true }, "label": { "en": "Administrator username" } },
+  { "id": "admin_password", "kind": "password", "generate": 16, "onlyMode": "overwrite",
+    "visibleWhen": { "input": "reset_admin", "equals": true }, "label": { "en": "Administrator password" } }
+]
 ```
 
 ### Interpolation
