@@ -276,7 +276,7 @@
     "containerDisable": "不声明此容器",
     "containerStateHelp": "选择该容器在部署后 Worker 中的声明状态。仅当当前 Worker 已有相应声明时，才可以保持不变；启用会声明该容器，关闭则不会声明。",
     "containerDefaultsFresh": "新建 Worker 没有现有的容器声明。请选择是否启用此容器。",
-    "containerUnavailable": "由于此软件包没有经过审核的不可变镜像，无法启用该容器。新建 Worker 将不声明它；对于已有 Worker，可以保持当前声明或选择不声明。",
+    "containerUnavailable": "此软件包未为该容器提供不可变镜像，因此无法启用。新建 Worker 不会声明它；对于已有 Worker，可以保持当前声明或选择不声明。",
     "optionsHeading": "应用选项",
     "generate": "随机生成",
     "domainPlaceholder": "app.example.com（留空则使用 *.workers.dev）",

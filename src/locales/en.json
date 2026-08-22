@@ -276,7 +276,7 @@
     "containerDisable": "Do not declare this container",
     "containerStateHelp": "Choose this container's declaration state on the deployed Worker. Keeping it unchanged is available only when the current Worker already declares it; enabling declares the container, while disabling leaves it undeclared.",
     "containerDefaultsFresh": "A new Worker has no existing container declaration. Choose whether to enable this container.",
-    "containerUnavailable": "This container cannot be enabled because the package has no reviewed immutable image. A new Worker will leave it undeclared; for an existing Worker, keep the current declaration or choose not to declare it.",
+    "containerUnavailable": "This package does not provide an immutable image for this container, so it cannot be enabled. A new Worker will leave it undeclared; for an existing Worker, keep the current declaration or choose not to declare it.",
     "optionsHeading": "Application options",
     "generate": "Generate",
     "domainPlaceholder": "app.example.com (leave empty to use *.workers.dev)",
