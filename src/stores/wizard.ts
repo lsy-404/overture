@@ -54,6 +54,7 @@ export const STEPS = {
 export const TOTAL_STEPS = STEPS.done;
 
 const R2_KEYS_KEY = "overture_r2_keys";
+const CF_API_TOKEN_KEY = "overture_cf_api_token";
 
 interface StoredR2Keys {
   r2AccessKeyId: string;
@@ -77,6 +78,23 @@ function loadR2Keys(): StoredR2Keys {
     return { r2AccessKeyId: parsed.r2AccessKeyId || "", r2SecretAccessKey: parsed.r2SecretAccessKey || "" };
   } catch {
     return { r2AccessKeyId: "", r2SecretAccessKey: "" };
+  }
+}
+
+function loadCfApiToken(): string {
+  try {
+    return sessionStorage.getItem(CF_API_TOKEN_KEY) || "";
+  } catch {
+    return "";
+  }
+}
+
+function removeStoredCredentials() {
+  try {
+    sessionStorage.removeItem(R2_KEYS_KEY);
+    sessionStorage.removeItem(CF_API_TOKEN_KEY);
+  } catch {
+    // Private browsing can deny storage access; in-memory credentials still clear.
   }
 }
 
@@ -128,12 +146,11 @@ export const useWizard = defineStore("wizard", () => {
   const termsAccepted = ref(false);
 
   // ---- credentials -------------------------------------------------------
-  // sessionStorage only: the R2 key pair never outlives the tab, never enters a
-  // log line, a URL, or a sandbox message. The session credential itself is
-  // never here — it is an HttpOnly cookie this frame cannot read. On a failed
-  // deploy the stored copy is dropped while the in-memory one survives, so an
-  // immediate retry in the same tab doesn't force retyping everything.
-  const credentials = ref<DeployCredentials>({ ...emptyCredentials(), ...loadR2Keys() });
+  // sessionStorage only: host credentials never outlive the tab and never enter
+  // a log line, URL, or sandbox message. The login session itself is an HttpOnly
+  // cookie this frame cannot read. On a failed deploy the stored copy is dropped
+  // while the in-memory one survives, so an immediate retry needn't retype it.
+  const credentials = ref<DeployCredentials>({ ...emptyCredentials(), ...loadR2Keys(), cfApiToken: loadCfApiToken() });
   const accountVerified = ref(false);
 
   watch(
@@ -147,11 +164,24 @@ export const useWizard = defineStore("wizard", () => {
     },
   );
 
+  watch(
+    () => credentials.value.cfApiToken,
+    (cfApiToken) => {
+      try {
+        if (cfApiToken) sessionStorage.setItem(CF_API_TOKEN_KEY, cfApiToken);
+        else sessionStorage.removeItem(CF_API_TOKEN_KEY);
+      } catch {
+        // Private browsing or a full quota — the form still works in memory.
+      }
+    },
+  );
+
   function clearCredentials(wipeMemory: boolean) {
-    sessionStorage.removeItem(R2_KEYS_KEY);
+    removeStoredCredentials();
     if (wipeMemory) {
       credentials.value.r2AccessKeyId = "";
       credentials.value.r2SecretAccessKey = "";
+      credentials.value.cfApiToken = "";
     }
     accountVerified.value = false;
   }
@@ -187,6 +217,11 @@ export const useWizard = defineStore("wizard", () => {
   function setAuthMode(next: AuthMode | null) {
     authMode.value = next;
     credentials.value.cfApiToken = "";
+    try {
+      sessionStorage.removeItem(CF_API_TOKEN_KEY);
+    } catch {
+      // Storage can be unavailable; the in-memory token has still been cleared.
+    }
   }
 
   // ---- OAuth session -------------------------------------------------------
