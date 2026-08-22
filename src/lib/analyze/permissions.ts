@@ -67,7 +67,7 @@ export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
   "worker.assetUpload": { scopes: [], ungated: SESSION_JWT },
   "worker.domainList": { scopes: ["workers-routes.read"] },
   "worker.domainAttach": { scopes: ["workers-routes.write"], uncertain: "zoneMayBeNeeded" },
-  "containers.applicationList": { scopes: ["containers.write"] },
+  "containers.applicationList": { scopes: ["containers.read"] },
   "containers.applicationCreate": { scopes: ["containers.write"] },
   "containers.applicationModify": { scopes: ["containers.write"] },
   "containers.rolloutCreate": { scopes: ["containers.write"] },

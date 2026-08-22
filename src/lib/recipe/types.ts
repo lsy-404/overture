@@ -183,7 +183,7 @@ export interface RecipeContainer {
 }
 
 export interface RecipeContainerImage {
-  /** Docker Hub reference. `${tag}` resolves to the reviewed release tag. */
+  /** Immutable Docker Hub digest the review page can state exactly. */
   reference: string;
 }
 

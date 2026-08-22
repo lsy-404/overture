@@ -27,19 +27,19 @@ function actionFor(target: DeployTarget, className: string): ContainerAction {
   return target.containerActions?.[className] || (target.mode === "fresh" ? "on" : "unchanged");
 }
 
-function imageReference(container: RecipeContainer, tag: string): string {
-  const value = container.image?.reference.replaceAll("${tag}", tag);
-  if (!value || value.includes("${")) throw new Error(`Container ${container.className} has no usable reviewed image reference`);
+function imageReference(container: RecipeContainer): string {
+  const value = container.image?.reference;
+  if (!value) throw new Error(`Container ${container.className} has no usable reviewed image reference`);
   return value;
 }
 
 /** Fails before recipe.js can change anything when an enabled container lacks a reviewed image. */
-export function validateContainerPlan(recipe: Recipe, target: DeployTarget, tag: string): void {
+export function validateContainerPlan(recipe: Recipe, target: DeployTarget): void {
   const declared = new Set(target.declareContainers);
   for (const container of recipe.worker.containers || []) {
     if (actionFor(target, container.className) !== "on") continue;
     if (!declared.has(container.className)) throw new Error(`Container ${container.className} is enabled but is not declared on the Worker version`);
-    imageReference(container, tag);
+    imageReference(container);
   }
 }
 
@@ -80,7 +80,7 @@ export async function reconcileContainerApplications(input: {
 }): Promise<void> {
   for (const container of input.recipe.worker.containers || []) {
     if (actionFor(input.target, container.className) !== "on") continue;
-    const image = imageReference(container, input.recipe.tag);
+    const image = imageReference(container);
     const name = applicationName(input.workerName, container.className);
     const applications = listed(await callCfJson<ContainerApplication[] | { applications?: ContainerApplication[] }>(path(input.accountId, ""), undefined, CONTEXT));
     const existing = applications.find((application) => application.name === name);
