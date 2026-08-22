@@ -5,6 +5,7 @@ import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { listExistingResources, readLiveFacts } from "../../lib/deploy/inventory";
 import { localized, RECIPE_LIMITS, type RecipeInput, type RecipeResource, type ResourceKind } from "../../lib/recipe/types";
+import type { ContainerAction } from "../../lib/deploy/types";
 import { WinButton, WinCheckBox, WinInfoBar, WinProgressRing } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
@@ -14,6 +15,10 @@ const wizard = useWizard();
 
 const resources = computed(() => wizard.recipe?.resources ?? []);
 const askContainers = computed(() => (wizard.recipe?.worker.containers ?? []).filter((container) => container.mode === "ask"));
+
+function setContainerAction(className: string, event: Event) {
+  wizard.containerActions[className] = (event.target as HTMLSelectElement).value as ContainerAction;
+}
 
 const scanning = ref(true);
 
@@ -324,11 +329,27 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
         <h3>{{ t("target.containersTitle") }}</h3>
         <p class="field-help" style="margin-top: 0">{{ t("target.containersHelp") }}</p>
         <template v-for="container in askContainers" :key="container.className">
-          <WinCheckBox v-model="wizard.containerChoices[container.className]">
-            <span>{{ t("target.containerDeclare", { name: container.className }) }}</span>
-          </WinCheckBox>
+          <div class="field container-choice">
+            <label :for="`container-${container.className}`">{{ container.className }}</label>
+            <select
+              :id="`container-${container.className}`"
+              :value="wizard.containerActions[container.className] || 'off'"
+              @change="setContainerAction(container.className, $event)"
+            >
+              <option
+                v-if="wizard.mode === 'overwrite' && wizard.live.containerClasses.includes(container.className)"
+                value="unchanged"
+              >
+                {{ t("target.containerKeep") }}
+              </option>
+              <option value="on">{{ t("target.containerEnable") }}</option>
+              <option value="off">{{ t("target.containerDisable") }}</option>
+            </select>
+            <p class="field-help">{{ t("target.containerStateHelp") }}</p>
+          </div>
           <p v-if="container.note" class="field-help">{{ localized(container.note, locale) }}</p>
         </template>
+        <p v-if="wizard.mode === 'fresh'" class="field-help">{{ t("target.containerDefaultsFresh") }}</p>
       </div>
 
       <template v-if="inputs.length > 0">

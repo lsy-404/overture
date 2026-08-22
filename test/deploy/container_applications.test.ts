@@ -5,8 +5,7 @@ import type { DeployTarget } from "../../src/lib/deploy/types";
 import type { Recipe } from "../../src/lib/recipe/types";
 
 const recipe = {
-  tag: "v1.3.2",
-  worker: { containers: [{ className: "Sandbox", mode: "ask", image: { reference: "docker.io/wuyilingwei/edgesonic:${tag}" } }] },
+  worker: { containers: [{ className: "Sandbox", mode: "ask", image: { reference: `docker.io/wuyilingwei/edgesonic@sha256:${"a".repeat(64)}` } }] },
 } as Recipe;
 
 function target(action: "on" | "off" | "unchanged", declared = action === "on"): DeployTarget {
@@ -48,14 +47,14 @@ globalThis.fetch = async (input, init) => {
 
 const namespace = [{ type: "durable_object_namespace", class_name: "Sandbox", namespace_id: "do-1" }];
 const checks: Array<[string, () => boolean | Promise<boolean>]> = [
-  ["an enabled container must be declared before any deployment", () => rejects(() => validateContainerPlan(recipe, target("on", false), "v1.3.2"), /enabled but is not declared/)],
-  ["unchanged validates without a declaration", () => { validateContainerPlan(recipe, target("unchanged", false), "v1.3.2"); return true; }],
+  ["an enabled container must be declared before any deployment", () => rejects(() => validateContainerPlan(recipe, target("on", false)), /enabled but is not declared/)],
+  ["unchanged validates without a declaration", () => { validateContainerPlan(recipe, target("unchanged", false)); return true; }],
   ["unchanged makes no Container API request", () => reconcileContainerApplications({ accountId: "a".repeat(32), workerName: "edgesonic", recipe, target: target("unchanged", true), versionBindings: namespace }).then(() => paths.length === 0)],
-  ["on creates a named application from the reviewed Docker Hub tag", () => reconcileContainerApplications({ accountId: "a".repeat(32), workerName: "edgesonic", recipe, target: target("on"), versionBindings: namespace }).then(() =>
+  ["on creates a named application from the reviewed immutable Docker Hub digest", () => reconcileContainerApplications({ accountId: "a".repeat(32), workerName: "edgesonic", recipe, target: target("on"), versionBindings: namespace }).then(() =>
     paths.length === 2
     && paths[0].url === `/cf/accounts/${"a".repeat(32)}/containers/applications`
     && paths[1].method === "POST"
-    && (paths[1].body as { configuration?: { image?: string } }).configuration?.image === "docker.io/wuyilingwei/edgesonic:v1.3.2"
+    && (paths[1].body as { configuration?: { image?: string } }).configuration?.image === `docker.io/wuyilingwei/edgesonic@sha256:${"a".repeat(64)}`
     && (paths[1].body as { name?: string }).name === "edgesonic-sandbox",
   )],
 ];

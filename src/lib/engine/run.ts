@@ -63,7 +63,7 @@ export async function runRecipe(input: {
   // Validate the package-controlled reference before recipe.js starts. The
   // actual Container application is deliberately reconciled only after the
   // recipe has activated a Worker version, matching Cloudflare's deploy order.
-  validateContainerPlan(recipe, target, config.tag);
+  validateContainerPlan(recipe, target);
 
   const host = createCapabilityHost({
     pkg: { recipe, files: dataPackage.files, tag: config.tag },

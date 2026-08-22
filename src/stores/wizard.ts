@@ -23,6 +23,7 @@ import type { AuthMode, Recipe, RecipeResource } from "../lib/recipe/types";
 import {
   HOST_STEP_HEALTH,
   type DeployCredentials,
+  type ContainerAction,
   type DeployMode,
   type DeployResult,
   type DeployTarget,
@@ -296,7 +297,8 @@ export const useWizard = defineStore("wizard", () => {
   const overwriteConfirmed = ref(false);
   const fullRebuild = ref(false);
   /** Container class name → declare it on the new version. */
-  const containerChoices = ref<Record<string, boolean>>({});
+  /** The explicit per-class intent reviewed and enforced by the deployment host. */
+  const containerActions = ref<Record<string, ContainerAction>>({});
 
   const mode = computed<DeployMode>(() => (live.value.exists ? "overwrite" : "fresh"));
 
@@ -490,29 +492,36 @@ export const useWizard = defineStore("wizard", () => {
     for (const input of loaded.recipe.inputs ?? []) {
       inputs.value[input.id] = input.default ?? (input.kind === "toggle" ? false : "");
     }
-    containerChoices.value = {};
+    containerActions.value = {};
     for (const container of loaded.recipe.worker.containers ?? []) {
-      containerChoices.value[container.className] = container.mode === "always";
+      containerActions.value[container.className] = container.mode === "always" ? "on" : "off";
     }
     live.value = emptyLive();
     liveRead.value = false;
     resetExecution();
   }
 
-  /** Applies live-script facts, defaulting "ask" containers to what is there. */
+  /** Applies the documented fresh/overwrite defaults after reading the live declaration. */
   function applyLive(facts: LiveScriptFacts) {
     live.value = facts;
     liveRead.value = true;
     for (const container of recipe.value?.worker.containers ?? []) {
-      if (container.mode === "ask") {
-        containerChoices.value[container.className] = facts.containerClasses.includes(container.className);
+      if (container.mode === "always") {
+        containerActions.value[container.className] = "on";
+      } else if (facts.exists && facts.containerClasses.includes(container.className)) {
+        containerActions.value[container.className] = "unchanged";
+      } else {
+        containerActions.value[container.className] = "off";
       }
     }
   }
 
   const declareContainers = computed(() =>
     (recipe.value?.worker.containers ?? [])
-      .filter((container) => container.mode === "always" || (container.mode === "ask" && containerChoices.value[container.className]))
+      .filter((container) => {
+        const action = containerActions.value[container.className];
+        return action === "on" || (action === "unchanged" && live.value.containerClasses.includes(container.className));
+      })
       .map((container) => container.className),
   );
 
@@ -547,6 +556,7 @@ export const useWizard = defineStore("wizard", () => {
       adopted: { ...adoptions.value },
       inputs: values,
       declareContainers: declareContainers.value,
+      containerActions: { ...containerActions.value },
       fullRebuild: mode.value === "overwrite" && fullRebuild.value,
       domain: domainValue.value,
     };
@@ -684,7 +694,7 @@ export const useWizard = defineStore("wizard", () => {
     mode,
     overwriteConfirmed,
     fullRebuild,
-    containerChoices,
+    containerActions,
     declareContainers,
     interpolate,
     buildTarget,
