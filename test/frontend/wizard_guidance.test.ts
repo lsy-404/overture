@@ -160,6 +160,7 @@ const existingResourceConfirmCopy = [
   enFlat["target.adoptConfirm"],
   zhFlat["target.adoptConfirm"],
 ];
+const r2KeyHelpCopy = [enFlat["authorize.r2KeyHelp"], zhFlat["authorize.r2KeyHelp"]];
 
 const checks: Array<[string, boolean, string?]> = [
   ["every message key a component asks for exists", danglingKeys.length === 0, danglingKeys.join(", ")],
@@ -177,6 +178,9 @@ const checks: Array<[string, boolean, string?]> = [
   ["reuse confirmation copy explicitly permits deployment writes",
     existingResourceConfirmCopy.every((line) => /(?:reuse|复用).*(?:write|写入)/i.test(line)),
     existingResourceConfirmCopy.join(" | ")],
+  ["R2 key help identifies the key pair without claiming why the package needs it",
+    r2KeyHelpCopy.every((line) => !/(?:direct bucket access|直连存储桶)/i.test(line)),
+    r2KeyHelpCopy.join(" | ")],
 
   ["no UI copy names a particular deployable package", brandedCopy.length === 0, brandedCopy.join(" | ")],
   ["no component hardcodes a particular deployable package", brandedComponents.length === 0, brandedComponents.join(", ")],

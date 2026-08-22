@@ -257,6 +257,8 @@ export const useWizard = defineStore("wizard", () => {
   const resourceNames = ref<Record<string, string>>({});
   /** Resource ids whose name the user edited, so defaults stop following. */
   const touchedResources = ref<Record<string, boolean>>({});
+  /** Resource id → the exact existing resource the user has approved reusing. */
+  const adoptionConfirmations = ref<Record<string, string>>({});
   const inputs = ref<Record<string, string | boolean>>({});
   const live = ref<LiveScriptFacts>(emptyLive());
   const liveRead = ref(false);
@@ -310,6 +312,7 @@ export const useWizard = defineStore("wizard", () => {
     // Editing the name is a new question, so an answer given to the old one
     // stops applying rather than quietly outliving what it was about.
     delete adoptChoice.value[id];
+    delete adoptionConfirmations.value[id];
   }
 
   // ---- what the account already holds -------------------------------------
@@ -360,6 +363,28 @@ export const useWizard = defineStore("wizard", () => {
     return out;
   });
 
+  function adoptionKey(resource: ExistingResource): string {
+    return `${resource.id}\u0000${resource.name}`;
+  }
+
+  /** Existing resources whose exact identity has not been explicitly approved. */
+  const unconfirmedAdoptionResourceIds = computed(() =>
+    Object.entries(adoptions.value)
+      .filter(([id, resource]) => adoptionConfirmations.value[id] !== adoptionKey(resource))
+      .map(([id]) => id),
+  );
+
+  function isAdoptionConfirmed(resourceId: string): boolean {
+    const resource = adoptions.value[resourceId];
+    return !!resource && adoptionConfirmations.value[resourceId] === adoptionKey(resource);
+  }
+
+  function confirmAdoption(resourceId: string, confirmed: boolean) {
+    const resource = adoptions.value[resourceId];
+    if (confirmed && resource) adoptionConfirmations.value[resourceId] = adoptionKey(resource);
+    else delete adoptionConfirmations.value[resourceId];
+  }
+
   /**
    * A pattern that matched several resources is the one case the wizard will not
    * settle on its own, because settling it wrong means writing into data that
@@ -374,10 +399,12 @@ export const useWizard = defineStore("wizard", () => {
 
   function chooseAdoption(resourceId: string, name: string) {
     adoptChoice.value[resourceId] = name;
+    delete adoptionConfirmations.value[resourceId];
   }
 
   function clearAdoption(resourceId: string) {
     delete adoptChoice.value[resourceId];
+    delete adoptionConfirmations.value[resourceId];
   }
 
   /**
@@ -427,6 +454,7 @@ export const useWizard = defineStore("wizard", () => {
     syncResourceDefaults();
     inventory.value = {};
     adoptChoice.value = {};
+    adoptionConfirmations.value = {};
     inputs.value = {};
     for (const input of loaded.recipe.inputs ?? []) {
       inputs.value[input.id] = input.default ?? (input.kind === "toggle" ? false : "");
@@ -602,6 +630,9 @@ export const useWizard = defineStore("wizard", () => {
     inventory,
     resourceMatches,
     adoptions,
+    unconfirmedAdoptionResourceIds,
+    isAdoptionConfirmed,
+    confirmAdoption,
     effectiveResourceNames,
     undecidedResources,
     collidingResources,

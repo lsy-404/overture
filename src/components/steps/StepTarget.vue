@@ -131,6 +131,10 @@ const resourcesOk = computed(() => {
   // Without the account's inventory this page cannot say what will happen, and
   // guessing "it must be new" is how an upgrade lands on an empty database.
   if (unreadableKinds.value.length > 0) return false;
+  // Reusing an existing database, bucket, or namespace can let the deployed
+  // app write data there, so it needs the same explicit acknowledgement as an
+  // existing Worker before the review page can be reached.
+  if (wizard.unconfirmedAdoptionResourceIds.length > 0) return false;
   for (const resource of resources.value) {
     const name = (wizard.resourceNames[resource.id] ?? "").trim();
     if (!name && !resource.required) continue;
@@ -259,8 +263,6 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
           </button>
         </template>
 
-        <!-- Writing into something that already holds data is the part of this
-             page a user must not have to infer. -->
         <template v-else-if="resourceStatus(resource) === 'adopt'">
           <p class="field-help" :class="wizard.mode === 'fresh' ? 'tone-warn' : 'tone-ok'">
             {{ t("target.willAdopt", { name: wizard.adoptions[resource.id].name }) }}
@@ -271,6 +273,12 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
           <p v-else-if="matchOf(resource)?.via === 'pattern'" class="field-help">
             {{ t("target.adoptViaPattern", { pattern: matchOf(resource)?.matched }) }}
           </p>
+          <WinCheckBox
+            :model-value="wizard.isAdoptionConfirmed(resource.id)"
+            @update:model-value="wizard.confirmAdoption(resource.id, $event)"
+          >
+            <span><span class="required-star" aria-hidden="true">*</span>{{ t("target.adoptConfirm", { name: wizard.adoptions[resource.id].name }) }}</span>
+          </WinCheckBox>
           <button type="button" class="link-button" @click="wizard.chooseAdoption(resource.id, '')">
             {{ t("target.adoptInsteadCreate") }}
           </button>
