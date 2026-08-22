@@ -204,7 +204,7 @@
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
-    "r2KeyHelp": "R2 的 S3 密钥对。之所以要填，是因为这个包会用它直连存储桶。",
+    "r2KeyHelp": "R2 的 S3 密钥对。",
     "r2KeysPairRequired": "两个 R2 密钥字段要么都填，要么都留空。",
     "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。",
     "auto": {

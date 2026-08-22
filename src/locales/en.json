@@ -204,7 +204,7 @@
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
-    "r2KeyHelp": "An R2 S3 key pair, asked for because this package uses one for direct bucket access.",
+    "r2KeyHelp": "An R2 S3 key pair.",
     "r2KeysPairRequired": "Provide both R2 key fields, or leave both empty.",
     "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check.",
     "auto": {
