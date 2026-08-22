@@ -10,6 +10,7 @@
     "dev:worker": "wrangler dev",
     "build": "vite build",
     "preview": "vite preview",
+    "predeploy": "npm run build",
     "deploy": "wrangler deploy",
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.worker.json",
     "test": "./test/run-all.sh"
