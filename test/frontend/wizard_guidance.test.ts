@@ -150,6 +150,16 @@ const zhFlat = flatten(zh);
 const placeholderMismatches = Object.keys(enFlat)
   .filter((key) => zhFlat[key] !== undefined)
   .filter((key) => placeholders(enFlat[key]).join(",") !== placeholders(zhFlat[key]).join(","));
+const existingResourceRiskCopy = [
+  enFlat["target.willAdopt"],
+  enFlat["target.fullRebuildHelp"],
+  zhFlat["target.willAdopt"],
+  zhFlat["target.fullRebuildHelp"],
+];
+const existingResourceConfirmCopy = [
+  enFlat["target.adoptConfirm"],
+  zhFlat["target.adoptConfirm"],
+];
 
 const checks: Array<[string, boolean, string?]> = [
   ["every message key a component asks for exists", danglingKeys.length === 0, danglingKeys.join(", ")],
@@ -161,6 +171,12 @@ const checks: Array<[string, boolean, string?]> = [
     `en only: ${onlyEn.join(", ") || "none"}; zh-CN only: ${onlyZh.join(", ") || "none"}`],
   ["no locale key holds an empty string",
     copy.length > 0 && copy.every((line) => line.trim().length > 0)],
+  ["reuse copy warns that existing resource data may be modified",
+    existingResourceRiskCopy.every((line) => /(?:may|can).*(?:read|write|modif)|可能.*(?:读取|写入|修改)/i.test(line)),
+    existingResourceRiskCopy.join(" | ")],
+  ["reuse confirmation copy explicitly permits deployment writes",
+    existingResourceConfirmCopy.every((line) => /(?:reuse|复用).*(?:write|写入)/i.test(line)),
+    existingResourceConfirmCopy.join(" | ")],
 
   ["no UI copy names a particular deployable package", brandedCopy.length === 0, brandedCopy.join(" | ")],
   ["no component hardcodes a particular deployable package", brandedComponents.length === 0, brandedComponents.join(", ")],
