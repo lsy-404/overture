@@ -96,8 +96,8 @@ const checks: Array<[string, boolean, string?]> = [
   ["a minimal recipe validates", accepts(minimal()), errorsOf(minimal()).join("; ")],
 
   ["a missing schema is rejected", rejects(tweak((r) => delete r.schema))],
-  ["an Issue URL is required and must be HTTPS",
-    rejects(tweak((r) => delete r.issues))
+  ["an optional Issue URL must be HTTPS when declared",
+    accepts(tweak((r) => delete r.issues))
     && rejects(tweak((r) => (r.issues = { url: "http://github.com/acme/demo/issues/new" })))
     && rejects(tweak((r) => (r.issues = { url: "not a URL" })))
     && accepts(tweak((r) => (r.issues = { url: "https://issues.example.test/new?template=bug" })))],

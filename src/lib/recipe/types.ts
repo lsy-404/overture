@@ -329,8 +329,8 @@ export interface Recipe {
   name: string;
   summary: Localized;
   homepage?: string;
-  /** Where a user can report a failed deployment of this package. */
-  issues: RecipeIssues;
+  /** Where a user can report a failed deployment of this package, when declared. */
+  issues?: RecipeIssues;
   /** Must agree with the release tag this configuration was published on. */
   version: string;
   tag: string;
