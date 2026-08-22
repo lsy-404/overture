@@ -23,6 +23,7 @@
 import { Hono } from "hono";
 import { handleCfProxy } from "../../worker/cfProxy";
 import { encryptSession, type SessionPayload } from "../../worker/oauth";
+import { CF_UPSTREAM_STATUS_HEADER } from "../../shared/cfRelay";
 
 const SESSION_KEY = "cfproxy-test-session-key";
 const ACCOUNT_A = "0123456789abcdef0123456789abcdef";
@@ -116,6 +117,26 @@ async function run(): Promise<void> {
   });
   checks.push(["an accounts/{id} call matching the selected account is forwarded", matchingAccount.status === 200]);
   checks.push(["the forwarded call carries the session's own token", forwardedAuth() === "Bearer cfoat_session_token"]);
+
+  // Cloudflare can reject a correctly relayed request because the token lacks
+  // an optional product permission. That is an upstream business result, not
+  // an outage of this relay: expose its JSON error at HTTP 200 and carry the
+  // original status separately for the browser client's error classifier.
+  stubFetch(403, { success: false, errors: [{ code: 10000, message: "Authentication error" }], result: null });
+  const upstreamPermissionError = await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {
+    Cookie: await sessionCookie({ accountId: ACCOUNT_A }),
+  });
+  const upstreamPermissionBody = (await upstreamPermissionError.json()) as { success?: boolean; errors?: Array<{ code?: number }> };
+  checks.push(["a Cloudflare 403 is a successful relay response", upstreamPermissionError.status === 200]);
+  checks.push(["the original Cloudflare 403 is retained in a relay header", upstreamPermissionError.headers.get(CF_UPSTREAM_STATUS_HEADER) === "403"]);
+  checks.push(["the Cloudflare response headers are retained alongside relay metadata", upstreamPermissionError.headers.get("Content-Type") === "application/json"]);
+  checks.push(["the original Cloudflare error envelope is unchanged", upstreamPermissionBody.success === false && upstreamPermissionBody.errors?.[0]?.code === 10000]);
+
+  stubFetch(503, { success: false, errors: [{ code: 1015, message: "Service unavailable" }] });
+  const upstreamServerError = await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {
+    Cookie: await sessionCookie({ accountId: ACCOUNT_A }),
+  });
+  checks.push(["every non-2xx Cloudflare API response uses the same relay envelope", upstreamServerError.status === 200 && upstreamServerError.headers.get(CF_UPSTREAM_STATUS_HEADER) === "503"]);
 
   stubFetch();
   await call(`/cf/accounts/${ACCOUNT_A}/workers/scripts`, {

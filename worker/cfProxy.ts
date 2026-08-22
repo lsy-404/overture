@@ -15,6 +15,7 @@
 
 import type { Context } from "hono";
 import { matchEndpoint } from "../shared/cfAllowlist";
+import { CF_UPSTREAM_STATUS_HEADER } from "../shared/cfRelay";
 import { jsonResponse } from "./http";
 import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
 import { readSession } from "./session";
@@ -125,9 +126,15 @@ export async function handleCfProxy(c: RelayContext): Promise<Response> {
     return jsonResponse(c, 502, { ok: false, error: "Upstream Cloudflare API request failed" });
   }
 
+  // A non-2xx response here means Cloudflare received the relayed call and
+  // rejected it (for example, a missing token permission). The relay itself
+  // worked, so keep its HTTP status successful and preserve Cloudflare's own
+  // JSON error envelope. The original status remains available to the browser
+  // client for permission and rate-limit classification.
+  const responseHeaders = new Headers(upstream.headers);
+  if (!upstream.ok) responseHeaders.set(CF_UPSTREAM_STATUS_HEADER, String(upstream.status));
   return new Response(upstream.body, {
-    status: upstream.status,
-    statusText: upstream.statusText,
-    headers: new Headers(upstream.headers),
+    status: upstream.ok ? upstream.status : 200,
+    headers: responseHeaders,
   });
 }
