@@ -104,6 +104,7 @@ function baseRecipe(): Recipe {
     id: "probe",
     name: "Probe",
     summary: "probe",
+    issues: { url: "https://github.com/acme/probe/issues/new" },
     version: "1.0.0",
     tag: "v1.0.0",
     buildTime: "2026-08-19T00:00:00Z",

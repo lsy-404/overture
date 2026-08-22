@@ -31,6 +31,7 @@ function minimal(): Json {
     id: "demo",
     name: "Demo",
     summary: { en: "A demo package", "*": "A demo package" },
+    issues: { url: "https://github.com/acme/demo/issues/new" },
     version: "1.0.0",
     tag: "v1.0.0",
     buildTime: "2026-01-01T00:00:00Z",
@@ -95,6 +96,11 @@ const checks: Array<[string, boolean, string?]> = [
   ["a minimal recipe validates", accepts(minimal()), errorsOf(minimal()).join("; ")],
 
   ["a missing schema is rejected", rejects(tweak((r) => delete r.schema))],
+  ["an Issue URL is required and must be HTTPS",
+    rejects(tweak((r) => delete r.issues))
+    && rejects(tweak((r) => (r.issues = { url: "http://github.com/acme/demo/issues/new" })))
+    && rejects(tweak((r) => (r.issues = { url: "not a URL" })))
+    && accepts(tweak((r) => (r.issues = { url: "https://issues.example.test/new?template=bug" })))],
   ["a schema other than the current one is rejected",
     rejects(tweak((r) => (r.schema = 1))) && rejects(tweak((r) => (r.schema = 3))) && rejects(tweak((r) => (r.schema = "2")))],
 

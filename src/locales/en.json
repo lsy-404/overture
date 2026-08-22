@@ -337,6 +337,8 @@
     "configMissing": "Go back and pick the project and version again.",
     "failedTitle": "Deployment failed",
     "failedAt": "Failed at step: {step}",
+    "copyReport": "Copy diagnostic report",
+    "reportIssue": "Report package issue",
     "retryFromHere": "Retrying restarts the whole deployment. Anything already created is reused.",
     "hostSteps": {
       "health": "Check that the deployment answers"

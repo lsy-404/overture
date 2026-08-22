@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { onMounted, ref, toRaw } from "vue";
+import { computed, onMounted, ref, toRaw } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { runRecipe } from "../../lib/engine/run";
 import { DeployError, HOST_STEP_HEALTH } from "../../lib/deploy/types";
 import { localized } from "../../lib/recipe/types";
+import { issueReport, issueUrl } from "../../lib/recipe/issueReport";
 import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
 
 function delay(ms: number) {
@@ -16,6 +17,26 @@ const { t, locale } = useI18n();
 const wizard = useWizard();
 
 const running = ref(false);
+const copiedReport = ref(false);
+
+const report = computed(() => {
+  const recipe = wizard.recipe;
+  return recipe ? issueReport(recipe, wizard.failedStep) : "";
+});
+const reportUrl = computed(() => {
+  const recipe = wizard.recipe;
+  return recipe ? issueUrl(recipe, wizard.failedStep) : "";
+});
+
+async function copyReport() {
+  try {
+    await navigator.clipboard.writeText(report.value);
+    copiedReport.value = true;
+    setTimeout(() => (copiedReport.value = false), 1500);
+  } catch {
+    // Clipboard access is a convenience; the issue link contains the same report.
+  }
+}
 
 // Host-owned lines are named by Overture; everything else is a recipe step and
 // carries its own localised label.
@@ -108,6 +129,11 @@ function retry() {
 
     <p v-if="wizard.deployFailed" class="field-help">{{ t("deploy.retryFromHere") }}</p>
 
+    <div v-if="wizard.deployFailed && reportUrl" class="link-row">
+      <WinButton @Click="copyReport">{{ copiedReport ? t("common.copied") : t("deploy.copyReport") }}</WinButton>
+      <a :href="reportUrl" target="_blank" rel="noopener noreferrer" class="btn">{{ t("deploy.reportIssue") }} ↗</a>
+    </div>
+
     <Teleport defer to=".shell-card-actions">
       <div v-if="wizard.deployFailed && !running" class="step-actions">
         <WinButton @Click="wizard.goTo(STEPS.confirm)">{{ t("common.back") }}</WinButton>
@@ -117,3 +143,12 @@ function retry() {
     </Teleport>
   </div>
 </template>
+
+<style scoped>
+.link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+</style>

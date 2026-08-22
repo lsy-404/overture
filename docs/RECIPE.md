@@ -27,6 +27,7 @@ before anything is downloaded.
   "name": "EdgeSonic",
   "summary": { "en": "Subsonic-compatible music server on Workers", "zh-CN": "运行在 Workers 上的 Subsonic 兼容音乐服务" },
   "homepage": "https://github.com/wuyilingwei/edgesonic",
+  "issues": { "url": "https://github.com/wuyilingwei/edgesonic/issues/new" },
 
   "version": "1.3.2",
   "tag": "v1.3.2",
@@ -279,3 +280,9 @@ closes.
 Throw. The message reaches the user attached to whichever step was last set `running`, truncated to
 `BRIDGE_LIMITS.maxErrorChars`. For a step the recipe legitimately skips, report `skipped` rather than
 throwing. Make the message say what to fix — it is the only diagnostic anyone will get.
+
+Every package must also declare `issues.url`: an HTTPS URL to its public issue-creation page. After a
+failed deployment, Overture offers to open that URL with a prefilled report. The report contains only
+the package id, package version, declared failed step, and a generic failure summary. It deliberately
+does not include error text, credentials, account IDs, input values, resource names, or any other
+deployment configuration.

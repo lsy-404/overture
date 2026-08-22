@@ -46,6 +46,7 @@ import {
   type RecipeDoneLink,
   type RecipeHostSecret,
   type RecipeInput,
+  type RecipeIssues,
   type RecipeLicense,
   type RecipePermission,
   type RecipeResource,
@@ -774,6 +775,15 @@ function doneLink(errors: Errors, path: string, value: unknown): RecipeDoneLink 
   return { label, href };
 }
 
+/** The issue tracker is opened by the host after a failure, never by package code. */
+function issues(errors: Errors, path: string, value: unknown): RecipeIssues | undefined {
+  const raw = bag(errors, path, value, true);
+  if (!raw) return undefined;
+  const url = httpsUrl(errors, `${path}.url`, raw.url);
+  if (!url) return undefined;
+  return { url };
+}
+
 // ---------------------------------------------------------------------------
 
 export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | { ok: false; errors: string[] } {
@@ -787,6 +797,7 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
   const name = str(errors, "name", raw.name, true, 120);
   const summary = localized(errors, "summary", raw.summary, true);
   const homepage = raw.homepage === undefined ? undefined : httpsUrl(errors, "homepage", raw.homepage);
+  const issueTracker = issues(errors, "issues", raw.issues);
   const version = str(errors, "version", raw.version, true, 64);
   const tag = str(errors, "tag", raw.tag, true, 64);
   const buildTime = str(errors, "buildTime", raw.buildTime, true, 64);
@@ -906,6 +917,7 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     !id ||
     name === undefined ||
     !summary ||
+    !issueTracker ||
     version === undefined ||
     !tag ||
     !buildTime ||
@@ -931,6 +943,7 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
       name,
       summary,
       ...(homepage === undefined ? {} : { homepage }),
+      issues: issueTracker,
       version,
       tag,
       buildTime,
