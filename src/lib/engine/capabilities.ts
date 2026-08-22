@@ -27,7 +27,7 @@
 //     credentials, and the reply carries no value back
 //   - every failure message is scrubbed before the sandbox can read it
 
-import type { DeployCredentials, DeployTarget, ResultCredential, StepStatus } from "../deploy/types";
+import type { DeployCredentials, DeployTarget, LiveScriptFacts, ResultCredential, StepStatus } from "../deploy/types";
 import { RECIPE_LIMITS, type HostSecretSource, type Recipe, type RecipeResource, type ResourceKind } from "../recipe/types";
 import { BRIDGE_LIMITS } from "../sandbox/protocol";
 
@@ -44,6 +44,7 @@ import { pushSecret } from "../deploy/secrets";
 import { deleteScript, readCrons, switchTraffic, uploadWorkerVersion } from "../deploy/workerVersion";
 
 const MAX_PATH_CHARS = 512;
+const MAX_VAR_NAME_CHARS = 128;
 const MAX_SECRET_CHARS = 64 * 1024;
 const MAX_VAR_CHARS = 4096;
 const MAX_QUERY_PARAMS = 200;
@@ -83,6 +84,8 @@ export interface CapabilityInput {
   pkg: RecipePackage;
   creds: DeployCredentials;
   target: DeployTarget;
+  /** Read before deployment; scripts can only ask to retain declared values from this snapshot. */
+  live: LiveScriptFacts;
   /** What `${uuid}` expands to — one value for the whole deployment. */
   deploymentUuid: string;
   onStep: (id: string, status: StepStatus, detail?: string) => void;
@@ -295,10 +298,35 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     if (entries.length > RECIPE_LIMITS.maxVars) throw new Error(`extraVars may hold at most ${RECIPE_LIMITS.maxVars} entries`);
     for (const [name, item] of entries) {
       if (!RECIPE_LIMITS.bindingPattern.test(name)) throw new Error(`"${clip(name, 60)}" is not a usable var name`);
+      const textValue = text(item, `the value of ${name}`, MAX_VAR_CHARS);
       // The vars recipe.json declares are the ones the review page showed the
-      // user; a script may add to them but not redefine them.
-      if (declared.has(name)) throw new Error(`recipe.json already declares the var ${name}`);
-      out[name] = text(item, `the value of ${name}`, MAX_VAR_CHARS);
+      // user; a script may add to them but not redefine them. The one legacy
+      // exception is repeating the exact value the host read from the live
+      // Worker — this is a preservation request, not a new script-supplied value.
+      if (declared.has(name)) {
+        if (input.live.vars[name] === textValue) {
+          out[name] = textValue;
+          continue;
+        }
+        throw new Error(`recipe.json already declares the var ${name}; use preserveLiveVars to retain its live value`);
+      }
+      out[name] = textValue;
+    }
+    return out;
+  };
+
+  const preserveLiveVarsOf = (value: unknown): string[] => {
+    if (value === undefined || value === null) return [];
+    const declared = new Set((recipe.worker.vars || []).map((entry) => entry.name));
+    const seen = new Set<string>();
+    const out: string[] = [];
+    for (const item of list(value, "preserveLiveVars", RECIPE_LIMITS.maxVars)) {
+      const name = text(item, "a preserveLiveVars name", MAX_VAR_NAME_CHARS);
+      if (!RECIPE_LIMITS.bindingPattern.test(name)) throw new Error(`"${clip(name, 60)}" is not a usable var name`);
+      if (!declared.has(name)) throw new Error(`recipe.json does not declare the var ${name} for preservation`);
+      if (seen.has(name)) throw new Error(`preserveLiveVars names ${name} more than once`);
+      seen.add(name);
+      out.push(name);
     }
     return out;
   };
@@ -315,6 +343,10 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
 
     const vars: Record<string, string> = {};
     for (const entry of recipe.worker.vars || []) vars[entry.name] = interpolate(entry.value, tokens);
+    for (const name of preserveLiveVarsOf(options.preserveLiveVars)) {
+      const liveValue = input.live.vars[name];
+      if (liveValue !== undefined) vars[name] = text(liveValue, `the live value of ${name}`, MAX_VAR_CHARS);
+    }
     for (const [name, item] of Object.entries(extraVarsOf(options.extraVars))) vars[name] = item;
 
     const resourceIds: Record<string, string> = {};

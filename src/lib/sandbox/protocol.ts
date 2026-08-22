@@ -141,9 +141,10 @@ export interface RecipeContext {
     /**
      * Uploads a new version. The host builds the binding set from the recipe's
      * resources, vars and container choices plus whatever the script provisioned
-     * — the script cannot inject a binding the recipe never declared.
+     * — the script cannot inject a binding the recipe never declared. A retained
+     * live variable is selected by name only; its value stays on the host.
      */
-    uploadVersion(options?: { assets?: string; extraVars?: Record<string, string> }): Promise<{ versionId: string }>;
+    uploadVersion(options?: { assets?: string; extraVars?: Record<string, string>; preserveLiveVars?: string[] }): Promise<{ versionId: string }>;
     switchTraffic(versionId: string): Promise<void>;
   };
   assets: {

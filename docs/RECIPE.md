@@ -187,6 +187,11 @@ as required nor sent to `recipe.js`.
 
 `${uuid}` is generated once per deployment, so two vars using it get the same value.
 
+When an overwrite must retain a declared plain-text variable, call
+`ctx.worker.uploadVersion({ preserveLiveVars: ["VAR_NAME"] })`. The host reads the
+value from its pre-deploy snapshot and ignores names that the recipe did not declare;
+the recipe never supplies the retained value.
+
 ### Container images
 
 `worker.containers[].image.reference` is a fully-qualified public Docker Hub image pinned as `docker.io/owner/repository@sha256:<64-hex-digest>`. Mutable tags are rejected. The wizard has no image URL field, never receives registry credentials, and never passes the reference to `recipe.js`. When a user chooses **on**, Overture activates the Worker version first, then asks Cloudflare Containers to pull that declared image and create or roll out the derived application `${worker}-${className}` (lowercase). **Unchanged** performs no Container application or rollout call; **off** omits the class from the Worker version.

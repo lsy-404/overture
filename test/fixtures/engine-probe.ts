@@ -176,7 +176,12 @@ interface RunOutcome {
   steps: string[];
 }
 
-async function run(recipe: Recipe, script: string, overrides: Partial<DeployTarget> = {}): Promise<RunOutcome> {
+async function run(
+  recipe: Recipe,
+  script: string,
+  overrides: Partial<DeployTarget> = {},
+  liveFacts: LiveScriptFacts = live,
+): Promise<RunOutcome> {
   const steps: string[] = [];
   try {
     const result = await runRecipe({
@@ -184,7 +189,7 @@ async function run(recipe: Recipe, script: string, overrides: Partial<DeployTarg
       dataPackage: dataPackage(script),
       creds: { accountId: ACCOUNT_ID, apiToken: API_TOKEN, r2AccessKeyId: "", r2SecretAccessKey: "" },
       target: target(overrides),
-      live,
+      live: liveFacts,
       locale: "en",
       onStep: (id: string, status: StepStatus, detail?: string) => steps.push(`${id}:${status}${detail ? `:${detail}` : ""}`),
       onProgress: () => {},
@@ -326,6 +331,31 @@ async function main(): Promise<void> {
     `export async function deploy(ctx) { await ctx.worker.uploadVersion({ extraVars: { WORKER_VERSION: "hijacked" } }); }`,
   );
   say("redefining a declared var is refused", !collision.ok && /already declares the var/.test(collision.message), collision.message);
+
+  const liveVersion = { ...live, exists: true, vars: { WORKER_VERSION: "live-version" } };
+  const legacyPreservation = await run(
+    baseRecipe(),
+    `export async function deploy(ctx) { await ctx.worker.uploadVersion({ extraVars: { WORKER_VERSION: "live-version" } }); }`,
+    {},
+    liveVersion,
+  );
+  say("a legacy script may retain an identical declared live var", legacyPreservation.ok, legacyPreservation.message);
+
+  const declaredPreservation = await run(
+    baseRecipe(),
+    `export async function deploy(ctx) { await ctx.worker.uploadVersion({ preserveLiveVars: ["WORKER_VERSION"] }); }`,
+    {},
+    liveVersion,
+  );
+  say("a recipe may select its declared live var for preservation", declaredPreservation.ok, declaredPreservation.message);
+
+  const undeclaredPreservation = await run(
+    baseRecipe(),
+    `export async function deploy(ctx) { await ctx.worker.uploadVersion({ preserveLiveVars: ["NOT_DECLARED"] }); }`,
+    {},
+    liveVersion,
+  );
+  say("a recipe cannot preserve an undeclared var", !undeclaredPreservation.ok && /does not declare the var/.test(undeclaredPreservation.message), undeclaredPreservation.message);
 
   const badVarName = await run(
     baseRecipe(),
