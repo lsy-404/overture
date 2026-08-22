@@ -65,11 +65,7 @@ function emptyCredentials(): DeployCredentials {
   return { accountId: "", r2AccessKeyId: "", r2SecretAccessKey: "", cfApiToken: "" };
 }
 
-/**
- * Only the R2 S3 pair persists across a reload — the account id is what the
- * OAuth session says it is, re-read from the `ov_session` cookie every time,
- * never a value this frame remembers on its own.
- */
+/** R2 keys persist only within this tab; the account id always comes from the session cookie. */
 function loadR2Keys(): StoredR2Keys {
   try {
     const raw = sessionStorage.getItem(R2_KEYS_KEY);
@@ -525,7 +521,9 @@ export const useWizard = defineStore("wizard", () => {
     (recipe.value?.inputs ?? []).filter(
       (input) =>
         (!input.onlyMode || input.onlyMode === mode.value) &&
-        (!input.visibleWhen || inputs.value[input.visibleWhen.input] === input.visibleWhen.equals),
+        (!input.visibleWhen ||
+          (input.visibleWhen.mode !== undefined && input.visibleWhen.mode !== mode.value) ||
+          inputs.value[input.visibleWhen.input] === input.visibleWhen.equals),
     ),
   );
 

@@ -213,8 +213,8 @@ export interface RecipeInput {
   options?: Array<{ value: string; label: Localized }>;
   /** Render only for this install mode. */
   onlyMode?: DeployMode;
-  /** Render only while another input has this exact scalar value. */
-  visibleWhen?: { input: string; equals: string | boolean };
+  /** Render only while another input has this exact scalar value. `mode` limits when the predicate applies. */
+  visibleWhen?: { input: string; equals: string | boolean; mode?: DeployMode };
   /** password only — offer a generated value of this many characters. */
   generate?: number;
 }

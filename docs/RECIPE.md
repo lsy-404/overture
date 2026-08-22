@@ -159,16 +159,19 @@ before anything is downloaded.
 
 Use `onlyMode` to limit an input to a fresh or overwrite deployment. Use
 `visibleWhen` when a field is meaningful only after another option is selected.
-The predicate names a declared input and compares its scalar value exactly;
-hidden fields are neither validated as required nor sent to `recipe.js`.
+The predicate names a declared input and compares its scalar value exactly.
+Its optional `mode` applies that predicate only in one deployment mode; this
+keeps initial credentials visible for a fresh deployment while requiring an
+explicit reset choice during an overwrite. Hidden fields are neither validated
+as required nor sent to `recipe.js`.
 
 ```json
 [
   { "id": "reset_admin", "kind": "toggle", "onlyMode": "overwrite", "label": { "en": "Reset administrator" } },
-  { "id": "admin_username", "kind": "text", "onlyMode": "overwrite",
-    "visibleWhen": { "input": "reset_admin", "equals": true }, "label": { "en": "Administrator username" } },
-  { "id": "admin_password", "kind": "password", "generate": 16, "onlyMode": "overwrite",
-    "visibleWhen": { "input": "reset_admin", "equals": true }, "label": { "en": "Administrator password" } }
+  { "id": "admin_username", "kind": "text",
+    "visibleWhen": { "input": "reset_admin", "equals": true, "mode": "overwrite" }, "label": { "en": "Administrator username" } },
+  { "id": "admin_password", "kind": "password", "generate": 16,
+    "visibleWhen": { "input": "reset_admin", "equals": true, "mode": "overwrite" }, "label": { "en": "Administrator password" } }
 ]
 ```
 
