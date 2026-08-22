@@ -33,8 +33,9 @@ import { fileURLToPath } from "node:url";
 import { createPinia, setActivePinia } from "pinia";
 import { STEPS, useWizard } from "../../src/stores/wizard";
 import { usePolicy } from "../../src/stores/policy";
-import { buildTokenLinkUrl, describePermissions, CF_ACCOUNT_TOKENS_URL } from "../../src/lib/cf/tokenLink";
-import type { AuthMode, Recipe } from "../../src/lib/recipe/types";
+import { buildTokenLinkUrl, describePermissions, mergeTokenPermissions, preflightPermissionsForChecks, CF_ACCOUNT_TOKENS_URL } from "../../src/lib/cf/tokenLink";
+import type { AuthMode, Recipe, RecipeCheck } from "../../src/lib/recipe/types";
+import { CF_ENDPOINTS } from "../../shared/cfAllowlist";
 import type { LoadedConfig } from "../../src/lib/package/config";
 import { PACKAGE_ARTIFACT_NAME } from "../../shared/package";
 
@@ -190,6 +191,21 @@ const billingRow = describePermissions([{ key: "billing", type: "edit" }])[0];
 const billingReadRow = describePermissions([{ key: "billing", type: "read" }])[0];
 const tokenReadRow = describePermissions([{ key: "account_api_tokens", type: "read" }])[0];
 
+const accountChecks: RecipeCheck[] = [
+  { id: "r2", requirement: "required", label: { "*": "R2 storage" }, path: "/accounts/${accountId}/r2/buckets" },
+  { id: "images", requirement: "optional", label: { "*": "Image transforms" }, path: "/accounts/${accountId}/images/v1/stats" },
+  { id: "r2Again", requirement: "recommended", label: { "*": "Existing buckets" }, path: "/accounts/${accountId}/r2/buckets" },
+];
+const preflightPermissions = preflightPermissionsForChecks(accountChecks);
+const r2PreflightPermission = preflightPermissions.find((permission) => permission.key === "workers_r2");
+const imagesPreflightPermission = preflightPermissions.find((permission) => permission.key === "images");
+const mergedPermissions = mergeTokenPermissions(
+  [{ key: "workers_r2", type: "edit" }],
+  preflightPermissions,
+  [{ key: "account_api_tokens", type: "read" }],
+);
+const getRulesWithoutPreflightRead = CF_ENDPOINTS.filter((rule) => rule.method === "GET" && !rule.accountTokenReadPermission);
+
 const urlForEmpty = buildTokenLinkUrl([]);
 const urlForOne = buildTokenLinkUrl([{ key: "d1", type: "edit" }]);
 const decodedParam = (() => {
@@ -262,6 +278,12 @@ const checks: Array<[string, boolean, string?]> = [
   ["a read on a flagged group (billing) is not dangerous — only writing it is", billingReadRow.danger === false],
   ["a read on the token group (account_api_tokens) is not dangerous", tokenReadRow.danger === false],
   ["an ordinary permission (D1) is not reported as dangerous", d1AndR2[0].danger === false],
+  ["an R2 pre-check automatically adds Workers R2 Storage read", r2PreflightPermission?.type === "read" && r2PreflightPermission.requirement === "required"],
+  ["one read permission lists every check it covers", r2PreflightPermission?.checks.map((check) => check.id).join(",") === "r2,r2Again"],
+  ["an optional Images check keeps its generated read optional", imagesPreflightPermission?.type === "read" && imagesPreflightPermission.requirement === "optional"],
+  ["an app edit and a pre-check read for the same group become one edit request", mergedPermissions.filter((permission) => permission.key === "workers_r2").length === 1 && mergedPermissions.find((permission) => permission.key === "workers_r2")?.type === "edit"],
+  ["every allow-listed GET that a recipe may use as a check declares its account-token read", getRulesWithoutPreflightRead.length === 0, getRulesWithoutPreflightRead.map((rule) => rule.id).join(", ")],
+  ["the authorize page presents generated reads as account pre-check requirements", /preflightPermissionsForChecks/.test(authorizeSource) && /checkPermissionsTitle/.test(authorizeSource)],
 ];
 
 for (const [label, passed, detail] of checks) {

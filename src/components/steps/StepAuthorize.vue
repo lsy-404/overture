@@ -6,7 +6,7 @@ import { STEPS, useWizard } from "../../stores/wizard";
 import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
 import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
-import { buildTokenLinkUrl, describePermissions } from "../../lib/cf/tokenLink";
+import { buildTokenLinkUrl, describePermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
@@ -17,6 +17,7 @@ const subtitleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto
 
 /** The long-lived token this app wants, when the recipe declares one. */
 const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
+const checks = computed(() => wizard.recipe?.checks ?? []);
 
 /** Every permission the app's token needs, with its display name and danger flag. */
 const permissionRows = computed(() => describePermissions(cfApiTokenSecret.value?.permissions ?? []));
@@ -37,16 +38,31 @@ function togglePermission(key: string): void {
 const includedPermissions = computed(() =>
   (cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
 );
-const dangerPermissions = computed(() => describePermissions(includedPermissions.value).filter((row) => row.danger));
+const preflightPermissions = computed(() => preflightPermissionsForChecks(checks.value));
+const excludedPreflightKeys = ref<Set<string>>(new Set());
+function togglePreflightPermission(key: string) {
+  const next = new Set(excludedPreflightKeys.value);
+  next.has(key) ? next.delete(key) : next.add(key);
+  excludedPreflightKeys.value = next;
+}
+const includedPreflightPermissions = computed(() =>
+  preflightPermissions.value.filter((permission) => permission.requirement !== "optional" || !excludedPreflightKeys.value.has(permission.key)),
+);
+const preflightPermissionRows = computed(() =>
+  preflightPermissions.value.map((permission) => ({
+    ...describePermissions([permission])[0],
+    checks: permission.checks.map((check) => localized(check.label, locale.value)).join(" · "),
+  })),
+);
 
-// Overture's own read: with "Account API Tokens" read on the token, the deployer
-// can read the token back after it is pasted and confirm what it actually
-// grants (see the granted list below). It is a read, added on top of the app's
-// own permissions and always disclosed — never a write, never hidden.
+// Overture's own read verifies the token's resulting grant; preflight reads
+// are derived separately from the requested GET endpoints above.
 const OVERTURE_TOKEN_PERM = { key: "account_api_tokens", type: "read" } as const;
+const tokenPermissions = computed(() => mergeTokenPermissions(includedPermissions.value, includedPreflightPermissions.value, [OVERTURE_TOKEN_PERM]));
+const dangerPermissions = computed(() => describePermissions(tokenPermissions.value).filter((row) => row.danger));
 
-/** The token-creation link: the permissions kept in, plus Overture's own read. */
-const tokenLinkUrl = computed(() => buildTokenLinkUrl([...includedPermissions.value, OVERTURE_TOKEN_PERM]));
+/** The account-token creation link includes the app, every kept pre-check, and Overture's disclosed read. */
+const tokenLinkUrl = computed(() => buildTokenLinkUrl(tokenPermissions.value));
 
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);
@@ -204,8 +220,6 @@ const verifying = ref(false);
 const hasAttempted = ref(false);
 const verifyError = ref("");
 
-const checks = computed(() => wizard.recipe?.checks ?? []);
-
 function statusOf(key: string): CredentialCheck["status"] {
   return statuses[key]?.status ?? "pending";
 }
@@ -338,6 +352,25 @@ function recheck() {
               <span class="field-tag required">{{ t("authorize.requirements.required") }}</span>
               {{ t("authorize.auto.overtureReadName") }}
               <p class="field-help" style="margin: 2px 0 0">{{ t("authorize.auto.overtureReadNote") }}</p>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="preflightPermissionRows.length > 0" class="guide-card">
+          <h3>{{ t("authorize.auto.checkPermissionsTitle") }}</h3>
+          <p class="field-help" style="margin-top: 0">{{ t("authorize.auto.checkPermissionsIntro") }}</p>
+          <ul class="plain-list">
+            <li v-for="permission in preflightPermissionRows" :key="permission.key">
+              <label v-if="isOptional(permission)" class="perm-check">
+                <input type="checkbox" :checked="!excludedPreflightKeys.has(permission.key)" @change="togglePreflightPermission(permission.key)" />
+                <span class="field-tag optional">{{ t("authorize.requirements.optional") }}</span>
+                <span>{{ permission.name }}</span>
+              </label>
+              <template v-else>
+                <span :class="`field-tag ${permission.requirement ?? 'required'}`">{{ t(`authorize.requirements.${permission.requirement ?? 'required'}`) }}</span>
+                {{ permission.name }}
+              </template>
+              <p class="field-help" style="margin: 2px 0 0">{{ t("authorize.auto.checkPermissionNote", { checks: permission.checks }) }}</p>
             </li>
           </ul>
         </div>

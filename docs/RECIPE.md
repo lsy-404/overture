@@ -70,7 +70,8 @@ before anything is downloaded.
   ],
 
   // Read-only probes run before anything is provisioned. GET only, and the path
-  // must be one the relay allow-lists.
+  // must be one the relay allow-lists. In Account API Token mode, Overture
+  // derives and pre-fills the matching Read permission for every check.
   "checks": [
     { "id": "r2", "requirement": "required", "path": "/accounts/${accountId}/r2/buckets",
       "label": { "en": "R2 enabled" } }
