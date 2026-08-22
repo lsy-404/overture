@@ -95,6 +95,7 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | DELETE | `/accounts/{accountId}/workers/scripts/{scriptName}` | Full rebuild: drop the script before redeploying it |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/settings` | Read bindings and vars off the live script before replacing it |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | Which version is live now |
+| GET | `/accounts/{accountId}/workers/scripts/{scriptName}/versions/{versionId}` | Resolve the uploaded version's Durable Object namespace before configuring a Container application |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/versions` | Upload the new version (multipart) |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | Point traffic at the new version |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/assets-upload-session` | Begin a static-asset upload |
@@ -104,6 +105,10 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | POST | `/accounts/{accountId}/workers/assets/upload` | Upload asset bytes for an open session (`?base64=true`) |
 | GET | `/accounts/{accountId}/workers/domains` | List custom domains, to spot an existing binding before overwriting |
 | PUT | `/accounts/{accountId}/workers/domains` | Attach a custom domain in one call; it resolves the zone itself |
+| GET | `/accounts/{accountId}/containers/applications` | Find the application derived from a package-declared container class |
+| POST | `/accounts/{accountId}/containers/applications` | Create the application for an enabled container after Worker traffic is active |
+| PATCH | `/accounts/{accountId}/containers/applications/{applicationId}` | Set an enabled application's reviewed image configuration |
+| POST | `/accounts/{accountId}/containers/applications/{applicationId}/rollouts` | Start the enabled application's rollout; no call is made for `unchanged` |
 | GET | `/accounts/{accountId}/images/v1/stats` | Is Cloudflare Images on this account (the call fails when it is not) |
 | GET | `/zones` | Resolve the zone behind a custom domain the user typed |
 | GET | `/zones/{zoneId}/settings/image_resizing` | Are image transformations enabled on that zone |

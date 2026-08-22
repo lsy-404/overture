@@ -178,6 +178,13 @@ export interface RecipeContainer {
   className: string;
   mode: "ask" | "always" | "never";
   note?: Localized;
+  /** A declared Docker Hub image reference, resolved by the trusted host only. */
+  image?: RecipeContainerImage;
+}
+
+export interface RecipeContainerImage {
+  /** Docker Hub reference. `${tag}` resolves to the reviewed release tag. */
+  reference: string;
 }
 
 export interface RecipeWorker {

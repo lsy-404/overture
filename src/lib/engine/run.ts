@@ -38,6 +38,8 @@ import { effectiveResourceNames } from "../deploy/match";
 import { BRIDGE_PROTOCOL, type GuestContext } from "../sandbox/protocol";
 import { runSandbox } from "../sandbox/host";
 import { createCapabilityHost } from "./capabilities";
+import { reconcileContainerApplications, validateContainerPlan } from "../deploy/containerApplications";
+import { readUploadedVersion } from "../deploy/workerVersion";
 
 function messageOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -57,6 +59,11 @@ export async function runRecipe(input: {
   const recipe = config.recipe;
   // One id for the whole deployment, so two vars using ${uuid} agree.
   const deploymentUuid = crypto.randomUUID();
+
+  // Validate the package-controlled reference before recipe.js starts. The
+  // actual Container application is deliberately reconciled only after the
+  // recipe has activated a Worker version, matching Cloudflare's deploy order.
+  validateContainerPlan(recipe, target, config.tag);
 
   const host = createCapabilityHost({
     pkg: { recipe, files: dataPackage.files, tag: config.tag },
@@ -91,6 +98,19 @@ export async function runRecipe(input: {
 
   const outcome = await runSandbox({ recipe, context, script: dataPackage.script, invoke: host.invoke });
   if (!outcome.ok) throw new DeployError(outcome.step || host.currentStep(), outcome.message || "the recipe failed");
+
+  const activeVersion = host.activeVersionId();
+  if (activeVersion) {
+    try {
+      const bindings = await readUploadedVersion(creds.accountId, target.workerName, activeVersion);
+      await reconcileContainerApplications({ accountId: creds.accountId, workerName: target.workerName, recipe, target, versionBindings: bindings });
+    } catch (error) {
+      // Cloudflare activates the Worker before it applies a container image or
+      // rollout. Preserve that fact instead of suggesting an impossible
+      // rollback when the later operation fails.
+      throw new DeployError(host.currentStep(), messageOf(error));
+    }
+  }
 
   // A recipe that forgets a secret it declared required ships an app that looks
   // deployed and cannot work, so the host pushes whatever is missing.

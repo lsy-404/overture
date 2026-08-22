@@ -80,6 +80,9 @@ export function hostEndpointsFor(recipe: Recipe): string[] {
     const id = KIND_INVENTORY[resource.kind];
     if (id && !out.includes(id)) out.push(id);
   }
+  if ((recipe.worker.containers || []).some((container) => container.image)) {
+    out.push("worker.versionRead", "containers.applicationList", "containers.applicationCreate", "containers.applicationModify", "containers.rolloutCreate");
+  }
   return out;
 }
 
