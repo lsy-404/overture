@@ -29,7 +29,11 @@ function actionFor(target: DeployTarget, className: string): ContainerAction {
 
 function imageReference(container: RecipeContainer): string {
   const value = container.image?.reference;
-  if (!value) throw new Error(`Container ${container.className} has no usable reviewed image reference`);
+  if (!value) {
+    throw new Error(
+      `Container "${container.className}" cannot be enabled because the recipe has no reviewed immutable image reference. Choose "Do not declare this container" or keep the existing declaration, then try again.`,
+    );
+  }
   return value;
 }
 

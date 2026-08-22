@@ -7,6 +7,7 @@ import type { Recipe } from "../../src/lib/recipe/types";
 const recipe = {
   worker: { containers: [{ className: "Sandbox", mode: "ask", image: { reference: `docker.io/wuyilingwei/edgesonic@sha256:${"a".repeat(64)}` } }] },
 } as Recipe;
+const imageLessRecipe = { worker: { containers: [{ className: "Legacy", mode: "ask" }] } } as Recipe;
 
 function target(action: "on" | "off" | "unchanged", declared = action === "on"): DeployTarget {
   return {
@@ -48,6 +49,7 @@ globalThis.fetch = async (input, init) => {
 const namespace = [{ type: "durable_object_namespace", class_name: "Sandbox", namespace_id: "do-1" }];
 const checks: Array<[string, () => boolean | Promise<boolean>]> = [
   ["an enabled container must be declared before any deployment", () => rejects(() => validateContainerPlan(recipe, target("on", false)), /enabled but is not declared/)],
+  ["an enabled container without a reviewed image gives an actionable error", () => rejects(() => validateContainerPlan(imageLessRecipe, { ...target("on"), declareContainers: ["Legacy"], containerActions: { Legacy: "on" } }), /cannot be enabled.*reviewed immutable image.*Do not declare this container.*keep the existing declaration/)],
   ["unchanged validates without a declaration", () => { validateContainerPlan(recipe, target("unchanged", false)); return true; }],
   ["unchanged makes no Container API request", () => reconcileContainerApplications({ accountId: "a".repeat(32), workerName: "edgesonic", recipe, target: target("unchanged", true), versionBindings: namespace }).then(() => paths.length === 0)],
   ["on creates a named application from the reviewed immutable Docker Hub digest", () => reconcileContainerApplications({ accountId: "a".repeat(32), workerName: "edgesonic", recipe, target: target("on"), versionBindings: namespace }).then(() =>

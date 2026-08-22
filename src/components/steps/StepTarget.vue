@@ -342,10 +342,11 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
               >
                 {{ t("target.containerKeep") }}
               </option>
-              <option value="on">{{ t("target.containerEnable") }}</option>
+              <option v-if="container.image" value="on">{{ t("target.containerEnable") }}</option>
               <option value="off">{{ t("target.containerDisable") }}</option>
             </select>
             <p class="field-help">{{ t("target.containerStateHelp") }}</p>
+            <p v-if="!container.image" class="field-help">{{ t("target.containerUnavailable") }}</p>
           </div>
           <p v-if="container.note" class="field-help">{{ localized(container.note, locale) }}</p>
         </template>

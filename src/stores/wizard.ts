@@ -494,7 +494,7 @@ export const useWizard = defineStore("wizard", () => {
     }
     containerActions.value = {};
     for (const container of loaded.recipe.worker.containers ?? []) {
-      containerActions.value[container.className] = container.mode === "always" ? "on" : "off";
+      containerActions.value[container.className] = container.mode === "always" && container.image ? "on" : "off";
     }
     live.value = emptyLive();
     liveRead.value = false;
@@ -506,7 +506,7 @@ export const useWizard = defineStore("wizard", () => {
     live.value = facts;
     liveRead.value = true;
     for (const container of recipe.value?.worker.containers ?? []) {
-      if (container.mode === "always") {
+      if (container.mode === "always" && container.image) {
         containerActions.value[container.className] = "on";
       } else if (facts.exists && facts.containerClasses.includes(container.className)) {
         containerActions.value[container.className] = "unchanged";
