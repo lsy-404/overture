@@ -69,6 +69,7 @@ export async function runRecipe(input: {
     pkg: { recipe, files: dataPackage.files, tag: config.tag },
     creds,
     target,
+    live,
     deploymentUuid,
     onStep: input.onStep,
     onProgress: input.onProgress,
