@@ -210,6 +210,33 @@ const checks: Array<[string, boolean, string?]> = [
     rejects(tweak((r) => (r.resources = [resource("db", "DB"), resource("db", "OTHER")])))],
   ["duplicate step ids are rejected", rejects(tweak((r) => (r.steps = [step("upload"), step("upload")])))],
   ["duplicate input ids are rejected", rejects(tweak((r) => (r.inputs = [input("name"), input("name")])))],
+  [
+    "an input may be visible only when a declared toggle has the requested value",
+    accepts(
+      tweak((r) => {
+        r.inputs = [
+          { id: "reset_admin", kind: "toggle", label: { en: "Reset administrator" } },
+          { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: true } },
+        ];
+      }),
+    ),
+  ],
+  [
+    "a visibility condition must name a declared input and compare a scalar value",
+    rejects(
+      tweak((r) => {
+        r.inputs = [{ id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "missing", equals: true } }];
+      }),
+    ) &&
+      rejects(
+        tweak((r) => {
+          r.inputs = [
+            { id: "reset_admin", kind: "toggle", label: { en: "Reset administrator" } },
+            { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: null } },
+          ];
+        }),
+      ),
+  ],
   ["duplicate resource bindings are rejected",
     rejects(tweak((r) => (r.resources = [resource("db", "DB"), resource("other", "DB")])))],
 

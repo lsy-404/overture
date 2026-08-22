@@ -522,7 +522,11 @@ export const useWizard = defineStore("wizard", () => {
 
   /** Inputs the recipe declares for the mode the deploy is actually in. */
   const activeInputs = computed(() =>
-    (recipe.value?.inputs ?? []).filter((input) => !input.onlyMode || input.onlyMode === mode.value),
+    (recipe.value?.inputs ?? []).filter(
+      (input) =>
+        (!input.onlyMode || input.onlyMode === mode.value) &&
+        (!input.visibleWhen || inputs.value[input.visibleWhen.input] === input.visibleWhen.equals),
+    ),
   );
 
   const domainValue = computed(() => {
