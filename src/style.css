@@ -426,6 +426,12 @@ code {
 
 .execute-step-row {
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.execute-step-progress {
+  flex: 0 0 100%;
+  margin-top: 4px;
 }
 
 .execute-step-label {

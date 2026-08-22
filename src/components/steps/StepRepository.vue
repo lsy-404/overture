@@ -231,8 +231,12 @@ watch(
   },
 );
 
-// The analysis is the point of this step now: the package has to be in hand and
-// read before the wizard will ask the user to agree to anything.
+const subtitleKey = computed(() => {
+  if (!wizard.source) return "repository.subtitleNoSource";
+  if (!wizard.selectedTag) return "repository.subtitleNoVersion";
+  return "repository.subtitleReady";
+});
+
 const canContinue = computed(() => ready.value && !!wizard.analysis);
 
 // ---- bootstrap --------------------------------------------------------------
@@ -261,7 +265,7 @@ onMounted(async () => {
 <template>
   <div>
     <h1 class="step-title">{{ t("repository.title") }}</h1>
-    <p class="step-subtitle">{{ t("repository.subtitle") }}</p>
+    <p class="step-subtitle">{{ t(subtitleKey) }}</p>
 
     <div v-if="!policy.loaded" class="inline-status">
       <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
