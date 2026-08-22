@@ -18,6 +18,7 @@ import type { DeployMode } from "../recipe/types";
 export type { DeployMode };
 
 export type StepStatus = "pending" | "running" | "success" | "skipped" | "failed";
+export type ContainerAction = "on" | "off" | "unchanged";
 
 /**
  * The one checklist line Overture owns rather than the recipe: probing the
@@ -94,6 +95,8 @@ export interface DeployTarget {
   inputs: Record<string, string | boolean>;
   /** Container class names to declare on the new version. */
   declareContainers: string[];
+  /** Only `on` may change a Container application; `unchanged` creates no rollout. */
+  containerActions?: Record<string, ContainerAction>;
   /** Delete the script and redeploy from scratch, keeping D1/R2/KV data. */
   fullRebuild: boolean;
   /** Custom domain to attach, empty when the user supplied none. */

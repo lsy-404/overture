@@ -42,6 +42,7 @@ import {
   type Recipe,
   type RecipeCheck,
   type RecipeContainer,
+  type RecipeContainerImage,
   type RecipeDoneLink,
   type RecipeHostSecret,
   type RecipeInput,
@@ -73,6 +74,7 @@ const COMPAT_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const COMPAT_FLAG_RE = /^[a-z0-9_]{1,64}$/;
 const SPDX_RE = /^[A-Za-z0-9-.+ ()]{1,80}$/;
 const SHA256_RE = /^[0-9a-f]{64}$/i;
+const DOCKER_IMAGE_RE = /^docker\.io\/[a-z0-9][a-z0-9._-]{0,127}\/[a-z0-9][a-z0-9._-]{0,127}:(?:[A-Za-z0-9][A-Za-z0-9._-]{0,127}|\$\{tag\})$/;
 
 const REQUIREMENTS = ["required", "recommended", "optional"] as const;
 const RESOURCE_KINDS = ["d1", "r2", "kv"] as const;
@@ -492,8 +494,22 @@ function container(errors: Errors, path: string, value: unknown): RecipeContaine
   const className = matching(errors, `${path}.className`, raw.className, RECIPE_LIMITS.bindingPattern, true);
   const mode = oneOf(errors, `${path}.mode`, raw.mode, CONTAINER_MODES, true);
   const note = raw.note === undefined ? undefined : localized(errors, `${path}.note`, raw.note, false);
+  let image: RecipeContainerImage | undefined;
+  if (raw.image !== undefined) {
+    const imageRaw = bag(errors, `${path}.image`, raw.image, true);
+    if (imageRaw) {
+      const reference = str(errors, `${path}.image.reference`, imageRaw.reference, true, 320);
+      if (reference !== undefined) {
+        if (!DOCKER_IMAGE_RE.test(reference)) {
+          errors.add(`${path}.image.reference`, "must be a fully-qualified Docker Hub image with an explicit tag or ${tag}");
+        } else {
+          image = { reference };
+        }
+      }
+    }
+  }
   if (!className || !mode) return undefined;
-  return { className, mode, ...(note === undefined ? {} : { note }) };
+  return { className, mode, ...(note === undefined ? {} : { note }), ...(image === undefined ? {} : { image }) };
 }
 
 function worker(errors: Errors, path: string, value: unknown): RecipeWorker | undefined {

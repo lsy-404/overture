@@ -108,7 +108,11 @@ before anything is downloaded.
       { "name": "INSTANCE_ID", "value": "${uuid}" },
       { "name": "R2_BUCKET_NAME", "value": "${resource:music}" }
     ],
-    "containers": [{ "className": "Sandbox", "mode": "ask" }]
+    "containers": [{
+      "className": "Sandbox",
+      "mode": "ask",
+      "image": { "reference": "docker.io/wuyilingwei/edgesonic:${tag}" }
+    }]
   },
 
   // Questions the wizard asks on the options page.
@@ -181,6 +185,12 @@ as required nor sent to `recipe.js`.
 `${input:<id>}`, and — on done-page links only — `${url}`. Anything else is left as written.
 
 `${uuid}` is generated once per deployment, so two vars using it get the same value.
+
+### Container images
+
+`worker.containers[].image.reference` is a fully-qualified public Docker Hub reference with an explicit tag. It may use `${tag}`, which resolves only to the reviewed release tag. The wizard has no image URL field, never receives registry credentials, and never passes the reference to `recipe.js`. When a user chooses **on**, Overture activates the Worker version first, then asks Cloudflare Containers to pull that declared image and create or roll out the derived application `${worker}-${className}` (lowercase). **Unchanged** performs no Container application or rollout call; **off** omits the class from the Worker version.
+
+Cloudflare performs this sequence non-transactionally: a later image-pull or rollout failure does not undo the Worker traffic switch. Package authors must keep the Worker and image compatible during the rollout window.
 
 ## `overture.tar.gz` — install data package
 

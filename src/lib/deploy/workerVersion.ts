@@ -73,9 +73,7 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
   // A script that already has a container's Durable Object registered orphans it
   // when a new version omits the class; declaring one the script never had is
   // rejected instead. So the caller decides, from the live script's own state.
-  if (input.containers.length > 0) {
-    metadata.containers = input.containers.map((className) => ({ class_name: className }));
-  }
+  if (input.containers.length > 0) metadata.containers = input.containers.map((className) => ({ class_name: className }));
 
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata");
@@ -101,6 +99,22 @@ export async function switchTraffic(accountId: string, script: string, versionId
     { method: "POST", body: JSON.stringify({ strategy: "percentage", versions: [{ percentage: 100, version_id: versionId }] }), signal },
     CONTEXT,
   );
+}
+
+export interface UploadedVersionBinding {
+  type?: string;
+  class_name?: string;
+  namespace_id?: string;
+}
+
+/** Read after traffic changes so a Container application can bind the new DO namespace. */
+export async function readUploadedVersion(accountId: string, script: string, versionId: string, signal?: AbortSignal): Promise<UploadedVersionBinding[]> {
+  const result = await callCfJson<{ resources?: { bindings?: UploadedVersionBinding[] } }>(
+    `/accounts/${accountId}/workers/scripts/${encodeURIComponent(script)}/versions/${encodeURIComponent(versionId)}`,
+    signal ? { signal } : undefined,
+    CONTEXT,
+  );
+  return result.resources?.bindings || [];
 }
 
 export async function listScriptNames(accountId: string, signal?: AbortSignal): Promise<string[]> {

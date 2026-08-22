@@ -166,6 +166,16 @@ const checks: Array<[string, boolean, string?]> = [
   ["a plain package-relative path is accepted",
     accepts(tweak((r) => ((r.worker as Json).module = "worker/index.js")))
     && accepts(tweak((r) => ((r.worker as Json).assetsManifest = "assets-manifest.json")))],
+  ["a container image is a controlled Docker Hub reference with an explicit reviewed tag",
+    accepts(tweak((r) => ((r.worker as Json).containers = [{ className: "Sandbox", mode: "ask", image: {
+      reference: "docker.io/wuyilingwei/edgesonic:${tag}",
+    }}])))
+    && rejects(tweak((r) => ((r.worker as Json).containers = [{ className: "Sandbox", mode: "ask", image: {
+      reference: "https://registry.example/image",
+    }}])))
+    && rejects(tweak((r) => ((r.worker as Json).containers = [{ className: "Sandbox", mode: "ask", image: {
+      reference: "docker.io/untrusted/image:latest?credential=no",
+    }}])))],
 
   ["illegal ids are rejected",
     ["Upper", "has space", "-leading", "a/b", "", "x".repeat(64)].every((id) =>

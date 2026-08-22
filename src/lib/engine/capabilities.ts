@@ -100,6 +100,8 @@ export interface CapabilityHost {
   pushHostSecret(name: string): Promise<void>;
   /** Step last set running, so a host-side failure lands on the right line. */
   currentStep(): string;
+  /** The Worker version whose traffic this recipe switched, if any. */
+  activeVersionId(): string | undefined;
 }
 
 function clip(value: string, limit: number): string {
@@ -180,6 +182,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   const provisioned = new Map<string, Provisioned>();
   const assetSessions = new Map<string, string>();
   const uploadedVersions = new Set<string>();
+  let activeVersion: string | undefined;
   const pushed = new Set<string>();
   const collected: ResultPatch = { url: "", credentials: [], notes: [] };
   let step = "";
@@ -504,6 +507,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
           throw new Error("traffic can only be switched to a version this deployment uploaded");
         }
         await switchTraffic(accountId, script, versionId, signal);
+        activeVersion = versionId;
         return undefined;
       }
       case "assets.upload":
@@ -552,5 +556,6 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     pushedHostSecrets: () => pushed,
     pushHostSecret: (name) => scrubbed(() => putHostSecret(name)),
     currentStep: () => step,
+    activeVersionId: () => activeVersion,
   };
 }

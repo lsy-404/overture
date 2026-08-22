@@ -66,6 +66,7 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "worker.scriptDelete", method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
   { id: "worker.settingsRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.deploymentList", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.versionRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "versions", null], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.versionCreate", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "versions"] },
   { id: "worker.deploymentCreate", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
   {
@@ -84,6 +85,10 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   },
   { id: "worker.domainList", method: "GET", segments: ["accounts", null, "workers", "domains"], accountTokenReadPermission: "workers_routes" },
   { id: "worker.domainAttach", method: "PUT", segments: ["accounts", null, "workers", "domains"] },
+  { id: "containers.applicationList", method: "GET", segments: ["accounts", null, "containers", "applications"], accountTokenReadPermission: "containers" },
+  { id: "containers.applicationCreate", method: "POST", segments: ["accounts", null, "containers", "applications"] },
+  { id: "containers.applicationModify", method: "PATCH", segments: ["accounts", null, "containers", "applications", null] },
+  { id: "containers.rolloutCreate", method: "POST", segments: ["accounts", null, "containers", "applications", null, "rollouts"] },
   { id: "images.stats", method: "GET", segments: ["accounts", null, "images", "v1", "stats"], accountTokenReadPermission: "images" },
   { id: "zone.list", method: "GET", segments: ["zones"], accountTokenReadPermission: "zone" },
   { id: "zone.imageResizing", method: "GET", segments: ["zones", null, "settings", "image_resizing"], accountTokenReadPermission: "zone_settings" },
