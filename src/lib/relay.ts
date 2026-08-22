@@ -28,6 +28,7 @@
 
 import { sourceSlug, type SourceRef } from "../../shared/package";
 import { formatScopeParam } from "../../shared/oauthScopes";
+import { CF_UPSTREAM_STATUS_HEADER } from "../../shared/cfRelay";
 import type { AuthMode } from "./recipe/types";
 
 /** Every call that reads or writes the session cookie carries this — the
@@ -50,8 +51,15 @@ export class CfApiError extends Error {
 // the built frontend and these routes. Only set VITE_RELAY_URL when the frontend
 // is deployed separately from the Worker it talks to.
 function relayBase(): string {
-  const url = (import.meta.env.VITE_RELAY_URL || "").trim();
+  const url = (import.meta.env?.VITE_RELAY_URL || "").trim();
   return url.replace(/\/+$/, "");
+}
+
+/** The original Cloudflare status on a successful relay error envelope. */
+function effectiveCfStatus(response: Response): number {
+  const raw = response.headers.get(CF_UPSTREAM_STATUS_HEADER);
+  const status = raw ? Number(raw) : NaN;
+  return Number.isInteger(status) && status >= 100 && status <= 599 ? status : response.status;
 }
 
 interface CfEnvelope<T> {
@@ -105,11 +113,13 @@ export async function callCfJson<T>(path: string, init?: RequestInit, context?: 
   try {
     body = (await response.json()) as CfEnvelope<T>;
   } catch {
-    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${response.status})`, response.status, undefined, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${status})`, status, undefined, context);
   }
   if (!response.ok || !body.success) {
     const first = body.errors?.[0];
-    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${status})`, status, first?.code, context);
   }
   return body.result as T;
 }
@@ -136,7 +146,8 @@ export async function callCfNoContent(path: string, init?: RequestInit, context?
   }
   if (!response.ok || body?.success === false) {
     const first = body?.errors?.[0];
-    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${status})`, status, first?.code, context);
   }
 }
 
@@ -153,11 +164,13 @@ export async function callCfMultipart<T>(path: string, form: FormData, context?:
   try {
     body = (await response.json()) as CfEnvelope<T>;
   } catch {
-    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${response.status})`, response.status, undefined, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${status})`, status, undefined, context);
   }
   if (!response.ok || !body.success) {
     const first = body.errors?.[0];
-    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${status})`, status, first?.code, context);
   }
   return body.result as T;
 }
@@ -186,11 +199,13 @@ export async function callCfMultipartBearer<T>(
   try {
     body = (await response.json()) as CfEnvelope<T>;
   } catch {
-    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${response.status})`, response.status, undefined, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(`Cloudflare returned a non-JSON response (HTTP ${status})`, status, undefined, context);
   }
   if (!response.ok || !body.success) {
     const first = body.errors?.[0];
-    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${response.status})`, response.status, first?.code, context);
+    const status = effectiveCfStatus(response);
+    throw new CfApiError(first?.message || `Cloudflare request failed (HTTP ${status})`, status, first?.code, context);
   }
   return body.result as T;
 }
