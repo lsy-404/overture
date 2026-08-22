@@ -563,10 +563,14 @@ function inputField(errors: Errors, path: string, value: unknown): RecipeInput |
     if (condition) {
       const input = matching(errors, `${path}.visibleWhen.input`, condition.input, RECIPE_LIMITS.idPattern, true);
       const equals = condition.equals;
+      const mode =
+        condition.mode === undefined
+          ? undefined
+          : oneOf<DeployMode>(errors, `${path}.visibleWhen.mode`, condition.mode, DEPLOY_MODES, true);
       if (typeof equals !== "string" && typeof equals !== "boolean") {
         errors.add(`${path}.visibleWhen.equals`, "must be a string or boolean");
       } else if (input) {
-        visibleWhen = { input, equals };
+        visibleWhen = { input, equals, ...(mode === undefined ? {} : { mode }) };
       }
     }
   }

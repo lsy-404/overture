@@ -216,7 +216,7 @@ const checks: Array<[string, boolean, string?]> = [
       tweak((r) => {
         r.inputs = [
           { id: "reset_admin", kind: "toggle", label: { en: "Reset administrator" } },
-          { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: true } },
+          { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
         ];
       }),
     ),
@@ -233,6 +233,14 @@ const checks: Array<[string, boolean, string?]> = [
           r.inputs = [
             { id: "reset_admin", kind: "toggle", label: { en: "Reset administrator" } },
             { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: null } },
+          ];
+        }),
+      ) &&
+      rejects(
+        tweak((r) => {
+          r.inputs = [
+            { id: "reset_admin", kind: "toggle", label: { en: "Reset administrator" } },
+            { id: "admin_password", kind: "password", label: { en: "Administrator password" }, visibleWhen: { input: "reset_admin", equals: true, mode: "wrong" } },
           ];
         }),
       ),
