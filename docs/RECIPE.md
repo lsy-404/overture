@@ -281,8 +281,9 @@ Throw. The message reaches the user attached to whichever step was last set `run
 `BRIDGE_LIMITS.maxErrorChars`. For a step the recipe legitimately skips, report `skipped` rather than
 throwing. Make the message say what to fix — it is the only diagnostic anyone will get.
 
-Every package must also declare `issues.url`: an HTTPS URL to its public issue-creation page. After a
-failed deployment, Overture offers to open that URL with a prefilled report. The report contains only
-the package id, package version, declared failed step, and a generic failure summary. It deliberately
-does not include error text, credentials, account IDs, input values, resource names, or any other
-deployment configuration.
+Packages should declare `issues.url`: an HTTPS URL to their public issue-creation page. After a failed
+deployment, Overture offers to open that URL with a prefilled report. Existing packages without this
+field remain deployable but do not show the reporting action. The report contains only the package id,
+package version, declared failed step, and a generic failure summary. It deliberately does not include
+error text, credentials, account IDs, input values, resource names, or any other deployment
+configuration.

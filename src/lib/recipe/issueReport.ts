@@ -22,6 +22,7 @@ export function issueReport(recipe: Pick<Recipe, "id" | "version">, failedStep: 
 
 /** Adds conventional issue title/body parameters while preserving tracker-specific query parameters. */
 export function issueUrl(recipe: Pick<Recipe, "id" | "version" | "issues">, failedStep: string): string {
+  if (!recipe.issues) return "";
   const url = new URL(recipe.issues.url);
   url.searchParams.set("title", `Deployment failure: ${recipe.id} ${recipe.version}`);
   url.searchParams.set("body", issueReport(recipe, failedStep));
