@@ -161,6 +161,19 @@ const existingResourceConfirmCopy = [
   zhFlat["target.adoptConfirm"],
 ];
 const r2KeyHelpCopy = [enFlat["authorize.r2KeyHelp"], zhFlat["authorize.r2KeyHelp"]];
+const overwriteCopy = [
+  enFlat["target.workerExists"],
+  enFlat["target.overwriteConfirm"],
+  enFlat["confirm.modeOverwrite"],
+  zhFlat["target.workerExists"],
+  zhFlat["target.overwriteConfirm"],
+  zhFlat["confirm.modeOverwrite"],
+];
+const hostSecretWarningCopy = [enFlat["confirm.hostSecretsWarnBody"], zhFlat["confirm.hostSecretsWarnBody"]];
+const containerStateCopy = [
+  enFlat["target.containerKeep"], enFlat["target.containerEnable"], enFlat["target.containerDisable"],
+  zhFlat["target.containerKeep"], zhFlat["target.containerEnable"], zhFlat["target.containerDisable"],
+];
 
 const checks: Array<[string, boolean, string?]> = [
   ["every message key a component asks for exists", danglingKeys.length === 0, danglingKeys.join(", ")],
@@ -181,6 +194,20 @@ const checks: Array<[string, boolean, string?]> = [
   ["R2 key help identifies the key pair without claiming why the package needs it",
     r2KeyHelpCopy.every((line) => !/(?:direct bucket access|直连存储桶)/i.test(line)),
     r2KeyHelpCopy.join(" | ")],
+  ["existing Worker deployment is described as an overwrite, not an upgrade",
+    overwriteCopy.every((line) => /overwrite|覆盖/i.test(line)) && overwriteCopy.every((line) => !/upgrade|升级/i.test(line)),
+    overwriteCopy.join(" | ")],
+  ["runtime credential warning states storage, authorized scope and consent",
+    /(?:stored as Secrets|保存为.*Secrets)/i.test(hostSecretWarningCopy[0])
+      && /(?:authorized scope|授权范围)/i.test(hostSecretWarningCopy[0])
+      && /(?:By continuing|继续部署)/i.test(hostSecretWarningCopy[0])
+      && /(?:stored as Secrets|保存为.*Secrets)/i.test(hostSecretWarningCopy[1])
+      && /(?:authorized scope|授权范围)/i.test(hostSecretWarningCopy[1])
+      && /(?:By continuing|继续部署)/i.test(hostSecretWarningCopy[1]),
+    hostSecretWarningCopy.join(" | ")],
+  ["container declaration states are available in both locales",
+    containerStateCopy.every((line) => typeof line === "string" && line.trim().length > 0),
+    containerStateCopy.join(" | ")],
 
   ["no UI copy names a particular deployable package", brandedCopy.length === 0, brandedCopy.join(" | ")],
   ["no component hardcodes a particular deployable package", brandedComponents.length === 0, brandedComponents.join(", ")],
