@@ -39,7 +39,7 @@ const TOKEN_SESSION_MAX_AGE_SECONDS = 3600;
 const MAX_TOKEN_CHARS = 4096;
 
 const FAILURE = {
-  invalidToken: "Could not verify this token with Cloudflare. Check that it is active and try again.",
+  invalidToken: "Could not verify this Account API Token with Cloudflare. Create an active account token and try again.",
 } as const;
 
 interface AuthTokenRequest {
@@ -48,17 +48,17 @@ interface AuthTokenRequest {
   pkg: string;
 }
 
-// Not a signature check — Cloudflare's own verify call is what actually
-// authenticates this string. This only rejects what could never be a bearer
-// token value in the first place.
-function isPlausibleToken(value: unknown): value is string {
-  return typeof value === "string" && value.length > 0 && value.length <= MAX_TOKEN_CHARS && !/\s/.test(value);
+// Not a signature check — Cloudflare's own account-token verify call is what
+// authenticates this string. The `cfat_` marker rejects user tokens before
+// they can become a deploy session; it does not replace the remote check.
+function isPlausibleAccountToken(value: unknown): value is string {
+  return typeof value === "string" && value.length <= MAX_TOKEN_CHARS && /^cfat_[A-Za-z0-9_-]+$/.test(value);
 }
 
 function isAuthTokenRequest(body: unknown): body is AuthTokenRequest {
   if (!body || typeof body !== "object") return false;
   const b = body as Record<string, unknown>;
-  return isPlausibleToken(b.token) && b.mode === "auto" && typeof b.pkg === "string";
+  return isPlausibleAccountToken(b.token) && b.mode === "auto" && typeof b.pkg === "string";
 }
 
 export async function handleAuthToken(c: RelayContext): Promise<Response> {

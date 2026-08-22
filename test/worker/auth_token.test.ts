@@ -33,6 +33,7 @@ const RELAY_HEADERS = { "Overture-Relay": "1", Origin: SELF_ORIGIN };
 const ACCOUNT_ID = "0123456789abcdef0123456789abcdef";
 const OWN_TOKEN_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const PKG = "a".repeat(64);
+const ACCOUNT_VERIFY_PATH = `/accounts/${ACCOUNT_ID}/tokens/verify`;
 
 interface Route {
   status: number;
@@ -58,7 +59,7 @@ function stubRoutes(table: Record<string, Route>): void {
 
 const ACTIVE_TOKEN_ROUTES: Record<string, Route> = {
   "/accounts": { status: 200, body: { success: true, result: [{ id: ACCOUNT_ID, name: "Test Account" }] } },
-  "/tokens/verify": { status: 200, body: { success: true, result: { id: OWN_TOKEN_ID, status: "active" } } },
+  [ACCOUNT_VERIFY_PATH]: { status: 200, body: { success: true, result: { id: OWN_TOKEN_ID, status: "active" } } },
   [`/tokens/${OWN_TOKEN_ID}`]: {
     status: 200,
     body: { success: true, result: { policies: [{ permission_groups: [{ name: "Workers Scripts Write" }, { name: "D1 Write" }] }] } },
@@ -133,6 +134,14 @@ async function run(): Promise<void> {
   });
   checks.push(["an empty token is rejected with 400 before any Cloudflare call", emptyToken.status === 400 && fetchCalls.length === 0]);
 
+  stubRoutes(ACTIVE_TOKEN_ROUTES);
+  const userToken = await call("/auth/token", {
+    method: "POST",
+    headers: { ...RELAY_HEADERS, "Content-Type": "application/json" },
+    body: JSON.stringify({ token: "cfut_user_token", mode: "auto", pkg: PKG }),
+  });
+  checks.push(["a user API token is rejected before any Cloudflare call", userToken.status === 400 && fetchCalls.length === 0]);
+
   // --- invalid token: Cloudflare says no ---
   stubRoutes({ "/accounts": { status: 200, body: { success: false } } });
   const invalidToken = await call("/auth/token", {
@@ -142,12 +151,12 @@ async function run(): Promise<void> {
   });
   const invalidBody = (await invalidToken.json()) as { ok: boolean; error?: string };
   checks.push(["a token Cloudflare rejects at /accounts is refused with 403", invalidToken.status === 403 && invalidBody.ok === false]);
-  checks.push(["the upstream failure never reaches the browser verbatim", invalidBody.error === "Could not verify this token with Cloudflare. Check that it is active and try again."]);
+  checks.push(["the upstream failure never reaches the browser verbatim", invalidBody.error === "Could not verify this Account API Token with Cloudflare. Create an active account token and try again."]);
   checks.push(["a rejected token never gets a session cookie", !invalidToken.headers.get("Set-Cookie")]);
 
   stubRoutes({
     "/accounts": ACTIVE_TOKEN_ROUTES["/accounts"],
-    "/tokens/verify": { status: 200, body: { success: true, result: { id: OWN_TOKEN_ID, status: "expired" } } },
+    [ACCOUNT_VERIFY_PATH]: { status: 200, body: { success: true, result: { id: OWN_TOKEN_ID, status: "expired" } } },
   });
   const inactiveToken = await call("/auth/token", {
     method: "POST",
@@ -165,6 +174,8 @@ async function run(): Promise<void> {
   });
   const acceptedBody = (await accepted.json()) as Record<string, unknown>;
   checks.push(["a token Cloudflare confirms active is accepted with 200", accepted.status === 200]);
+  checks.push(["the token is verified with the account endpoint", fetchCalls.some((call) => call.endsWith(ACCOUNT_VERIFY_PATH))]);
+  checks.push(["the user-token verification endpoint is never called", !fetchCalls.some((call) => call.includes("/user/tokens/verify"))]);
   checks.push(["the response never contains the pasted token itself", JSON.stringify(acceptedBody).includes("cfat_valid_powerful_token") === false]);
   checks.push(['the response reports mode "auto"', acceptedBody.mode === "auto"]);
   checks.push(["the response reports authorized: true", acceptedBody.authorized === true]);

@@ -38,6 +38,12 @@ export interface EndpointRule {
   method: string;
   segments: Segment[];
   /**
+   * Account-token permission the wizard must pre-fill to run this GET as an
+   * account pre-check. Omitted for writes and for any endpoint that must never
+   * become a recipe-driven pre-check permission request.
+   */
+  accountTokenReadPermission?: string;
+  /**
    * This one entry does not carry the session's Cloudflare token: the asset
    * upload session itself hands back a short-lived JWT, and the caller sends
    * that JWT as its own `Authorization` header instead. The relay must never
@@ -47,19 +53,19 @@ export interface EndpointRule {
 }
 
 export const CF_ENDPOINTS: readonly EndpointRule[] = [
-  { id: "account.read", method: "GET", segments: ["accounts", null] },
-  { id: "r2.bucketList", method: "GET", segments: ["accounts", null, "r2", "buckets"] },
+  { id: "account.read", method: "GET", segments: ["accounts", null], accountTokenReadPermission: "account_settings" },
+  { id: "r2.bucketList", method: "GET", segments: ["accounts", null, "r2", "buckets"], accountTokenReadPermission: "workers_r2" },
   { id: "r2.bucketCreate", method: "POST", segments: ["accounts", null, "r2", "buckets"] },
-  { id: "d1.databaseList", method: "GET", segments: ["accounts", null, "d1", "database"] },
+  { id: "d1.databaseList", method: "GET", segments: ["accounts", null, "d1", "database"], accountTokenReadPermission: "d1" },
   { id: "d1.databaseCreate", method: "POST", segments: ["accounts", null, "d1", "database"] },
   { id: "d1.query", method: "POST", segments: ["accounts", null, "d1", "database", null, "query"] },
-  { id: "kv.namespaceList", method: "GET", segments: ["accounts", null, "storage", "kv", "namespaces"] },
+  { id: "kv.namespaceList", method: "GET", segments: ["accounts", null, "storage", "kv", "namespaces"], accountTokenReadPermission: "workers_kv_storage" },
   { id: "kv.namespaceCreate", method: "POST", segments: ["accounts", null, "storage", "kv", "namespaces"] },
-  { id: "worker.scriptList", method: "GET", segments: ["accounts", null, "workers", "scripts"] },
-  { id: "worker.scriptRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null] },
+  { id: "worker.scriptList", method: "GET", segments: ["accounts", null, "workers", "scripts"], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.scriptRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scriptDelete", method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
-  { id: "worker.settingsRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"] },
-  { id: "worker.deploymentList", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
+  { id: "worker.settingsRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.deploymentList", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.versionCreate", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "versions"] },
   { id: "worker.deploymentCreate", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
   {
@@ -68,7 +74,7 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
     segments: ["accounts", null, "workers", "scripts", null, "assets-upload-session"],
   },
   { id: "worker.secretPut", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "secrets"] },
-  { id: "worker.scheduleRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
+  { id: "worker.scheduleRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scheduleWrite", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
   {
     id: "worker.assetUpload",
@@ -76,11 +82,11 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
     segments: ["accounts", null, "workers", "assets", "upload"],
     passthroughAuth: true,
   },
-  { id: "worker.domainList", method: "GET", segments: ["accounts", null, "workers", "domains"] },
+  { id: "worker.domainList", method: "GET", segments: ["accounts", null, "workers", "domains"], accountTokenReadPermission: "workers_routes" },
   { id: "worker.domainAttach", method: "PUT", segments: ["accounts", null, "workers", "domains"] },
-  { id: "images.stats", method: "GET", segments: ["accounts", null, "images", "v1", "stats"] },
-  { id: "zone.list", method: "GET", segments: ["zones"] },
-  { id: "zone.imageResizing", method: "GET", segments: ["zones", null, "settings", "image_resizing"] },
+  { id: "images.stats", method: "GET", segments: ["accounts", null, "images", "v1", "stats"], accountTokenReadPermission: "images" },
+  { id: "zone.list", method: "GET", segments: ["zones"], accountTokenReadPermission: "zone" },
+  { id: "zone.imageResizing", method: "GET", segments: ["zones", null, "settings", "image_resizing"], accountTokenReadPermission: "zone_settings" },
 ];
 
 // Rejects empty segments (already implied by the caller's split/filter),
