@@ -18,9 +18,10 @@
 // package it deploys (deploy.example.com next to music.example.com), so
 // SameSite alone does not draw the boundary here — a fixed header a
 // cross-site <form>/<img>/top-level navigation cannot set does. Origin is a
-// second, independent check: it must be present and equal to this exact
-// origin, not merely non-conflicting. Neither check is skipped when the
-// other one already failed.
+// second, independent check whenever the browser supplies it: it must equal
+// this exact origin, not merely be non-conflicting. Browsers may omit Origin
+// on a same-origin GET or HEAD, so those read-only requests rely on the fixed
+// header; every other method still requires Origin.
 
 import type { Context, Next } from "hono";
 import { jsonResponse } from "./http";
@@ -34,10 +35,11 @@ export async function csrfGate(c: RelayContext, next: Next): Promise<Response | 
     return jsonResponse(c, 403, { ok: false, error: "Missing Overture-Relay header" });
   }
   const origin = c.req.header("Origin");
-  if (!origin) {
+  const isRead = c.req.method === "GET" || c.req.method === "HEAD";
+  if (!origin && !isRead) {
     return jsonResponse(c, 403, { ok: false, error: "Missing Origin header" });
   }
-  if (origin !== new URL(c.req.url).origin) {
+  if (origin && origin !== new URL(c.req.url).origin) {
     return jsonResponse(c, 403, { ok: false, error: "Origin does not match this deployment" });
   }
   await next();
