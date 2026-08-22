@@ -13,21 +13,21 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// worker/csrf.ts's gate: every rejection branch (missing Overture-Relay,
-// wrong Overture-Relay value, missing Origin, mismatched Origin) plus the one
-// combination that is allowed through.
+// worker/csrf.ts's gate: the custom header is mandatory for every method;
+// Origin remains mandatory for writes and must match when supplied, while a
+// same-origin GET/HEAD may omit it because browsers do not always send one.
 
 import { Hono } from "hono";
 import { csrfGate } from "../../worker/csrf";
 
 const app = new Hono<{ Bindings: Env }>();
 app.use("*", csrfGate);
-app.get("/probe", (c) => c.json({ ok: true }));
+app.all("/probe", (c) => c.json({ ok: true }));
 
 const SELF_ORIGIN = "https://relay.example";
 
-async function call(headers: Record<string, string>): Promise<Response> {
-  return app.fetch(new Request(`${SELF_ORIGIN}/probe`, { headers }), {} as Env);
+async function call(headers: Record<string, string>, method = "GET"): Promise<Response> {
+  return app.fetch(new Request(`${SELF_ORIGIN}/probe`, { method, headers }), {} as Env);
 }
 
 const checks: Array<[string, boolean, string?]> = [];
@@ -39,8 +39,14 @@ async function run(): Promise<void> {
   const wrongHeaderValue = await call({ "Overture-Relay": "true", Origin: SELF_ORIGIN });
   checks.push(['an Overture-Relay value other than "1" is rejected with 403', wrongHeaderValue.status === 403]);
 
-  const missingOrigin = await call({ "Overture-Relay": "1" });
-  checks.push(["a request with no Origin header is rejected with 403, not silently allowed", missingOrigin.status === 403]);
+  const readWithoutOrigin = await call({ "Overture-Relay": "1" });
+  checks.push(["a same-origin GET with the relay header may omit Origin", readWithoutOrigin.status === 200]);
+
+  const headWithoutOrigin = await call({ "Overture-Relay": "1" }, "HEAD");
+  checks.push(["a same-origin HEAD with the relay header may omit Origin", headWithoutOrigin.status === 200]);
+
+  const writeWithoutOrigin = await call({ "Overture-Relay": "1" }, "POST");
+  checks.push(["a write with no Origin header remains rejected with 403", writeWithoutOrigin.status === 403]);
 
   const wrongOrigin = await call({ "Overture-Relay": "1", Origin: "https://evil.example" });
   checks.push(["an Origin that does not equal this deployment's own origin is rejected with 403", wrongOrigin.status === 403]);
