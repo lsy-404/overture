@@ -10,7 +10,7 @@ import type { Recipe } from "../../src/lib/recipe/types";
 import { PACKAGE_ARTIFACT_NAME } from "../../shared/package";
 
 const recipe: Recipe = {
-  schema: 2, id: "demo", name: "Demo", summary: "Demo", version: "1.0.0", tag: "v1.0.0", buildTime: "2026-01-01T00:00:00Z",
+  schema: 2, id: "demo", name: "Demo", summary: "Demo", issues: { url: "https://github.com/acme/demo/issues/new" }, version: "1.0.0", tag: "v1.0.0", buildTime: "2026-01-01T00:00:00Z",
   package: { artifact: PACKAGE_ARTIFACT_NAME, sha256: "a".repeat(64) }, license: { id: "AGPL-3.0-or-later", text: "Licence" },
   authModes: ["auto"], permissions: [], resources: [], capabilities: [], steps: [{ id: "upload", label: "Upload" }],
   worker: {

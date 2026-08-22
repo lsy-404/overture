@@ -316,6 +316,12 @@ export interface RecipeDoneLink {
   href: Interpolated;
 }
 
+/** The package's public issue-creation page. Overture adds a prefilled report to it after a failed deployment. */
+export interface RecipeIssues {
+  /** HTTPS issue-creation URL owned by the package project. */
+  url: string;
+}
+
 export interface Recipe {
   schema: typeof RECIPE_SCHEMA;
   /** Stable slug. Used for storage keys and nothing user-visible. */
@@ -323,6 +329,8 @@ export interface Recipe {
   name: string;
   summary: Localized;
   homepage?: string;
+  /** Where a user can report a failed deployment of this package. */
+  issues: RecipeIssues;
   /** Must agree with the release tag this configuration was published on. */
   version: string;
   tag: string;

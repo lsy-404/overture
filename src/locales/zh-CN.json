@@ -337,6 +337,8 @@
     "configMissing": "请返回重新选择项目和版本。",
     "failedTitle": "部署失败",
     "failedAt": "失败步骤：{step}",
+    "copyReport": "复制诊断报告",
+    "reportIssue": "报告包问题",
     "retryFromHere": "重试会从头再跑一遍整个部署，已经建好的资源会被复用。",
     "hostSteps": {
       "health": "检查部署是否响应"
