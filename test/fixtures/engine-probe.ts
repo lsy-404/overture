@@ -66,6 +66,7 @@ function route(method: string, path: string, body: string): Response {
   }
   if (path.endsWith("/assets-upload-session")) return json({ jwt: ASSET_JWT, buckets: [] });
   if (path.endsWith("/versions")) return json({ id: VERSION_ID });
+  if (/\/versions\/[^/]+$/.test(path) && method === "GET") return json({ resources: { bindings: [] } });
   if (path.endsWith("/deployments")) return json({});
   if (path.endsWith("/schedules")) return method === "PUT" ? json({}) : json({ schedules: [{ cron: "0 * * * *" }] });
   if (path.includes("/workers/domains")) return json([{ hostname: "old.example.com", zone_id: "zone-1", service: "probe-worker" }]);
@@ -293,6 +294,16 @@ async function main(): Promise<void> {
   say("the recipe drove its own checklist", happy.steps.join(" ").includes("prepare:success:database d1-uuid-1") && happy.steps.includes("upload:success"), happy.steps.join(" "));
   say("the health probe ran on the host step", happy.steps.some((entry) => entry.startsWith("@health:success")), happy.steps.join(" "));
   say("the frame is destroyed afterwards", document.querySelectorAll("iframe").length === 0, `${document.querySelectorAll("iframe").length} left`);
+
+  const emptyResultUrl = await run(
+    baseRecipe(),
+    `export async function deploy(ctx) {
+      await ctx.step("prepare", "running");
+      await ctx.result({ url: "" });
+      await ctx.step("prepare", "success");
+    }`,
+  );
+  say("an omitted optional result URL does not fail the deployment", emptyResultUrl.ok && emptyResultUrl.url === "", emptyResultUrl.message);
 
   // 2. Isolation, reported from inside the frame.
   const isolation = await run(
