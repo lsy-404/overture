@@ -57,6 +57,15 @@ export async function runRecipe(input: {
 }): Promise<DeployResult> {
   const { config, dataPackage, creds, target, live, locale } = input;
   const recipe = config.recipe;
+  // The UI keeps required app tokens on their only viable path (auto mode),
+  // but the engine also guards direct callers before a recipe can provision
+  // anything. A host secret is a value the recipe cannot inspect, so this is
+  // the one place to reject an impossible deployment without side effects.
+  for (const secret of recipe.hostSecrets || []) {
+    if (secret.requirement === "required" && !creds[secret.source].trim()) {
+      throw new DeployError("", `this deployment has no value for the required secret ${secret.name}`);
+    }
+  }
   // One id for the whole deployment, so two vars using ${uuid} agree.
   const deploymentUuid = crypto.randomUUID();
 

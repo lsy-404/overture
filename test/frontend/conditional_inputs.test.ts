@@ -27,7 +27,7 @@ const recipe: Recipe = {
   capabilities: [],
   inputs: [
     { id: "reset_admin", kind: "toggle", onlyMode: "overwrite", label: "Reset administrator" },
-    { id: "admin_username", kind: "text", default: "admin", required: true, label: "Administrator username", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
+    { id: "admin_username", kind: "text", default: "admin", required: true, placeholder: "admin@example", label: "Administrator username", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
     // The package creates an empty password during deployment and reports it
     // through ctx.result(), so the host must not require or persist one.
     { id: "admin_password", kind: "password", label: "Administrator password", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
@@ -70,6 +70,7 @@ const checks: Array<[string, boolean]> = [
   ["a hidden required username does not enter an overwrite target", hiddenRequiredUsernameIsNotPassedOrValidated],
   ["selecting reset reveals administrator credentials for an overwrite", overwriteShowsCredentialsAfterReset],
   ["the deployment target receives only the visible reset inputs", resetTargetOnlyIncludesVisibleInputs],
+  ["recipe input placeholders are preserved as UI-only schema fields", recipe.inputs?.[1].placeholder === "admin@example"],
 ];
 
 let failures = 0;

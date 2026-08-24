@@ -142,7 +142,7 @@ before anything is downloaded.
   "hostSecrets": [
     { "name": "CF_ACCOUNT_ID", "source": "accountId", "requirement": "required",
       "reason": { "en": "Self-update and transcoding call the account's own API" } },
-    { "name": "CF_API_TOKEN", "source": "cfApiToken", "requirement": "required",
+    { "name": "CF_API_TOKEN", "source": "cfApiToken", "requirement": "required", "placeholder": { "en": "cfat_…" },
       "permissions": [{ "key": "workers_scripts", "type": "edit" }, { "key": "workers_r2", "type": "edit" }],
       "reason": { "en": "The app manages its own cron and storage after deploy" } }
   ],
@@ -161,6 +161,12 @@ before anything is downloaded.
 ```
 
 ### Conditional inputs
+
+`placeholder` is an optional localized, non-secret format cue for a `text`,
+`password`, or `domain` input (it is rejected on `toggle` and `select`). A
+`cfApiToken` host secret may also declare it for the auto-token field (for
+example, `cfat_…`). It is presentation-only: it is not validated as a prefix
+and never becomes a credential value.
 
 Use `onlyMode` to limit an input to a fresh or overwrite deployment. Use
 `visibleWhen` when a field is meaningful only after another option is selected.

@@ -213,6 +213,7 @@
       "intro": "这个令牌用来部署这个应用；如果应用之后还需要一个长期凭证，用的也是它。之后不会有任何删除或替换——它一直是你自己的令牌，你可以随时在 Cloudflare 控制台里把它删掉。",
       "tokenLabel": "你的账户 API 令牌",
       "placeholder": "把账户 API 令牌粘贴到这里",
+      "tokenRequired": "此应用需要将自己的令牌写入 Worker Secret。请重新粘贴后继续；已有值绝不会显示。",
       "tokenLinkLabel": "去 Cloudflare 创建账户 API 令牌",
       "requirementsTitle": "要授予的权限",
       "requirementsIntro": "必需权限不可去掉，可选权限可以取消勾选。",

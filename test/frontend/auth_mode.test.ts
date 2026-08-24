@@ -91,6 +91,14 @@ wizardA.adoptConfig(configWith(recipeWith(["oauth", "auto"])));
 const bothModesWhenConfigured = [...wizardA.availableAuthModes];
 const multiModeChoice = wizardA.hasAuthChoice;
 
+wizardA.adoptConfig(configWith(recipeWith(["oauth", "auto"], [{
+  name: "CF_API_TOKEN", source: "cfApiToken", requirement: "required", reason: "self-update", permissions: [{ key: "workers_scripts", type: "edit" }],
+}])));
+const requiredAppTokenForcesAuto = [...wizardA.availableAuthModes];
+wizardA.setAuthMode("auto");
+wizardA.applyOAuthSession({ authorized: true, scope: [], accounts: [], accountId: null, pkg: null, expiresAt: null, mode: "oauth" });
+const requiredAppTokenKeepsAutoAfterOauthSession = wizardA.authMode;
+
 // A recipe that only ever declared auto is unaffected by the oauth flag.
 policyA.policy.oauthEnabled = false;
 wizardA.adoptConfig(configWith(recipeWith(["auto"])));
@@ -231,6 +239,10 @@ const checks: Array<[string, boolean, string?]> = [
   ["an oauth-only recipe needing an out-of-ceiling scope has zero available modes", blockedOnShortfall === true],
   ["a declared scope within the ceiling keeps oauth available",
     oauthKeptWithinCeiling.length === 2 && oauthKeptWithinCeiling.includes("oauth")],
+  ["a required app token removes oauth because it cannot provide that token",
+    requiredAppTokenForcesAuto.length === 1 && requiredAppTokenForcesAuto[0] === "auto"],
+  ["an old oauth cookie cannot switch a required-app-token deployment away from auto",
+    requiredAppTokenKeepsAutoAfterOauthSession === "auto"],
   ["no recipe loaded is not treated as a blocked deployment", notBlockedBeforeAnyRecipe === false],
 
   ["adoptConfig resets authMode to null for the newly loaded recipe", modeAfterReset === null],
@@ -255,6 +267,11 @@ const checks: Array<[string, boolean, string?]> = [
     /hasAuthChoice[\s\S]{0,80}STEPS\.authMethod/.test(authorizeSource) || /STEPS\.authMethod[\s\S]{0,80}hasAuthChoice/.test(authorizeSource)],
   ["the authorize step keeps an auto-mode paste as the app's own credential",
     /authMode\s*!==\s*"auto"[\s\S]{0,60}return/.test(authorizeSource) && /credentials\.cfApiToken\s*=\s*value/.test(authorizeSource)],
+  ["the auto-token field uses a recipe-declared non-secret placeholder when supplied",
+    /tokenPlaceholder/.test(authorizeSource) && /\.placeholder/.test(authorizeSource)],
+  ["a matching cookie without the app token reopens the paste field and blocks continuation",
+    /needsRequiredAppToken/.test(authorizeSource) && /!wizard\.sessionMatchesPackage\s*\|\|\s*needsRequiredAppToken/.test(authorizeSource)
+      && /&&\s*!needsRequiredAppToken\.value/.test(authorizeSource)],
   ["there is no manual mode left to branch on",
     !/["']manual["']/.test(authorizeSource) && !/["']manual["']/.test(authMethodSource)],
   ["the pre-filled token link and its permission list are built from the shared permission table",

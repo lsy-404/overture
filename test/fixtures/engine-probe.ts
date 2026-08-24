@@ -127,7 +127,7 @@ function baseRecipe(): Recipe {
       ],
     },
     capabilities: ["d1", "r2", "kv", "secrets", "worker", "assets", "cron", "domains", "probe"],
-    hostSecrets: [{ name: "CF_API_TOKEN", source: "apiToken", requirement: "required", reason: "self-update" }],
+    hostSecrets: [{ name: "CF_API_TOKEN", source: "cfApiToken", requirement: "required", reason: "self-update", permissions: [{ key: "workers_scripts", type: "edit" }] }],
     steps: [
       { id: "prepare", label: "prepare" },
       { id: "upload", label: "upload" },
@@ -163,6 +163,10 @@ function target(overrides: Partial<DeployTarget> = {}): DeployTarget {
   };
 }
 
+function credentials(overrides: Partial<{ accountId: string; cfApiToken: string; r2AccessKeyId: string; r2SecretAccessKey: string }> = {}) {
+  return { accountId: ACCOUNT_ID, cfApiToken: API_TOKEN, r2AccessKeyId: "", r2SecretAccessKey: "", ...overrides };
+}
+
 const live: LiveScriptFacts = { exists: false, vars: {}, crons: [], customDomains: [], containerClasses: [] };
 
 interface RunOutcome {
@@ -181,13 +185,14 @@ async function run(
   script: string,
   overrides: Partial<DeployTarget> = {},
   liveFacts: LiveScriptFacts = live,
+  credentialOverrides: Partial<{ accountId: string; cfApiToken: string; r2AccessKeyId: string; r2SecretAccessKey: string }> = {},
 ): Promise<RunOutcome> {
   const steps: string[] = [];
   try {
     const result = await runRecipe({
       config: config(recipe),
       dataPackage: dataPackage(script),
-      creds: { accountId: ACCOUNT_ID, apiToken: API_TOKEN, r2AccessKeyId: "", r2SecretAccessKey: "" },
+      creds: credentials(credentialOverrides),
       target: target(overrides),
       live: liveFacts,
       locale: "en",
@@ -427,6 +432,21 @@ async function main(): Promise<void> {
     "a required host secret is pushed by the host",
     swept.ok && secretsPushed.get("CF_API_TOKEN") === API_TOKEN,
     String(secretsPushed.has("CF_API_TOKEN")),
+  );
+
+  const callsBeforeMissingRequiredSecret = requests.length;
+  const missingRequiredSecret = await run(
+    baseRecipe(),
+    `export async function deploy(ctx) { await ctx.step("prepare", "running"); }`,
+    {},
+    live,
+    { cfApiToken: "" },
+  );
+  say(
+    "a missing required host secret is rejected before recipe work starts",
+    !missingRequiredSecret.ok && /no value for the required secret CF_API_TOKEN/.test(missingRequiredSecret.message)
+      && missingRequiredSecret.steps.length === 0 && requests.length === callsBeforeMissingRequiredSecret,
+    missingRequiredSecret.message,
   );
 
   // 11a. An adopted resource is bound by its own id, and no create call goes out
