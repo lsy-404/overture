@@ -27,7 +27,9 @@ const recipe: Recipe = {
   capabilities: [],
   inputs: [
     { id: "reset_admin", kind: "toggle", onlyMode: "overwrite", label: "Reset administrator" },
-    { id: "admin_username", kind: "text", default: "admin", label: "Administrator username", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
+    { id: "admin_username", kind: "text", default: "admin", required: true, label: "Administrator username", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
+    // The package creates an empty password during deployment and reports it
+    // through ctx.result(), so the host must not require or persist one.
     { id: "admin_password", kind: "password", label: "Administrator password", visibleWhen: { input: "reset_admin", equals: true, mode: "overwrite" } },
   ],
   steps: [{ id: "upload", label: "Upload" }],
@@ -49,9 +51,12 @@ setActivePinia(createPinia());
 const wizard = useWizard();
 wizard.adoptConfig(config);
 const freshShowsInitialCredentials = ids(wizard) === "admin_username,admin_password";
+const freshUsernameDefaultsToAdmin = wizard.inputs.admin_username === "admin";
+const blankFreshPasswordIsPassedToTheRecipe = wizard.buildTarget().inputs.admin_password === "";
 
 wizard.applyLive({ exists: true, vars: {}, crons: [], customDomains: [], containerClasses: [] });
 const overwriteHidesCredentialsUntilReset = ids(wizard) === "reset_admin";
+const hiddenRequiredUsernameIsNotPassedOrValidated = Object.keys(wizard.buildTarget().inputs).join(",") === "reset_admin";
 
 wizard.inputs.reset_admin = true;
 const overwriteShowsCredentialsAfterReset = ids(wizard) === "reset_admin,admin_username,admin_password";
@@ -59,7 +64,10 @@ const resetTargetOnlyIncludesVisibleInputs = Object.keys(wizard.buildTarget().in
 
 const checks: Array<[string, boolean]> = [
   ["a fresh deployment asks for initial administrator credentials", freshShowsInitialCredentials],
+  ["the administrator username defaults to admin", freshUsernameDefaultsToAdmin],
+  ["an empty password stays available for the package to generate", blankFreshPasswordIsPassedToTheRecipe],
   ["an overwrite hides administrator credentials until reset is selected", overwriteHidesCredentialsUntilReset],
+  ["a hidden required username does not enter an overwrite target", hiddenRequiredUsernameIsNotPassedOrValidated],
   ["selecting reset reveals administrator credentials for an overwrite", overwriteShowsCredentialsAfterReset],
   ["the deployment target receives only the visible reset inputs", resetTargetOnlyIncludesVisibleInputs],
 ];

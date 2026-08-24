@@ -170,6 +170,13 @@ keeps initial credentials visible for a fresh deployment while requiring an
 explicit reset choice during an overwrite. Hidden fields are neither validated
 as required nor sent to `recipe.js`.
 
+For an application-generated password, do not mark the password input
+`required`: an empty value reaches `recipe.js`, which must generate the value,
+use it for the deployment, and return it once with
+`ctx.result({ credentials: [{ label: "Password", value, secret: true }] })`.
+The completion page is the only Overture UI that displays such credentials and
+keeps them in current-page memory only.
+
 ```json
 [
   { "id": "reset_admin", "kind": "toggle", "onlyMode": "overwrite", "label": { "en": "Reset administrator" } },
