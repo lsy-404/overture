@@ -110,6 +110,8 @@ export interface RecipeCheck {
   label: Localized;
   /** CF API path, `${accountId}` interpolated. */
   path: Interpolated;
+  /** Require the account subscriptions endpoint to report an active Paid plan. */
+  expect?: "paid";
   hint?: Localized;
   /**
    * A Cloudflare dashboard link that turns the checked feature on (e.g. the R2

@@ -45,6 +45,7 @@ export interface EndpointPermission {
 
 export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
   "account.read": { scopes: ["account-settings.read"] },
+  "account.subscriptionList": { scopes: ["billing.read"] },
   "r2.bucketList": { scopes: ["workers-r2.read"] },
   "r2.bucketCreate": { scopes: ["workers-r2.write"] },
   "d1.databaseList": { scopes: ["d1.read"] },

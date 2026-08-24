@@ -206,10 +206,12 @@ const accountChecks: RecipeCheck[] = [
   { id: "r2", requirement: "required", label: { "*": "R2 storage" }, path: "/accounts/${accountId}/r2/buckets" },
   { id: "images", requirement: "optional", label: { "*": "Image transforms" }, path: "/accounts/${accountId}/images/v1/stats" },
   { id: "r2Again", requirement: "recommended", label: { "*": "Existing buckets" }, path: "/accounts/${accountId}/r2/buckets" },
+  { id: "paid", requirement: "required", label: { "*": "Paid account" }, path: "/accounts/${accountId}/subscriptions", expect: "paid" },
 ];
 const preflightPermissions = preflightPermissionsForChecks(accountChecks);
 const r2PreflightPermission = preflightPermissions.find((permission) => permission.key === "workers_r2");
 const imagesPreflightPermission = preflightPermissions.find((permission) => permission.key === "images");
+const billingPreflightPermission = preflightPermissions.find((permission) => permission.key === "billing");
 const mergedPermissions = mergeTokenPermissions(
   [{ key: "workers_r2", type: "edit" }],
   preflightPermissions,
@@ -219,10 +221,12 @@ const getRulesWithoutPreflightRead = CF_ENDPOINTS.filter((rule) => rule.method =
 
 const urlForEmpty = buildTokenLinkUrl([]);
 const urlForOne = buildTokenLinkUrl([{ key: "d1", type: "edit" }]);
+const urlWithName = buildTokenLinkUrl([{ key: "d1", type: "edit" }], "Edge Sonic / Production");
 const decodedParam = (() => {
   const match = /permissionGroupKeys=([^&]+)/.exec(urlForOne);
   return match ? (JSON.parse(decodeURIComponent(match[1])) as Array<{ key: string; type: string }>) : null;
 })();
+const namedToken = new URL(urlWithName).searchParams.get("name");
 
 let failures = 0;
 const checks: Array<[string, boolean, string?]> = [
@@ -294,6 +298,7 @@ const checks: Array<[string, boolean, string?]> = [
   ["an empty permission list falls back to the bare account token page", urlForEmpty === CF_ACCOUNT_TOKENS_URL],
   ["a declared permission is encoded into permissionGroupKeys",
     !!decodedParam && decodedParam.length === 1 && decodedParam[0].key === "d1" && decodedParam[0].type === "edit"],
+  ["a package name is URL-encoded into Cloudflare's editable token-name parameter", namedToken === "Edge Sonic / Production"],
   ["permission rows carry the shared table's display name, not the raw key",
     d1AndR2[0].name === "D1" && d1AndR2[1].name === "Workers R2 Storage"],
   ["an edit on a flagged group (account_api_tokens) is reported as dangerous", dangerRow.danger === true],
@@ -304,9 +309,11 @@ const checks: Array<[string, boolean, string?]> = [
   ["an R2 pre-check automatically adds Workers R2 Storage read", r2PreflightPermission?.type === "read" && r2PreflightPermission.requirement === "required"],
   ["one read permission lists every check it covers", r2PreflightPermission?.checks.map((check) => check.id).join(",") === "r2,r2Again"],
   ["an optional Images check keeps its generated read optional", imagesPreflightPermission?.type === "read" && imagesPreflightPermission.requirement === "optional"],
+  ["a paid-account check automatically adds Billing Read", billingPreflightPermission?.type === "read" && billingPreflightPermission.requirement === "required"],
   ["an app edit and a pre-check read for the same group become one edit request", mergedPermissions.filter((permission) => permission.key === "workers_r2").length === 1 && mergedPermissions.find((permission) => permission.key === "workers_r2")?.type === "edit"],
   ["every allow-listed GET that a recipe may use as a check declares its account-token read", getRulesWithoutPreflightRead.length === 0, getRulesWithoutPreflightRead.map((rule) => rule.id).join(", ")],
   ["the authorize page presents generated reads as account pre-check requirements", /preflightPermissionsForChecks/.test(authorizeSource) && /checkPermissionsTitle/.test(authorizeSource)],
+  ["the authorize page pre-fills the account token's editable name from the package name", /buildTokenLinkUrl\(tokenPermissions\.value, wizard\.recipe\?\.name\)/.test(authorizeSource)],
 ];
 
 for (const [label, passed, detail] of checks) {

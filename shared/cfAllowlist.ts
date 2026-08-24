@@ -54,6 +54,7 @@ export interface EndpointRule {
 
 export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "account.read", method: "GET", segments: ["accounts", null], accountTokenReadPermission: "account_settings" },
+  { id: "account.subscriptionList", method: "GET", segments: ["accounts", null, "subscriptions"], accountTokenReadPermission: "billing" },
   { id: "r2.bucketList", method: "GET", segments: ["accounts", null, "r2", "buckets"], accountTokenReadPermission: "workers_r2" },
   { id: "r2.bucketCreate", method: "POST", segments: ["accounts", null, "r2", "buckets"] },
   { id: "d1.databaseList", method: "GET", segments: ["accounts", null, "d1", "database"], accountTokenReadPermission: "d1" },

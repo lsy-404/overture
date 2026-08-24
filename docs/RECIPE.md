@@ -72,10 +72,16 @@ before anything is downloaded.
 
   // Read-only probes run before anything is provisioned. GET only, and the path
   // must be one the relay allow-lists. In Account API Token mode, Overture
-  // derives and pre-fills the matching Read permission for every check.
+  // derives and pre-fills the matching Read permission for every check. Set
+  // `expect: "paid"` only on the subscriptions path to require an active Paid
+  // account subscription; Trial, AwaitingPayment, Cancelled, Failed, and Expired
+  // do not pass it.
   "checks": [
     { "id": "r2", "requirement": "required", "path": "/accounts/${accountId}/r2/buckets",
-      "label": { "en": "R2 enabled" } }
+      "label": { "en": "R2 enabled" } },
+    { "id": "paid", "requirement": "required", "path": "/accounts/${accountId}/subscriptions",
+      "expect": "paid", "label": { "en": "Paid Cloudflare account" },
+      "actionUrl": "https://dash.cloudflare.com/?to=/:account/billing" }
   ],
 
   // Storage the deployment needs. Overture renders a name field per entry, works
@@ -135,8 +141,9 @@ before anything is downloaded.
   // "cfApiToken". The last is the app's own long-lived Cloudflare token: it
   // carries `permissions`, each a Cloudflare token-template `{ key, type }` from
   // shared/cfTokenPermissions.ts (a key outside that table is rejected). In auto
-  // mode the "create a token" deep link pre-fills exactly these, the user pastes
-  // the token, and it becomes the app's credential — never the deploy session's.
+  // mode the "create a token" deep link pre-fills exactly these and the package
+  // name (which the user may edit), the user pastes the token, and it becomes
+  // the app's credential — never the deploy session's.
   // A permission Cloudflare marks high-impact (token management, billing,
   // account governance) is flagged to the user before they agree.
   "hostSecrets": [
@@ -159,6 +166,11 @@ before anything is downloaded.
   "done": { "links": [{ "label": { "en": "Open the app" }, "href": "${url}" }] }
 }
 ```
+
+If a package offers OAuth alongside a paid check, the Overture operator's
+Cloudflare OAuth client must be registered with `billing.read`; Token mode does
+not need that operator configuration because the wizard pre-fills Billing Read
+on the user-created Account API Token.
 
 ### Conditional inputs
 

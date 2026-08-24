@@ -83,6 +83,7 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | Method | Path pattern | Used for |
 |---|---|---|
 | GET | `/accounts/{accountId}` | Account name and plan, shown on the target step |
+| GET | `/accounts/{accountId}/subscriptions` | Read the subscription states for a recipe that requires an active Paid account; no billing data is stored |
 | GET | `/accounts/{accountId}/r2/buckets` | Is R2 enabled, and which buckets the recipe's resources could match |
 | POST | `/accounts/{accountId}/r2/buckets` | Create a bucket the recipe declared |
 | GET | `/accounts/{accountId}/d1/database` | Read the account's D1 databases once, to match the recipe's resources against |

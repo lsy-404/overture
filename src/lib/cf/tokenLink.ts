@@ -30,14 +30,18 @@ export const CF_ACCOUNT_TOKENS_URL = "https://dash.cloudflare.com/?to=/:account/
 /**
  * The token-creation link, pre-filled with exactly the permissions a recipe's
  * `cfApiToken` hostSecret declared — `permissionGroupKeys` is Cloudflare's own
- * token-template URL format, an encoded JSON array of `{key,type}` pairs — so
- * the user only has to name the token and create it. Falls back to the bare
- * account token page when there is nothing to pre-fill.
+ * token-template URL format, an encoded JSON array of `{key,type}` pairs. The
+ * optional name is a Dashboard default the user may still change.
  */
-export function buildTokenLinkUrl(permissions: readonly Pick<CfTokenPermissionRequest, "key" | "type">[]): string {
-  if (permissions.length === 0) return CF_ACCOUNT_TOKENS_URL;
-  const keys = permissions.map((permission) => ({ key: permission.key, type: permission.type }));
-  return `${CF_ACCOUNT_TOKENS_URL}&permissionGroupKeys=${encodeURIComponent(JSON.stringify(keys))}`;
+export function buildTokenLinkUrl(permissions: readonly Pick<CfTokenPermissionRequest, "key" | "type">[], name?: string): string {
+  const params: string[] = [];
+  if (permissions.length > 0) {
+    const keys = permissions.map((permission) => ({ key: permission.key, type: permission.type }));
+    params.push(`permissionGroupKeys=${encodeURIComponent(JSON.stringify(keys))}`);
+  }
+  const trimmedName = name?.trim();
+  if (trimmedName) params.push(`name=${encodeURIComponent(trimmedName)}`);
+  return params.length > 0 ? `${CF_ACCOUNT_TOKENS_URL}&${params.join("&")}` : CF_ACCOUNT_TOKENS_URL;
 }
 
 export interface PreflightPermission extends Pick<CfTokenPermissionRequest, "key" | "type"> {
