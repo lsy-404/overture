@@ -229,6 +229,9 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
     } else if (resolved.leftoverToken) {
       add("checkTokenUnresolved", "warning", { check: check.id, token: clip(resolved.leftoverToken) });
     }
+    if (check.expect === "paid" && (recipe.authModes ?? []).includes("oauth")) {
+      add("paidCheckManualOauth", "note");
+    }
   }
 
   // ---- what the script reaches on its own ---------------------------------

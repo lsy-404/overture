@@ -134,7 +134,8 @@
       "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones.",
       "oauthScopeUnderReported": "The script appears to need {scopes}, but the package's declared permissions don't cover them, so those permissions are never requested when you sign in. Those calls are refused part-way through the deployment.",
       "oauthScopeOverReported": "The package's declared permissions ask for {scopes}, and the script never uses them.",
-      "oauthScopeBeyondCeiling": "This app's Sign in with Cloudflare would need {scopes}, which this Overture instance's sign-in was not set up to grant. Sign-in is not offered for this app; it installs with a token you paste instead."
+      "oauthScopeBeyondCeiling": "This app's Sign in with Cloudflare would need {scopes}, which this Overture instance's sign-in was not set up to grant. Sign-in is not offered for this app; it installs with a token you paste instead.",
+      "paidCheckManualOauth": "Cloudflare OAuth cannot read billing. In Sign in with Cloudflare mode, the paid-plan requirement will require your explicit confirmation rather than an automatic verification."
     },
     "uncertain": {
       "writeAssumed": "Cloudflare also lists the read-only group here, but what this app does needs write access.",
@@ -182,8 +183,11 @@
     "accountsTitle": "Choose an account",
     "accountsHelp": "Pick the Cloudflare account this should be installed into.",
     "checksTitle": "Account pre-checks",
-    "checksHelp": "Read-only checks of your account, run before anything is created.",
+    "checksHelp": "Requirements checked before anything is created. A paid-plan check is automatic with a token, and needs your confirmation when Cloudflare OAuth cannot read billing.",
     "checkActionOpen": "Turn it on in Cloudflare →",
+    "paidManualHelp": "Cloudflare OAuth cannot read billing. Open Billing, confirm that this account has an active paid subscription, then acknowledge it here. Overture does not verify this result in OAuth mode.",
+    "paidManualOpen": "Open Billing in Cloudflare →",
+    "paidManualConfirm": "I confirm that this account has an active paid subscription.",
     "checkLabel": "Check",
     "recheck": "Re-check",
     "verifying": "Checking…",
@@ -200,7 +204,9 @@
       "ok": "OK",
       "missing": "Missing or not enabled",
       "error": "Couldn't check",
-      "notEnabled": "Not enabled"
+      "notEnabled": "Not enabled",
+      "manual": "Needs your confirmation",
+      "manualConfirmed": "Confirmed by you (not verified)"
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",

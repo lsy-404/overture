@@ -96,7 +96,7 @@ const checks: Array<[string, boolean, string?]> = [
     hostBaselineScope(withOverlap).includes("account-settings.read") && hostBaselineScope(withoutResources).includes("account-settings.read")],
   ["a recipe with no d1 resources does not request d1 read/write in the host baseline",
     !hostBaselineScope(withoutResources).includes("d1.read") && !hostBaselineScope(withoutResources).includes("d1.write")],
-  ["a paid-account preflight adds Billing Read to the OAuth request", hostBaselineScope(withPaidCheck).includes("billing.read")],
+  ["a paid-account preflight keeps Billing Read out of the OAuth request", !hostBaselineScope(withPaidCheck).includes("billing.read")],
   ["the requested set is a superset of both the app's own scopes and the host baseline",
     appRequestedScope(withOverlap).every((scope) => requestedScope(withOverlap).includes(scope))
     && hostBaselineScope(withOverlap).every((scope) => requestedScope(withOverlap).includes(scope))],

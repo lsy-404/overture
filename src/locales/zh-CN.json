@@ -134,7 +134,8 @@
       "adoptsExisting": "这个应用会在你账户里找它已有的资源（{resources}），找到就直接写进去，而不是另建新的。",
       "oauthScopeUnderReported": "脚本似乎需要 {scopes}，但这个包声明的权限没有覆盖它们，登录时也就不会申请这些权限。这些调用会在部署进行到一半时被拒绝。",
       "oauthScopeOverReported": "这个包声明的权限里要了 {scopes}，脚本里却没有用到。",
-      "oauthScopeBeyondCeiling": "此应用的 Cloudflare 登录会需要 {scopes}，而本 Overture 实例的登录未获授权授予这些权限。因此不提供登录方式，改用你自己粘贴的令牌安装。"
+      "oauthScopeBeyondCeiling": "此应用的 Cloudflare 登录会需要 {scopes}，而本 Overture 实例的登录未获授权授予这些权限。因此不提供登录方式，改用你自己粘贴的令牌安装。",
+      "paidCheckManualOauth": "Cloudflare OAuth 无法读取账单。使用 Cloudflare 登录时，付费套餐要求会改为由你显式确认，而不是自动验证。"
     },
     "uncertain": {
       "writeAssumed": "Cloudflare 在这里也列了只读组，但这个应用要做的事需要写权限。",
@@ -182,8 +183,11 @@
     "accountsTitle": "选择账号",
     "accountsHelp": "选择要安装到哪个 Cloudflare 账号。",
     "checksTitle": "账号预检",
-    "checksHelp": "在创建任何资源之前，对你的账号做的只读检查。",
+    "checksHelp": "创建任何资源前会检查这些条件。使用令牌时会自动检查付费套餐；Cloudflare OAuth 无法读取账单时，需要你手动确认。",
     "checkActionOpen": "去 Cloudflare 开启 →",
+    "paidManualHelp": "Cloudflare OAuth 无法读取账单。请打开账单页面确认该账户有有效付费订阅，再在此确认。OAuth 模式下 Overture 不会验证这个结果。",
+    "paidManualOpen": "在 Cloudflare 打开账单 →",
+    "paidManualConfirm": "我确认该账户有有效的付费订阅。",
     "checkLabel": "检查项",
     "recheck": "重测",
     "verifying": "检查中…",
@@ -200,7 +204,9 @@
       "ok": "通过",
       "missing": "缺失或未启用",
       "error": "检查失败",
-      "notEnabled": "未启用"
+      "notEnabled": "未启用",
+      "manual": "需要你确认",
+      "manualConfirmed": "已由你确认（未验证）"
     },
     "r2AccessKeyId": "R2 Access Key ID",
     "r2SecretAccessKey": "R2 Secret Access Key",
