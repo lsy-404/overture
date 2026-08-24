@@ -275,7 +275,8 @@ const checks: Array<[string, boolean, string?]> = [
     enLocale.authorize.auto.placeholder === "cfat_…" && zhLocale.authorize.auto.placeholder === "cfat_…"],
   ["a matching cookie without the app token reopens the paste field and blocks continuation",
     /needsRequiredAppToken/.test(authorizeSource) && /!wizard\.sessionMatchesPackage\s*\|\|\s*needsRequiredAppToken/.test(authorizeSource)
-      && /&&\s*!needsRequiredAppToken\.value/.test(authorizeSource)],
+      && /&&\s*!needsRequiredAppToken\.value/.test(authorizeSource)
+      && /needsRequiredAppToken\s*&&\s*wizard\.sessionMatchesPackage/.test(authorizeSource)],
   ["there is no manual mode left to branch on",
     !/["']manual["']/.test(authorizeSource) && !/["']manual["']/.test(authMethodSource)],
   ["the pre-filled token link and its permission list are built from the shared permission table",
