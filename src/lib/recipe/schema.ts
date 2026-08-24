@@ -571,6 +571,10 @@ function inputField(errors: Errors, path: string, value: unknown): RecipeInput |
   const kind = oneOf<InputKind>(errors, `${path}.kind`, raw.kind, INPUT_KINDS, true);
   const label = localized(errors, `${path}.label`, raw.label, true);
   const help = raw.help === undefined ? undefined : localized(errors, `${path}.help`, raw.help, false);
+  const placeholder = raw.placeholder === undefined ? undefined : localized(errors, `${path}.placeholder`, raw.placeholder, false);
+  if (placeholder !== undefined && kind !== "text" && kind !== "password" && kind !== "domain") {
+    errors.add(`${path}.placeholder`, "is only valid on a text, password, or domain input");
+  }
   const required = raw.required === undefined ? undefined : bool(errors, `${path}.required`, raw.required, true);
   const onlyMode =
     raw.onlyMode === undefined ? undefined : oneOf<DeployMode>(errors, `${path}.onlyMode`, raw.onlyMode, DEPLOY_MODES, true);
@@ -639,6 +643,7 @@ function inputField(errors: Errors, path: string, value: unknown): RecipeInput |
     kind,
     label,
     ...(help === undefined ? {} : { help }),
+    ...(placeholder === undefined ? {} : { placeholder }),
     ...(fallback === undefined ? {} : { default: fallback }),
     ...(required === undefined ? {} : { required }),
     ...(pattern === undefined ? {} : { pattern }),
@@ -656,6 +661,7 @@ function hostSecret(errors: Errors, path: string, value: unknown): RecipeHostSec
   const source = oneOf<HostSecretSource>(errors, `${path}.source`, raw.source, HOST_SECRET_SOURCES, true);
   const reason = localized(errors, `${path}.reason`, raw.reason, true);
   const requirement = oneOf<Requirement>(errors, `${path}.requirement`, raw.requirement, REQUIREMENTS, true);
+  const placeholder = raw.placeholder === undefined ? undefined : localized(errors, `${path}.placeholder`, raw.placeholder, false);
 
   // `permissions` is the app token's own permission request, in template
   // `{ key, type }` form — it belongs to `cfApiToken` and to nothing else. A key
@@ -683,10 +689,20 @@ function hostSecret(errors: Errors, path: string, value: unknown): RecipeHostSec
   } else if (raw.permissions !== undefined) {
     errors.add(`${path}.permissions`, "is only valid on a cfApiToken host secret");
   }
+  if (source !== "cfApiToken" && raw.placeholder !== undefined) {
+    errors.add(`${path}.placeholder`, "is only valid on a cfApiToken host secret");
+  }
 
   if (!name || !source || !reason || !requirement) return undefined;
   if (source === "cfApiToken" && (!permissions || permissions.length === 0)) return undefined;
-  return { name, source, reason, requirement, ...(permissions === undefined ? {} : { permissions }) };
+  return {
+    name,
+    source,
+    reason,
+    requirement,
+    ...(placeholder === undefined ? {} : { placeholder }),
+    ...(permissions === undefined ? {} : { permissions }),
+  };
 }
 
 function step(errors: Errors, path: string, value: unknown): RecipeStep | undefined {

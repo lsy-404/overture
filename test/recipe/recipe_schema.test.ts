@@ -152,6 +152,18 @@ const checks: Array<[string, boolean, string?]> = [
     rejects(tweak((r) => {
       r.hostSecrets = [{ name: "CF_ACCOUNT_ID", source: "accountId", permissions: [{ key: "d1", type: "read" }], reason: { en: "x" }, requirement: "required" }];
     }))],
+  ["a cfApiToken placeholder validates while another host-secret source cannot declare one",
+    accepts(tweak((r) => {
+      r.authModes = ["auto"];
+      r.hostSecrets = [{ name: "CF_API_TOKEN", source: "cfApiToken", placeholder: { en: "cfat_…" }, permissions: [{ key: "workers_scripts", type: "edit" }],
+        reason: { en: "self-manage" }, requirement: "required" }];
+    })) && rejects(tweak((r) => (r.hostSecrets = [
+      { name: "CF_ACCOUNT_ID", source: "accountId", placeholder: { en: "abc" }, reason: { en: "x" }, requirement: "required" },
+    ])))],
+  ["an input placeholder is only allowed on an input that renders text",
+    accepts(tweak((r) => (r.inputs = [{ id: "password", kind: "password", placeholder: { en: "secret_…" }, label: { en: "Password" } }])))
+      && rejects(tweak((r) => (r.inputs = [{ id: "enabled", kind: "toggle", placeholder: { en: "yes" }, label: { en: "Enabled" } }])))
+      && rejects(tweak((r) => (r.inputs = [{ id: "kind", kind: "select", placeholder: { en: "one" }, label: { en: "Kind" }, options: [{ value: "one", label: { en: "One" } }] }])))],
   ["a non-object input is rejected", rejects(null) && rejects("{}") && rejects([]) && rejects(42)],
 
   ["a worker without an entry module is rejected",

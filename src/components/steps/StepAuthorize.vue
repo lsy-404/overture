@@ -17,6 +17,13 @@ const subtitleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto
 
 /** The long-lived token this app wants, when the recipe declares one. */
 const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
+const tokenPlaceholder = computed(() =>
+  cfApiTokenSecret.value?.placeholder ? localized(cfApiTokenSecret.value.placeholder, locale.value) : t("authorize.auto.placeholder"),
+);
+// The session cookie authenticates deployment calls but cannot restore the
+// app-owned token after a tab reload unless this tab still has it. Never show
+// the stored value; request a fresh paste before proceeding instead.
+const needsRequiredAppToken = computed(() => wizard.requiresAutoAppToken && !wizard.credentials.cfApiToken.trim());
 const checks = computed(() => wizard.recipe?.checks ?? []);
 
 /** Every permission the app's token needs, with its display name and danger flag. */
@@ -247,7 +254,7 @@ const s3PairComplete = computed(() => {
 });
 
 const canVerify = computed(() => wizard.sessionMatchesPackage && !!wizard.credentials.accountId);
-const canContinue = computed(() => canVerify.value && wizard.accountVerified && s3PairComplete.value);
+const canContinue = computed(() => canVerify.value && wizard.accountVerified && s3PairComplete.value && !needsRequiredAppToken.value);
 
 let generation = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -323,7 +330,7 @@ function recheck() {
       <p class="field-help scope-codes">{{ wizard.hostBaselineScope.join(" ") }}</p>
     </div>
 
-    <template v-if="!wizard.sessionMatchesPackage">
+    <template v-if="!wizard.sessionMatchesPackage || needsRequiredAppToken">
       <template v-if="wizard.authMode === 'oauth'">
         <WinButton Style="AccentButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
           {{ signingIn ? t("authorize.signingIn") : t("authorize.signInButton") }}
@@ -392,9 +399,10 @@ function recheck() {
             type="password"
             autocomplete="off"
             spellcheck="false"
-            :placeholder="t('authorize.auto.placeholder')"
+            :placeholder="tokenPlaceholder"
           />
         </div>
+        <p v-if="needsRequiredAppToken" class="field-help tone-warn">{{ t("authorize.auto.tokenRequired") }}</p>
         <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
           {{ submitting ? t("authorize.auto.submitting") : t("authorize.auto.submit") }}
         </WinButton>

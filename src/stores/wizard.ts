@@ -195,10 +195,17 @@ export const useWizard = defineStore("wizard", () => {
   // that client was registered to hold every scope this deployment needs. When
   // a needed scope sits outside the client's ceiling (oauthScopeShortfall),
   // OAuth sign-in would fail at Cloudflare, so the mode is dropped here rather
-  // than offered and failed later — auto covers the deployment instead.
+  // than offered and failed later — auto covers the deployment instead. A
+  // required cfApiToken is likewise auto-only: OAuth's deploy session never
+  // exposes an app-owned long-lived token for the host to write as a Secret.
+  const requiresAutoAppToken = computed(() =>
+    (recipe.value?.hostSecrets ?? []).some((secret) => secret.source === "cfApiToken" && secret.requirement === "required"),
+  );
   const availableAuthModes = computed<AuthMode[]>(() =>
     (recipe.value?.authModes ?? []).filter(
-      (mode) => mode === "auto" || (policy.policy.oauthEnabled && oauthScopeShortfall.value.length === 0),
+      (mode) =>
+        mode === "auto" ||
+        (!requiresAutoAppToken.value && policy.policy.oauthEnabled && oauthScopeShortfall.value.length === 0),
     ),
   );
   const hasAuthChoice = computed(() => availableAuthModes.value.length > 1);
@@ -240,7 +247,7 @@ export const useWizard = defineStore("wizard", () => {
     oauthPkg.value = session.pkg;
     // The server's own record of how this session was authorized — kept in
     // sync so a reload picks the right flow back up without re-asking.
-    if (session.mode) authMode.value = session.mode;
+    if (session.mode && !(requiresAutoAppToken.value && session.mode !== "auto")) authMode.value = session.mode;
     if (session.accountId) credentials.value.accountId = session.accountId;
   }
 
@@ -654,6 +661,7 @@ export const useWizard = defineStore("wizard", () => {
     clearCredentials,
     authMode,
     availableAuthModes,
+    requiresAutoAppToken,
     hasAuthChoice,
     noAuthModeAvailable,
     setAuthMode,

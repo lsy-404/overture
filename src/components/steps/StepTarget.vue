@@ -385,6 +385,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
                 :type="revealed[input.id] ? 'text' : 'password'"
                 autocomplete="new-password"
                 spellcheck="false"
+                :placeholder="input.placeholder ? localized(input.placeholder, locale) : ''"
               />
               <WinButton @Click="revealed[input.id] = !revealed[input.id]">
                 {{ revealed[input.id] ? t("common.hide") : t("common.show") }}
@@ -399,7 +400,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
               type="text"
               spellcheck="false"
               autocomplete="off"
-              :placeholder="input.kind === 'domain' ? t('target.domainPlaceholder') : ''"
+              :placeholder="input.placeholder ? localized(input.placeholder, locale) : (input.kind === 'domain' ? t('target.domainPlaceholder') : '')"
             />
 
             <p v-if="input.help" class="field-help">{{ localized(input.help, locale) }}</p>

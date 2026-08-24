@@ -213,6 +213,8 @@ export interface RecipeInput {
   kind: InputKind;
   label: Localized;
   help?: Localized;
+  /** A non-secret format cue shown inside text, password, or domain fields. */
+  placeholder?: Localized;
   default?: string | boolean;
   required?: boolean;
   /** Anchored regular expression source. Advisory for text, enforced for domain. */
@@ -290,6 +292,11 @@ export interface RecipeHostSecret {
   source: HostSecretSource;
   reason: Localized;
   requirement: Requirement;
+  /**
+   * A non-secret format cue for the auto-mode input of a `cfApiToken` secret,
+   * such as `cfat_…`. It never becomes the secret value or reaches recipe.js.
+   */
+  placeholder?: Localized;
   /**
    * Only for `source: "cfApiToken"` — the permissions the app's own long-lived
    * token must carry, in template `{ key, type }` form. In auto mode the user
