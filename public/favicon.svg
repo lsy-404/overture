@@ -1,10 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Overture installation stack">
-  <title>Overture installation stack</title>
-  <rect width="32" height="32" rx="7" fill="#21130d" />
-  <path d="M5.5 11.4 16 5.4l10.5 6L16 17.4Z" fill="#f48120" />
-  <path d="M5.5 16.3 16 10.3l10.5 6L16 22.3Z" fill="#f9ad3d" />
-  <path d="M5.5 21.2 16 15.2l10.5 6L16 27.2Z" fill="#f05a28" />
-  <path d="M11.25 11.45 16 8.72l4.75 2.73v7.1L16 21.28l-4.75-2.73Z" fill="#21130d" stroke="#fff0dc" stroke-linejoin="round" stroke-width="1.15" />
-  <circle cx="16" cy="13.1" r="1.15" fill="#fff0dc" />
-  <path d="M16 14.15v2.3" stroke="#fff0dc" stroke-linecap="round" stroke-width="1.2" />
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Overture deployment">
+  <title>Overture deployment</title>
+  <rect width="32" height="32" rx="7" fill="#fff6eb" />
+  <path d="M14 5.5h2v16.2l-6.15-6.15H14Z" fill="#f9ad3d" />
+  <path d="M16 5.5h2v10.05h4.15L16 21.7Z" fill="#df5120" />
+  <path d="M6 21.55h5.8l1.9 1.85h4.6l1.9-1.85H26v5.6L16 29.45 6 27.15Z" fill="#ef5c2e" />
+  <path d="M6 21.55h5.8l1.9 1.85h4.6l1.9-1.85H26" fill="none" stroke="#ffd18e" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" />
 </svg>
