@@ -1,9 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Overture">
-  <rect width="32" height="32" rx="7" fill="#0f172a" />
-  <g fill="none" stroke="#4cc2ff" stroke-width="2.6" stroke-linecap="round">
-    <path d="M8 22V14" />
-    <path d="M14 22V10" />
-    <path d="M20 22V13" />
-    <path d="M26 22V17" />
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Overture installation stack">
+  <title>Overture installation stack</title>
+  <rect width="32" height="32" rx="7" fill="#21130d" />
+  <path d="M5.5 11.4 16 5.4l10.5 6L16 17.4Z" fill="#f48120" />
+  <path d="M5.5 16.3 16 10.3l10.5 6L16 22.3Z" fill="#f9ad3d" />
+  <path d="M5.5 21.2 16 15.2l10.5 6L16 27.2Z" fill="#f05a28" />
+  <path d="M11.25 11.45 16 8.72l4.75 2.73v7.1L16 21.28l-4.75-2.73Z" fill="#21130d" stroke="#fff0dc" stroke-linejoin="round" stroke-width="1.15" />
+  <circle cx="16" cy="13.1" r="1.15" fill="#fff0dc" />
+  <path d="M16 14.15v2.3" stroke="#fff0dc" stroke-linecap="round" stroke-width="1.2" />
 </svg>
