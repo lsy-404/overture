@@ -118,6 +118,13 @@ function text(value: unknown, label: string, limit: number): string {
   return value;
 }
 
+export function normalizeResultUrl(value: unknown): string | undefined {
+  const url = text(value, "the result URL", 2048);
+  if (url === "") return undefined;
+  if (!/^https:\/\//i.test(url)) throw new Error("the result URL must be https");
+  return url;
+}
+
 function fraction(value: unknown): number {
   const number = typeof value === "number" && Number.isFinite(value) ? value : 0;
   return Math.min(1, Math.max(0, number));
@@ -432,9 +439,8 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   const mergeResult = (value: unknown): void => {
     const patch = record(value, "the result patch");
     if (patch.url !== undefined) {
-      const url = text(patch.url, "the result URL", 2048);
-      if (!/^https:\/\//i.test(url)) throw new Error("the result URL must be https");
-      collected.url = url;
+      const url = normalizeResultUrl(patch.url);
+      if (url !== undefined) collected.url = url;
     }
     if (patch.credentials !== undefined) {
       for (const entry of list(patch.credentials, "the result credentials", MAX_RESULT_CREDENTIALS)) {
