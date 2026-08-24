@@ -149,6 +149,8 @@ export const useWizard = defineStore("wizard", () => {
   // while the in-memory one survives, so an immediate retry needn't retype it.
   const credentials = ref<DeployCredentials>({ ...emptyCredentials(), ...loadR2Keys(), cfApiToken: loadCfApiToken() });
   const accountVerified = ref(false);
+  /** Check id → account id for requirements the user explicitly attested to. */
+  const manualCheckConfirmations = ref<Record<string, string>>({});
 
   watch(
     () => [credentials.value.r2AccessKeyId, credentials.value.r2SecretAccessKey] as const,
@@ -181,6 +183,7 @@ export const useWizard = defineStore("wizard", () => {
       credentials.value.cfApiToken = "";
     }
     accountVerified.value = false;
+    manualCheckConfirmations.value = {};
   }
 
   // ---- authentication mode -------------------------------------------------
@@ -220,12 +223,27 @@ export const useWizard = defineStore("wizard", () => {
    */
   function setAuthMode(next: AuthMode | null) {
     authMode.value = next;
+    manualCheckConfirmations.value = {};
     credentials.value.cfApiToken = "";
     try {
       sessionStorage.removeItem(CF_API_TOKEN_KEY);
     } catch {
       // Storage can be unavailable; the in-memory token has still been cleared.
     }
+  }
+
+  function isManualCheckConfirmed(checkId: string): boolean {
+    return manualCheckConfirmations.value[checkId] === credentials.value.accountId.trim();
+  }
+
+  function confirmManualCheck(checkId: string, confirmed: boolean) {
+    const accountId = credentials.value.accountId.trim();
+    if (confirmed && accountId) manualCheckConfirmations.value[checkId] = accountId;
+    else delete manualCheckConfirmations.value[checkId];
+  }
+
+  function clearManualCheckConfirmations() {
+    manualCheckConfirmations.value = {};
   }
 
   // ---- OAuth session -------------------------------------------------------
@@ -488,6 +506,7 @@ export const useWizard = defineStore("wizard", () => {
     analysis.value = null;
     termsAccepted.value = false;
     authMode.value = null;
+    manualCheckConfirmations.value = {};
     workerName.value = loaded.recipe.worker.defaultName;
     touchedResources.value = {};
     resourceNames.value = {};
@@ -658,6 +677,9 @@ export const useWizard = defineStore("wizard", () => {
     termsAccepted,
     credentials,
     accountVerified,
+    isManualCheckConfirmed,
+    confirmManualCheck,
+    clearManualCheckConfirmations,
     clearCredentials,
     authMode,
     availableAuthModes,

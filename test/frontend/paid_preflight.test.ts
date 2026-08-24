@@ -32,14 +32,23 @@ function paidRecipe(requirement: "required" | "optional" = "required"): Recipe {
   };
 }
 
-async function verifySubscriptions(subscriptions: unknown, requirement: "required" | "optional" = "required") {
+async function verifySubscriptions(
+  subscriptions: unknown,
+  requirement: "required" | "optional" = "required",
+  manualConfirmation = false,
+) {
   const paths: string[] = [];
   const statuses: CredentialCheck[] = [];
   globalThis.fetch = (async (input: RequestInfo | URL) => {
     paths.push(String(input));
     return new Response(JSON.stringify({ success: true, result: subscriptions }), { headers: { "Content-Type": "application/json" } });
   }) as typeof fetch;
-  const outcome = await verifyAccount(credentials, paidRecipe(requirement), (status) => statuses.push(status));
+  const outcome = await verifyAccount(
+    credentials,
+    paidRecipe(requirement),
+    (status) => statuses.push(status),
+    manualConfirmation ? { manualConfirmationIds: new Set(["paid"]) } : {},
+  );
   return { outcome, paths, statuses };
 }
 
@@ -50,6 +59,7 @@ try {
   const paid = await verifySubscriptions([{ state: "Paid" }]);
   const noPaid = await verifySubscriptions([{ state: "Trial" }, { state: "Expired" }]);
   const optionalNoPaid = await verifySubscriptions([], "optional");
+  const oauthManual = await verifySubscriptions([{ state: "Paid" }], "required", true);
 
   checks.push(
     ["only Cloudflare's exact Paid state counts", hasPaidSubscription([{ state: "Paid" }]) && !hasPaidSubscription([{ state: "paid" }]) && !hasPaidSubscription([{ state: "Trial" }])],
@@ -57,6 +67,7 @@ try {
     ["a non-paid subscription blocks a required deployment", !noPaid.outcome.ok && noPaid.statuses.at(-1)?.status === "missing"],
     ["a non-paid subscription only warns when the check is optional", optionalNoPaid.outcome.ok && optionalNoPaid.statuses.at(-1)?.status === "missing"],
     ["the paid preflight reaches only the account subscriptions path", paid.paths.length === 1 && paid.paths[0] === `/cf/accounts/${ACCOUNT_ID}/subscriptions`],
+    ["OAuth marks a paid check for user confirmation without probing billing", oauthManual.outcome.ok && oauthManual.paths.length === 0 && oauthManual.statuses.at(-1)?.status === "manual"],
   );
 } finally {
   globalThis.fetch = originalFetch;

@@ -167,10 +167,13 @@ before anything is downloaded.
 }
 ```
 
-If a package offers OAuth alongside a paid check, the Overture operator's
-Cloudflare OAuth client must be registered with `billing.read`; Token mode does
-not need that operator configuration because the wizard pre-fills Billing Read
-on the user-created Account API Token.
+Cloudflare's OAuth Client permission picker does not provide Billing Read. In
+Account API Token mode, Overture pre-fills Billing Read and verifies that the
+subscriptions endpoint contains an exact `Paid` state. In OAuth mode, Overture
+does not call that endpoint: it opens the account's Billing page and requires
+the user to explicitly confirm the paid plan. That confirmation is shown as
+user-confirmed, not automatically verified. A package that needs hard programmatic
+enforcement must offer only `"auto"` for this pre-check.
 
 ### Conditional inputs
 

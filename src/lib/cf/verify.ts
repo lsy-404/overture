@@ -34,8 +34,13 @@ import { describeCfError } from "./errors";
 
 export interface CredentialCheck {
   key: string;
-  status: "pending" | "checking" | "ok" | "missing" | "error";
+  status: "pending" | "checking" | "ok" | "missing" | "error" | "manual";
   detail?: string;
+}
+
+export interface VerifyOptions {
+  /** Checks whose result the active credential cannot read and the user must attest to instead. */
+  manualConfirmationIds?: ReadonlySet<string>;
 }
 
 interface Subscription {
@@ -58,11 +63,16 @@ export async function verifyAccount(
   creds: DeployCredentials,
   recipe: Recipe,
   report: (check: CredentialCheck) => void,
+  options: VerifyOptions = {},
 ): Promise<{ ok: boolean }> {
   const { accountId } = creds;
   let ok = true;
 
   for (const check of recipe.checks || []) {
+    if (options.manualConfirmationIds?.has(check.id)) {
+      report({ key: check.id, status: "manual" });
+      continue;
+    }
     const path = checkPath(check.path, accountId);
     if (!path) {
       report({ key: check.id, status: "error", detail: "The recipe declared an unusable check path" });
