@@ -1,6 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { setLocale, type AppLocale } from "../i18n";
 import { setThemeMode, themeMode, type ThemeMode } from "../theme";
@@ -11,6 +11,15 @@ import { sourceSlug } from "../../shared/package";
 // `step` 0 means "no wizard progress to show" — the policy page uses the same
 // chrome without a step counter.
 const props = defineProps<{ step: number; total: number }>();
+
+const scrollArea = ref<HTMLElement | null>(null);
+watch(
+  () => props.step,
+  () => {
+    if (scrollArea.value) scrollArea.value.scrollTop = 0;
+  },
+  { flush: "post" },
+);
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -122,7 +131,7 @@ const buildLicense = __BUILD_LICENSE__;
            content visually. Each page Teleports its own .step-actions here, so
            navigation stays pinned below the scrolling content. -->
       <div class="shell-card-actions"></div>
-      <div class="shell-card-scroll">
+      <div class="shell-card-scroll" ref="scrollArea">
         <slot />
       </div>
     </main>
