@@ -188,6 +188,8 @@ const licenseSource = read("src/components/steps/StepLicense.vue");
 const authorizeSource = read("src/components/steps/StepAuthorize.vue");
 const deploySource = read("src/components/steps/StepDeploy.vue");
 const relaySource = read("src/lib/relay.ts");
+const enLocale = JSON.parse(read("src/locales/en.json"));
+const zhLocale = JSON.parse(read("src/locales/zh-CN.json"));
 
 // ---- tokenLink: pre-filled URL and permission descriptions ------------------
 
@@ -269,6 +271,8 @@ const checks: Array<[string, boolean, string?]> = [
     /authMode\s*!==\s*"auto"[\s\S]{0,60}return/.test(authorizeSource) && /credentials\.cfApiToken\s*=\s*value/.test(authorizeSource)],
   ["the auto-token field uses a recipe-declared non-secret placeholder when supplied",
     /tokenPlaceholder/.test(authorizeSource) && /\.placeholder/.test(authorizeSource)],
+  ["the default account-token cue shows the cfat_ prefix in both locales",
+    enLocale.authorize.auto.placeholder === "cfat_…" && zhLocale.authorize.auto.placeholder === "cfat_…"],
   ["a matching cookie without the app token reopens the paste field and blocks continuation",
     /needsRequiredAppToken/.test(authorizeSource) && /!wizard\.sessionMatchesPackage\s*\|\|\s*needsRequiredAppToken/.test(authorizeSource)
       && /&&\s*!needsRequiredAppToken\.value/.test(authorizeSource)],

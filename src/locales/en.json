@@ -212,7 +212,7 @@
       "subtitle": "Follow the link below to create an Account API Token on Cloudflare, then paste it here. User API Tokens are not accepted.",
       "intro": "This token deploys the app, and if the app needs a long-term credential afterward, this same token becomes it. Nothing is deleted or swapped out later — it stays your own token, and you can remove it from your Cloudflare dashboard whenever you want.",
       "tokenLabel": "Your Account API Token",
-      "placeholder": "Paste the Account API Token here",
+      "placeholder": "cfat_…",
       "tokenRequired": "This app needs its own token to write as a Worker Secret. Paste it again to continue; the existing value is never shown.",
       "tokenLinkLabel": "Create the Account API Token on Cloudflare",
       "requirementsTitle": "Permissions to grant",
