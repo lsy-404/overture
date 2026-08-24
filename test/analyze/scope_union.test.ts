@@ -82,6 +82,11 @@ const withDuplicateReport = recipe({
     { key: "b", requirement: "optional", oauthScopes: ["d1.write", "account-settings.read"], label: { "*": "b" }, scenario: { "*": "b" }, scope: "account", level: "read" },
   ],
 });
+const withPaidCheck = recipe({
+  checks: [
+    { id: "paid", requirement: "required", label: { "*": "Paid account" }, path: "/accounts/${accountId}/subscriptions", expect: "paid" },
+  ],
+});
 
 const checks: Array<[string, boolean, string?]> = [
   ["the app's own scopes are exactly its permissions' oauthScopes, deduplicated",
@@ -91,6 +96,7 @@ const checks: Array<[string, boolean, string?]> = [
     hostBaselineScope(withOverlap).includes("account-settings.read") && hostBaselineScope(withoutResources).includes("account-settings.read")],
   ["a recipe with no d1 resources does not request d1 read/write in the host baseline",
     !hostBaselineScope(withoutResources).includes("d1.read") && !hostBaselineScope(withoutResources).includes("d1.write")],
+  ["a paid-account preflight adds Billing Read to the OAuth request", hostBaselineScope(withPaidCheck).includes("billing.read")],
   ["the requested set is a superset of both the app's own scopes and the host baseline",
     appRequestedScope(withOverlap).every((scope) => requestedScope(withOverlap).includes(scope))
     && hostBaselineScope(withOverlap).every((scope) => requestedScope(withOverlap).includes(scope))],

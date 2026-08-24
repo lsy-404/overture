@@ -157,7 +157,7 @@
       },
       "auto": {
         "title": "令牌",
-        "description": "用一个已经选好权限的链接创建 Cloudflare 令牌，然后粘贴进来。"
+        "description": "用一个已填好应用名称和权限的链接创建 Cloudflare 令牌，然后粘贴进来。"
       }
     },
     "notAvailable": {
@@ -214,7 +214,7 @@
       "tokenLabel": "你的账户 API 令牌",
       "placeholder": "cfat_…",
       "tokenRequired": "此应用需要将自己的令牌写入 Worker Secret。请重新粘贴后继续；已有值绝不会显示。",
-      "tokenLinkLabel": "去 Cloudflare 创建账户 API 令牌",
+      "tokenLinkLabel": "去 Cloudflare 创建已预填名称的账户 API 令牌",
       "requirementsTitle": "要授予的权限",
       "requirementsIntro": "必需权限不可去掉，可选权限可以取消勾选。",
       "checkPermissionsTitle": "账号预检所需的只读权限",

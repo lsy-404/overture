@@ -86,6 +86,8 @@ const PERMISSION_LEVELS = ["read", "write", "readWrite"] as const;
 const CONTAINER_MODES = ["ask", "always", "never"] as const;
 const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey", "cfApiToken"] as const;
 const AUTH_MODES = ["oauth", "auto"] as const;
+const CHECK_EXPECTATIONS = ["paid"] as const;
+const PAID_SUBSCRIPTION_PATH = "/accounts/${accountId}/subscriptions";
 
 // Derived from the bridge itself, so a capability the host cannot gate can never
 // be declared.
@@ -391,6 +393,10 @@ function check(errors: Errors, path: string, value: unknown): RecipeCheck | unde
   const requirement = oneOf<Requirement>(errors, `${path}.requirement`, raw.requirement, REQUIREMENTS, true);
   const label = localized(errors, `${path}.label`, raw.label, true);
   const cfPath = apiPath(errors, `${path}.path`, raw.path);
+  const expect = raw.expect === undefined ? undefined : oneOf(errors, `${path}.expect`, raw.expect, CHECK_EXPECTATIONS, false);
+  if (expect === "paid" && cfPath !== PAID_SUBSCRIPTION_PATH) {
+    errors.add(`${path}.path`, `must be ${PAID_SUBSCRIPTION_PATH} when expect is paid`);
+  }
   const hint = raw.hint === undefined ? undefined : localized(errors, `${path}.hint`, raw.hint, false);
   let actionUrl: string | undefined;
   if (raw.actionUrl !== undefined) {
@@ -402,7 +408,15 @@ function check(errors: Errors, path: string, value: unknown): RecipeCheck | unde
     }
   }
   if (!id || !requirement || !label || !cfPath) return undefined;
-  return { id, requirement, label, path: cfPath, ...(hint === undefined ? {} : { hint }), ...(actionUrl === undefined ? {} : { actionUrl }) };
+  return {
+    id,
+    requirement,
+    label,
+    path: cfPath,
+    ...(expect === undefined ? {} : { expect }),
+    ...(hint === undefined ? {} : { hint }),
+    ...(actionUrl === undefined ? {} : { actionUrl }),
+  };
 }
 
 /**

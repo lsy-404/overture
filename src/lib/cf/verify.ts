@@ -38,6 +38,15 @@ export interface CredentialCheck {
   detail?: string;
 }
 
+interface Subscription {
+  state?: unknown;
+}
+
+/** Cloudflare only treats the exact Paid state as an active paid subscription. */
+export function hasPaidSubscription(value: unknown): boolean {
+  return Array.isArray(value) && value.some((entry) => !!entry && typeof entry === "object" && (entry as Subscription).state === "Paid");
+}
+
 /** A check path is recipe-supplied text, so it is shaped before it reaches the relay. */
 function checkPath(template: string, accountId: string): string | null {
   const path = template.replace(/\$\{accountId\}/g, accountId);
@@ -62,7 +71,12 @@ export async function verifyAccount(
     }
     report({ key: check.id, status: "checking" });
     try {
-      await callCfJson(path, undefined, check.id);
+      const result = await callCfJson<unknown>(path, undefined, check.id);
+      if (check.expect === "paid" && !hasPaidSubscription(result)) {
+        report({ key: check.id, status: "missing" });
+        if (check.requirement === "required") ok = false;
+        continue;
+      }
       report({ key: check.id, status: "ok" });
     } catch (error) {
       const described = describeCfError(error, check.id);

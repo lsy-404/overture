@@ -34,6 +34,7 @@ interface Rule {
 
 const RULES: Rule[] = [
   { method: "GET", segments: ["accounts", null] },
+  { method: "GET", segments: ["accounts", null, "subscriptions"] },
   { method: "GET", segments: ["accounts", null, "r2", "buckets"] },
   { method: "POST", segments: ["accounts", null, "r2", "buckets"] },
   { method: "GET", segments: ["accounts", null, "d1", "database"] },

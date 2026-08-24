@@ -69,7 +69,7 @@ const tokenPermissions = computed(() => mergeTokenPermissions(includedPermission
 const dangerPermissions = computed(() => describePermissions(tokenPermissions.value).filter((row) => row.danger));
 
 /** The account-token creation link includes the app, every kept pre-check, and Overture's disclosed read. */
-const tokenLinkUrl = computed(() => buildTokenLinkUrl(tokenPermissions.value));
+const tokenLinkUrl = computed(() => buildTokenLinkUrl(tokenPermissions.value, wizard.recipe?.name));
 
 function goBack() {
   wizard.goTo(wizard.hasAuthChoice ? STEPS.authMethod : STEPS.license);

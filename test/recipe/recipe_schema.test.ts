@@ -122,6 +122,17 @@ const checks: Array<[string, boolean, string?]> = [
   ["both modes together validate", accepts(tweak((r) => (r.authModes = ["oauth", "auto"])))],
   ["the removed manual mode is rejected", rejects(tweak((r) => (r.authModes = ["manual"])))],
 
+  ["a paid-account check only accepts the account subscriptions endpoint",
+    accepts(tweak((r) => {
+      r.checks = [{ id: "paid", requirement: "required", label: { en: "Paid account" }, path: "/accounts/${accountId}/subscriptions", expect: "paid" }];
+    }))
+    && rejects(tweak((r) => {
+      r.checks = [{ id: "paid", requirement: "required", label: { en: "Paid account" }, path: "/accounts/${accountId}/r2/buckets", expect: "paid" }];
+    }))
+    && rejects(tweak((r) => {
+      r.checks = [{ id: "paid", requirement: "required", label: { en: "Paid account" }, path: "/accounts/${accountId}/subscriptions", expect: "trial" }];
+    }))],
+
   // A cfApiToken host secret is a long-lived app credential; oauth alone cannot
   // furnish it, and its permissions (template `{key,type}`) are required and
   // exclusive to that source, each key within the CF_TOKEN_PERMISSIONS ceiling.
