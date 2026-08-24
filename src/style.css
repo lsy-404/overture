@@ -380,6 +380,10 @@ code {
   background: var(--SystemFillColorCautionBrush);
 }
 
+.check-dot-manual {
+  background: var(--SystemFillColorCautionBrush);
+}
+
 .check-dot-missing,
 .check-dot-error {
   background: var(--SystemFillColorCriticalBrush);

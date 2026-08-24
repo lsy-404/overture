@@ -44,7 +44,7 @@ function read(file: string): string {
   return fs.readFileSync(path.join(root, file), "utf8");
 }
 
-function recipeWith(authModes: AuthMode[], hostSecrets?: Recipe["hostSecrets"]): Recipe {
+function recipeWith(authModes: AuthMode[], hostSecrets?: Recipe["hostSecrets"], checks?: RecipeCheck[]): Recipe {
   return {
     schema: 2,
     id: "demo",
@@ -63,6 +63,7 @@ function recipeWith(authModes: AuthMode[], hostSecrets?: Recipe["hostSecrets"]):
     capabilities: [],
     steps: [{ id: "upload", label: "Upload" }],
     ...(hostSecrets ? { hostSecrets } : {}),
+    ...(checks ? { checks } : {}),
   };
 }
 
@@ -131,6 +132,23 @@ const blockedOnShortfall = wizardA.noAuthModeAvailable;
 const scopeWithin = { key: "within", requirement: "required" as const, oauthScopes: ["d1.write"] };
 wizardA.adoptConfig(configWith({ ...recipeWith(["oauth", "auto"]), permissions: [scopeWithin] }));
 const oauthKeptWithinCeiling = [...wizardA.availableAuthModes];
+
+const paidCheck: RecipeCheck = {
+  id: "paid",
+  requirement: "required",
+  label: { "*": "Paid account" },
+  path: "/accounts/${accountId}/subscriptions",
+  expect: "paid",
+};
+wizardA.adoptConfig(configWith(recipeWith(["oauth", "auto"], undefined, [paidCheck])));
+const oauthKeptWithPaidConfirmation = [...wizardA.availableAuthModes];
+const paidCheckNotRequestedFromOAuth = [...wizardA.requestedScope];
+wizardA.credentials.accountId = "first-account";
+const paidCheckStartsUnconfirmed = !wizardA.isManualCheckConfirmed("paid");
+wizardA.confirmManualCheck("paid", true);
+const paidCheckConfirmedForCurrentAccount = wizardA.isManualCheckConfirmed("paid");
+wizardA.credentials.accountId = "second-account";
+const paidCheckCannotCarryToAnotherAccount = !wizardA.isManualCheckConfirmed("paid");
 
 // No recipe loaded yet is not the same as "blocked" — nothing to block on.
 setActivePinia(createPinia());
@@ -245,6 +263,11 @@ const checks: Array<[string, boolean, string?]> = [
   ["an oauth-only recipe needing an out-of-ceiling scope has zero available modes", blockedOnShortfall === true],
   ["a declared scope within the ceiling keeps oauth available",
     oauthKeptWithinCeiling.length === 2 && oauthKeptWithinCeiling.includes("oauth")],
+  ["a paid check preserves OAuth for explicit user confirmation",
+    oauthKeptWithPaidConfirmation.length === 2 && oauthKeptWithPaidConfirmation.includes("oauth")],
+  ["a paid check never adds unavailable Billing Read to the OAuth request", !paidCheckNotRequestedFromOAuth.includes("billing.read")],
+  ["a paid-check confirmation starts unchecked", paidCheckStartsUnconfirmed],
+  ["a paid-check confirmation belongs to its current account", paidCheckConfirmedForCurrentAccount && paidCheckCannotCarryToAnotherAccount],
   ["a required app token removes oauth because it cannot provide that token",
     requiredAppTokenForcesAuto.length === 1 && requiredAppTokenForcesAuto[0] === "auto"],
   ["an old oauth cookie cannot switch a required-app-token deployment away from auto",
@@ -314,6 +337,7 @@ const checks: Array<[string, boolean, string?]> = [
   ["every allow-listed GET that a recipe may use as a check declares its account-token read", getRulesWithoutPreflightRead.length === 0, getRulesWithoutPreflightRead.map((rule) => rule.id).join(", ")],
   ["the authorize page presents generated reads as account pre-check requirements", /preflightPermissionsForChecks/.test(authorizeSource) && /checkPermissionsTitle/.test(authorizeSource)],
   ["the authorize page pre-fills the account token's editable name from the package name", /buildTokenLinkUrl\(tokenPermissions\.value, wizard\.recipe\?\.name\)/.test(authorizeSource)],
+  ["the authorize page labels paid checks as manual in OAuth and blocks until the user attests", /manualPaidChecks/.test(authorizeSource) && /manualChecksConfirmed/.test(authorizeSource) && /confirmManualCheck/.test(authorizeSource)],
 ];
 
 for (const [label, passed, detail] of checks) {

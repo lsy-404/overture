@@ -25,6 +25,22 @@ const tokenPlaceholder = computed(() =>
 // the stored value; request a fresh paste before proceeding instead.
 const needsRequiredAppToken = computed(() => wizard.requiresAutoAppToken && !wizard.credentials.cfApiToken.trim());
 const checks = computed(() => wizard.recipe?.checks ?? []);
+const manualPaidChecks = computed(() =>
+  wizard.authMode === "oauth" ? checks.value.filter((check) => check.expect === "paid") : [],
+);
+const manualPaidCheckIds = computed(() => new Set(manualPaidChecks.value.map((check) => check.id)));
+const manualChecksConfirmed = computed(() =>
+  manualPaidChecks.value.every((check) => wizard.isManualCheckConfirmed(check.id)),
+);
+const BILLING_URL = "https://dash.cloudflare.com/?to=/:account/billing";
+
+function requiresManualConfirmation(check: { id: string }): boolean {
+  return manualPaidCheckIds.value.has(check.id);
+}
+
+function setManualConfirmation(checkId: string, event: Event) {
+  wizard.confirmManualCheck(checkId, (event.target as HTMLInputElement).checked);
+}
 
 /** Every permission the app's token needs, with its display name and danger flag. */
 const permissionRows = computed(() => describePermissions(cfApiTokenSecret.value?.permissions ?? []));
@@ -254,7 +270,9 @@ const s3PairComplete = computed(() => {
 });
 
 const canVerify = computed(() => wizard.sessionMatchesPackage && !!wizard.credentials.accountId);
-const canContinue = computed(() => canVerify.value && wizard.accountVerified && s3PairComplete.value && !needsRequiredAppToken.value);
+const canContinue = computed(() =>
+  canVerify.value && wizard.accountVerified && manualChecksConfirmed.value && s3PairComplete.value && !needsRequiredAppToken.value,
+);
 
 let generation = 0;
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -274,6 +292,11 @@ watch(
   { immediate: true },
 );
 
+watch(
+  () => wizard.credentials.accountId,
+  () => wizard.clearManualCheckConfirmations(),
+);
+
 onUnmounted(() => {
   generation++;
   clearTimeout(timer);
@@ -289,10 +312,15 @@ async function verify() {
   verifyError.value = "";
   for (const key of Object.keys(statuses)) delete statuses[key];
   try {
-    const outcome = await verifyAccount({ ...wizard.credentials }, recipe, (check) => {
-      if (current !== generation) return;
-      statuses[check.key] = check;
-    });
+    const outcome = await verifyAccount(
+      { ...wizard.credentials },
+      recipe,
+      (check) => {
+        if (current !== generation) return;
+        statuses[check.key] = check;
+      },
+      { manualConfirmationIds: manualPaidCheckIds.value },
+    );
     if (current !== generation) return;
     wizard.accountVerified = outcome.ok;
   } catch (e) {
@@ -466,6 +494,7 @@ function recheck() {
                   <td>
                     {{ localized(check.label, locale) }}
                     <p v-if="check.hint" class="group-list">{{ localized(check.hint, locale) }}</p>
+                    <p v-if="requiresManualConfirmation(check)" class="field-help">{{ t("authorize.paidManualHelp") }}</p>
                     <a
                       v-if="check.actionUrl && hasAttempted && effectiveStatus(check) === 'notEnabled'"
                       :href="check.actionUrl"
@@ -475,7 +504,20 @@ function recheck() {
                     >{{ t("authorize.checkActionOpen") }}</a>
                   </td>
                   <td>
-                    <span v-if="hasAttempted" class="check-status" :title="detailOf(check.id)">
+                    <template v-if="requiresManualConfirmation(check)">
+                      <span class="check-status">
+                        <span class="check-dot" :class="wizard.isManualCheckConfirmed(check.id) ? 'check-dot-ok' : 'check-dot-manual'" aria-hidden="true" />
+                        {{ wizard.isManualCheckConfirmed(check.id) ? t("authorize.checkStatus.manualConfirmed") : t("authorize.checkStatus.manual") }}
+                      </span>
+                      <a :href="check.actionUrl || BILLING_URL" target="_blank" rel="noopener noreferrer" class="field-help">
+                        {{ t("authorize.paidManualOpen") }}
+                      </a>
+                      <label class="perm-check field-help">
+                        <input type="checkbox" :checked="wizard.isManualCheckConfirmed(check.id)" @change="setManualConfirmation(check.id, $event)" />
+                        <span>{{ t("authorize.paidManualConfirm") }}</span>
+                      </label>
+                    </template>
+                    <span v-else-if="hasAttempted" class="check-status" :title="detailOf(check.id)">
                       <span class="check-dot" :class="`check-dot-${effectiveStatus(check)}`" aria-hidden="true" />
                       {{ t(`authorize.checkStatus.${effectiveStatus(check)}`) }}
                     </span>

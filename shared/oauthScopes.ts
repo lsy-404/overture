@@ -117,7 +117,6 @@ export const OAUTH_SCOPES: readonly string[] = [
   "account-custom-asset.read",
   "account-custom-asset.write",
   "account-settings.read",
-  "billing.read",
 
   // Other.
   "artifacts.read",

@@ -16,15 +16,16 @@
 // What an API token has to carry for each relay endpoint, taken from
 // Cloudflare's own API schema rather than from a recipe's say-so.
 //
-// These are OAuth scopes, in Cloudflare's dotted namespace — the strings that
-// go into an authorize request and that the consent screen renders. They are a
-// different namespace from the Title Case permission groups a classic API token
-// carries, and the two do not map one to one.
+// Most entries are OAuth scopes in Cloudflare's dotted namespace — the strings
+// that go into an authorize request and that the consent screen renders. They
+// are a different namespace from the Title Case permission groups a classic
+// API token carries, and the two do not map one to one. The explicit manual
+// entry below documents the one billing requirement OAuth cannot ask for.
 //
 // Unlike a classic token, an OAuth credential cannot be asked what it holds:
 // the introspection endpoint answers 401. So nothing here is verified against
-// the live credential — this table says what a deployment will need, which is
-// what the consent screen has to have granted.
+// the live credential — this table says what a deployment will need and
+// whether OAuth can ask for it.
 //
 // Where Cloudflare's schema does not settle a question, the entry says so rather
 // than picking an answer: this table is shown to a user as fact.
@@ -32,8 +33,14 @@
 const SESSION_JWT = "jwt";
 
 export interface EndpointPermission {
-  /** OAuth scopes that authorise the call. All of them are needed, not any one. */
+  /** Cloudflare permission identifiers that authorise the call. All are needed, not alternatives. */
   scopes: string[];
+  /**
+   * Cloudflare exposes no matching permission in its OAuth Client picker.
+   * OAuth keeps the route available, but the authorize page must make the
+   * user confirm this endpoint's requirement instead of calling it.
+   */
+  oauthManualConfirmation?: true;
   /**
    * No scope to ask for: the call is authorised by a short-lived token
    * Cloudflare issued for it rather than by the session credential.
@@ -45,7 +52,7 @@ export interface EndpointPermission {
 
 export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
   "account.read": { scopes: ["account-settings.read"] },
-  "account.subscriptionList": { scopes: ["billing.read"] },
+  "account.subscriptionList": { scopes: ["billing.read"], oauthManualConfirmation: true },
   "r2.bucketList": { scopes: ["workers-r2.read"] },
   "r2.bucketCreate": { scopes: ["workers-r2.write"] },
   "d1.databaseList": { scopes: ["d1.read"] },
@@ -78,10 +85,12 @@ export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
 };
 
 export interface PermissionNeed {
-  /** OAuth scopes, all required together. */
+  /** Cloudflare permission identifiers, all required together. */
   scopes: string[];
   /** Endpoint ids that need them. */
   endpoints: string[];
+  /** OAuth cannot grant this row; the authorize page requires user confirmation. */
+  oauthManualConfirmation?: true;
   uncertain?: string;
 }
 
@@ -91,7 +100,7 @@ export function permissionsForEndpoints(endpointIds: readonly string[]): Permiss
   for (const id of endpointIds) {
     const permission = ENDPOINT_PERMISSIONS[id];
     if (!permission || permission.scopes.length === 0) continue;
-    const key = permission.scopes.join("|");
+    const key = `${permission.scopes.join("|")}\u0000${permission.oauthManualConfirmation === true}`;
     const existing = rows.get(key);
     if (existing) {
       existing.endpoints.push(id);
@@ -100,17 +109,20 @@ export function permissionsForEndpoints(endpointIds: readonly string[]): Permiss
     rows.set(key, {
       scopes: [...permission.scopes],
       endpoints: [id],
+      ...(permission.oauthManualConfirmation ? { oauthManualConfirmation: true as const } : {}),
       ...(permission.uncertain === undefined ? {} : { uncertain: permission.uncertain }),
     });
   }
   return [...rows.values()];
 }
 
-/** Every scope a set of endpoints needs, which is what an authorize request asks for. */
+/** Every scope OAuth can request for a set of endpoints. */
 export function scopesForEndpoints(endpointIds: readonly string[]): string[] {
   const out = new Set<string>();
   for (const id of endpointIds) {
-    for (const scope of ENDPOINT_PERMISSIONS[id]?.scopes || []) out.add(scope);
+    const permission = ENDPOINT_PERMISSIONS[id];
+    if (permission?.oauthManualConfirmation) continue;
+    for (const scope of permission?.scopes || []) out.add(scope);
   }
   return [...out].sort();
 }
