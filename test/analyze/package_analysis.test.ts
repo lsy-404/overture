@@ -140,6 +140,13 @@ const tokenCheck = analyzePackage(
   DEPLOY('  await ctx.d1.provision("db");'),
 );
 
+const paidCheck = analyzePackage(
+  build({
+    checks: [{ id: "paid", requirement: "required", label: { "*": "Paid account" }, path: "/accounts/${accountId}/subscriptions", expect: "paid" }],
+  }),
+  DEPLOY('  await ctx.d1.provision("db");'),
+);
+
 const handsOverToken = analyzePackage(
   build({
     capabilities: ["d1", "secrets"],
@@ -230,6 +237,7 @@ const checks: Array<[string, boolean, string?]> = [
     tokenCheck.findings.some((finding) => finding.code === "checkTokenUnresolved"),
     tokenCheck.findings.map((f) => f.code).join(", "),
   ],
+  ["a paid check warns that OAuth uses explicit user confirmation", paidCheck.findings.some((finding) => finding.code === "paidCheckManualOauth")],
 
   [
     "handing the API token to the deployed app is serious",

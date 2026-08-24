@@ -48,12 +48,15 @@ const capabilitiesWithoutEndpoints = [...new Set(Object.values(METHOD_GATES).fil
 const endpointsWithoutPermission = [...ids].filter((id) => ENDPOINT_PERMISSIONS[id] === undefined);
 const permissionsWithoutEndpoint = Object.keys(ENDPOINT_PERMISSIONS).filter((id) => !ids.has(id));
 
-// A scope outside the registered ceiling can never be granted, so an authorize
-// request built from this table would fail at Cloudflare with nothing the user
-// could do about it.
+// A scope outside the registered ceiling can never be granted. The one explicit
+// exception is a documented manual-confirmation row, which never goes into an
+// authorize request.
 const unknownScopeNames = Object.entries(ENDPOINT_PERMISSIONS).flatMap(([id, permission]) =>
-  permission.scopes.filter((scope) => !isKnownScope(scope)).map((scope) => `${id}: ${scope}`),
+  permission.oauthManualConfirmation ? [] : permission.scopes.filter((scope) => !isKnownScope(scope)).map((scope) => `${id}: ${scope}`),
 );
+const manualOauthRows = Object.entries(ENDPOINT_PERMISSIONS)
+  .filter(([, permission]) => permission.oauthManualConfirmation)
+  .flatMap(([id, permission]) => permission.scopes.map((scope) => `${id}: ${scope}`));
 
 // An entry with no groups has to say why, or it reads as "needs nothing" when
 // what it means is "nobody wrote it down".
@@ -73,6 +76,7 @@ const checks: Array<[string, boolean, string?]> = [
   ["every allow-listed endpoint has a permission entry", endpointsWithoutPermission.length === 0, endpointsWithoutPermission.join(", ")],
   ["no permission entry names an endpoint that is gone", permissionsWithoutEndpoint.length === 0, permissionsWithoutEndpoint.join(", ")],
   ["every scope is one this deployment can request", unknownScopeNames.length === 0, unknownScopeNames.join(", ")],
+  ["Billing Read is the only documented OAuth manual-confirmation exception", manualOauthRows.join(", ") === "account.subscriptionList: billing.read", manualOauthRows.join(", ")],
   ["an endpoint needing no scope says why", silentlyUngated.length === 0, silentlyUngated.join(", ")],
   [
     "opaque path segments are named after what they hold",
