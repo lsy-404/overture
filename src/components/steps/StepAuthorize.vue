@@ -402,7 +402,7 @@ function recheck() {
             :placeholder="tokenPlaceholder"
           />
         </div>
-        <p v-if="needsRequiredAppToken" class="field-help tone-warn">{{ t("authorize.auto.tokenRequired") }}</p>
+        <p v-if="needsRequiredAppToken && wizard.sessionMatchesPackage" class="field-help tone-warn">{{ t("authorize.auto.tokenRequired") }}</p>
         <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
           {{ submitting ? t("authorize.auto.submitting") : t("authorize.auto.submit") }}
         </WinButton>
