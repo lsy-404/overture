@@ -1,11 +1,12 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from "vue";
+import { computed, inject, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { localized } from "../../lib/recipe/types";
 import { sourceSlug } from "../../../shared/package";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { SHELL_SCROLL_AREA } from "../shellScroll";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -13,14 +14,47 @@ const wizard = useWizard();
 const CONFIRM_LOCK_SECONDS = 3;
 const lockSecondsLeft = ref(CONFIRM_LOCK_SECONDS);
 let lockTimer: ReturnType<typeof setInterval> | undefined;
+const shellScrollArea = inject(SHELL_SCROLL_AREA);
+const hasViewedEnd = ref(false);
+let resizeObserver: ResizeObserver | undefined;
+let mutationObserver: MutationObserver | undefined;
+
+function checkViewedEnd() {
+  const element = shellScrollArea?.value;
+  if (!element) {
+    hasViewedEnd.value = false;
+    return;
+  }
+  const maxScrollTop = element.scrollHeight - element.clientHeight;
+  hasViewedEnd.value = maxScrollTop <= 1 || element.scrollTop >= maxScrollTop - 1;
+}
+
+function refreshViewedEnd() {
+  void nextTick(checkViewedEnd);
+}
 
 onMounted(() => {
   lockTimer = setInterval(() => {
     lockSecondsLeft.value -= 1;
     if (lockSecondsLeft.value <= 0) clearInterval(lockTimer);
   }, 1000);
+  const element = shellScrollArea?.value;
+  if (element) {
+    element.addEventListener("scroll", checkViewedEnd, { passive: true });
+    resizeObserver = new ResizeObserver(checkViewedEnd);
+    resizeObserver.observe(element);
+    mutationObserver = new MutationObserver(refreshViewedEnd);
+    mutationObserver.observe(element, { childList: true, subtree: true, characterData: true });
+  }
+  refreshViewedEnd();
 });
-onUnmounted(() => clearInterval(lockTimer));
+onUnmounted(() => {
+  clearInterval(lockTimer);
+  const element = shellScrollArea?.value;
+  element?.removeEventListener("scroll", checkViewedEnd);
+  resizeObserver?.disconnect();
+  mutationObserver?.disconnect();
+});
 
 const recipe = computed(() => wizard.recipe);
 const capabilities = computed(() => recipe.value?.capabilities ?? []);
@@ -29,6 +63,11 @@ const alerts = computed(() => (wizard.analysis?.findings ?? []).filter((finding)
 const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
+
+watch([recipe, capabilities, alerts, hostSecrets, () => wizard.activeInputs, () => wizard.domainValue], refreshViewedEnd, {
+  deep: true,
+  flush: "post",
+});
 
 /**
  * The one line a hijacked or stale session would show wrong — the account
@@ -177,10 +216,11 @@ function start() {
       <div class="step-actions">
         <WinButton @Click="wizard.goTo(STEPS.target)">{{ t("common.back") }}</WinButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0 && sessionOk" @Click="start">
+        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0 && sessionOk && hasViewedEnd" @Click="start">
           {{ lockSecondsLeft > 0 ? t("confirm.confirmWait", { seconds: lockSecondsLeft }) : t("confirm.confirm") }}
         </WinButton>
       </div>
+      <p v-if="!hasViewedEnd" class="field-help accept-hint">{{ t("confirm.scrollToEnd") }}</p>
     </Teleport>
   </div>
 </template>
