@@ -1,18 +1,20 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, provide, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { setLocale, type AppLocale } from "../i18n";
 import { setThemeMode, themeMode, type ThemeMode } from "../theme";
 import { useWizard, STEPS } from "../stores/wizard";
 import { localized } from "../lib/recipe/types";
 import { sourceSlug } from "../../shared/package";
+import { SHELL_SCROLL_AREA } from "./shellScroll";
 
 // `step` 0 means "no wizard progress to show" — the policy page uses the same
 // chrome without a step counter.
 const props = defineProps<{ step: number; total: number }>();
 
 const scrollArea = ref<HTMLElement | null>(null);
+provide(SHELL_SCROLL_AREA, scrollArea);
 watch(
   () => props.step,
   () => {
