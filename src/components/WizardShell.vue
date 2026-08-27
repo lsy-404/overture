@@ -69,13 +69,11 @@ const buildLicense = __BUILD_LICENSE__;
     <header class="shell-header">
       <div class="brand">
         <svg class="brand-mark" viewBox="0 0 32 32" width="30" height="30" aria-hidden="true">
-          <rect width="32" height="32" rx="7" fill="var(--accent-base)" opacity="0.16" />
-          <g fill="none" stroke="var(--accent-base)" stroke-width="2.6" stroke-linecap="round">
-            <path d="M8 22V14" />
-            <path d="M14 22V10" />
-            <path d="M20 22V13" />
-            <path d="M26 22V17" />
-          </g>
+          <rect width="32" height="32" rx="7" fill="#fff6eb" />
+          <path d="M14 5.5h2v16.2l-6.15-6.15H14Z" fill="#f9ad3d" />
+          <path d="M16 5.5h2v10.05h4.15L16 21.7Z" fill="#df5120" />
+          <path d="M6 21.55h5.8l1.9 1.85h4.6l1.9-1.85H26v5.6L16 29.45 6 27.15Z" fill="#ef5c2e" />
+          <path d="M6 21.55h5.8l1.9 1.85h4.6l1.9-1.85H26" fill="none" stroke="#ffd18e" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.35" />
         </svg>
         <span class="brand-name">{{ t("app.name") }}</span>
       </div>
