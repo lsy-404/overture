@@ -43,6 +43,8 @@ export interface UploadVersionInput {
   bindings: Binding[];
   /** Container class names to declare, empty when the script has none. */
   containers: string[];
+  assetsRouting?: { notFoundHandling?: "single-page-application"; runWorkerFirst?: string[] };
+  durableObjects?: Array<{ binding: string; className: string; storage: "sqlite" }>;
   /** Completion JWT from the asset upload; omitted when the package ships no assets. */
   assetJwt?: string;
   /** Contents of the package's `_headers` file, parsed by Cloudflare server-side. */
@@ -74,6 +76,26 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
   // when a new version omits the class; declaring one the script never had is
   // rejected instead. So the caller decides, from the live script's own state.
   if (input.containers.length > 0) metadata.containers = input.containers.map((className) => ({ class_name: className }));
+  const exports = Object.fromEntries(
+    (input.durableObjects || []).map((item) => [item.className, { type: "durable-object", storage: item.storage }]),
+  );
+  if (Object.keys(exports).length) metadata.exports = exports;
+  if (input.assetsRouting) {
+    const assets = (metadata.assets as Record<string, unknown>) || {};
+    const config = (assets.config as Record<string, unknown>) || {};
+    metadata.assets = {
+      ...assets,
+      config: {
+        ...config,
+        ...(input.assetsRouting.notFoundHandling
+          ? { not_found_handling: input.assetsRouting.notFoundHandling }
+          : {}),
+        ...(input.assetsRouting.runWorkerFirst
+          ? { run_worker_first: input.assetsRouting.runWorkerFirst }
+          : {}),
+      },
+    };
+  }
 
   const form = new FormData();
   form.append("metadata", new Blob([JSON.stringify(metadata)], { type: "application/json" }), "metadata");

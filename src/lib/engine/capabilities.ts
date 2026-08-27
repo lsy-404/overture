@@ -371,6 +371,8 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         workerBytes: fileBytes(recipe.worker.module),
         bindings: buildBindings({ recipe, mode, resourceIds, resourceNames, vars, declareContainers: target.declareContainers }),
         containers: target.declareContainers,
+        durableObjects: recipe.worker.durableObjects,
+        assetsRouting: recipe.worker.assetsRouting,
         assetJwt,
         assetHeaders: recipe.worker.assetHeaders ? fileText(recipe.worker.assetHeaders) : undefined,
         compatibilityDate: recipe.worker.compatibilityDate,

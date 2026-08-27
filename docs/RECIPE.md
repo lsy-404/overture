@@ -111,6 +111,8 @@ before anything is downloaded.
     "assetHeaders": "assets/_headers",
     "compatibilityDate": "2025-05-24",
     "compatibilityFlags": ["nodejs_compat"],
+    "durableObjects": [{ "binding": "ROOM_DO", "className": "RoomDO", "storage": "sqlite" }, { "binding": "STRONGHOLD_DO", "className": "StrongholdDO", "storage": "sqlite" }],
+    "assetsRouting": { "notFoundHandling": "single-page-application", "runWorkerFirst": ["/api/*"] },
     "vars": [
       { "name": "INSTANCE_ID", "value": "${uuid}" },
       { "name": "R2_BUCKET_NAME", "value": "${resource:music}" }

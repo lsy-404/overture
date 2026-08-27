@@ -557,12 +557,52 @@ function worker(errors: Errors, path: string, value: unknown): RecipeWorker | un
       : items(errors, `${path}.containers`, raw.containers, RECIPE_LIMITS.maxContainers, true, (entry, itemPath) =>
           container(errors, itemPath, entry),
         );
+  const doRaw = raw.durableObjects === undefined ? undefined : raw.durableObjects;
+  const durableObjects = doRaw === undefined ? undefined : items(errors, `${path}.durableObjects`, doRaw, RECIPE_LIMITS.maxDurableObjects, true, (entry, itemPath) => {
+    const item = bag(errors, itemPath, entry, true);
+    if (!item) return undefined;
+    const binding = matching(errors, `${itemPath}.binding`, item.binding, RECIPE_LIMITS.bindingPattern, true);
+    const className = matching(errors, `${itemPath}.className`, item.className, RECIPE_LIMITS.bindingPattern, true);
+    const storage = item.storage === "sqlite" ? "sqlite" : undefined;
+    if (!storage) errors.add(`${itemPath}.storage`, "must be sqlite");
+    if (!binding || !className || !storage) return undefined;
+    return { binding, className, storage: "sqlite" as const };
+  });
+  let routing: RecipeWorker["assetsRouting"];
+  if (raw.assetsRouting !== undefined) {
+    const assetsRouting = bag(errors, `${path}.assetsRouting`, raw.assetsRouting, true);
+    if (assetsRouting) {
+      routing = {};
+      if (assetsRouting.notFoundHandling !== undefined) {
+        if (assetsRouting.notFoundHandling === "single-page-application") routing.notFoundHandling = "single-page-application";
+        else errors.add(`${path}.assetsRouting.notFoundHandling`, "must be single-page-application");
+      }
+      if (assetsRouting.runWorkerFirst !== undefined) {
+        const routes = assetsRouting.runWorkerFirst;
+        if (!Array.isArray(routes) || routes.length === 0 || routes.length > RECIPE_LIMITS.maxRunWorkerFirst) {
+          errors.add(`${path}.assetsRouting.runWorkerFirst`, `must contain 1 to ${RECIPE_LIMITS.maxRunWorkerFirst} routes`);
+        } else if (!routes.every((item) => typeof item === "string" && item.length <= MAX_PATH_CHARS && /^\/[A-Za-z0-9_*?./-]+$/.test(item))) {
+          errors.add(`${path}.assetsRouting.runWorkerFirst`, "contains an invalid route");
+        } else if (new Set(routes).size !== routes.length) {
+          errors.add(`${path}.assetsRouting.runWorkerFirst`, "must contain unique routes");
+        } else {
+          routing.runWorkerFirst = routes as string[];
+        }
+      }
+      if (assetsRouting.notFoundHandling === undefined && assetsRouting.runWorkerFirst === undefined) {
+        errors.add(`${path}.assetsRouting`, "must declare a routing option");
+      }
+      if (!assetsManifest) errors.add(`${path}.assetsRouting`, "requires worker.assetsManifest");
+    }
+  }
   const assetsBinding =
     raw.assetsBinding === undefined
       ? undefined
       : matching(errors, `${path}.assetsBinding`, raw.assetsBinding, RECIPE_LIMITS.bindingPattern, true);
   if (vars) requireUnique(errors, `${path}.vars`, vars, (entry) => entry.name, "var name");
   if (containers) requireUnique(errors, `${path}.containers`, containers, (entry) => entry.className, "container class");
+  if (durableObjects) requireUnique(errors, `${path}.durableObjects`, durableObjects, (entry) => entry.binding, "Durable Object binding");
+  if (durableObjects) requireUnique(errors, `${path}.durableObjects`, durableObjects, (entry) => entry.className, "Durable Object class");
   if (!defaultName || !module) return undefined;
   return {
     defaultName,
@@ -574,6 +614,8 @@ function worker(errors: Errors, path: string, value: unknown): RecipeWorker | un
     ...(compatibilityFlags === undefined ? {} : { compatibilityFlags }),
     ...(vars === undefined ? {} : { vars }),
     ...(containers === undefined ? {} : { containers }),
+    ...(routing === undefined ? {} : { assetsRouting: routing }),
+    ...(durableObjects === undefined ? {} : { durableObjects }),
     ...(assetsBinding === undefined ? {} : { assetsBinding }),
   };
 }
