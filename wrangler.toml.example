@@ -61,7 +61,7 @@ binding = "ASSETS"
 
 [vars]
 ALLOWLIST_ENABLED = "true"
-ALLOWED_SOURCES = "wuyilingwei/edgesonic"
+ALLOWED_SOURCES = "wuyilingwei/edgesonic,wuyilingwei/OMEW"
 OAUTH_CLIENT_ID = "<YOUR_CLOUDFLARE_OAUTH_CLIENT_ID>"
 OAUTH_REDIRECT_URI = "https://<YOUR_DOMAIN>/oauth/callback"
 

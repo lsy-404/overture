@@ -203,6 +203,8 @@ export interface RecipeWorker {
   compatibilityFlags?: string[];
   vars?: RecipeVar[];
   containers?: RecipeContainer[];
+  durableObjects?: Array<{ binding: string; className: string; storage: "sqlite" }>;
+  assetsRouting?: { notFoundHandling?: "single-page-application"; runWorkerFirst?: string[] };
   /** Binding name for the static-asset binding. Defaults to "ASSETS". */
   assetsBinding?: string;
 }
@@ -378,6 +380,8 @@ export const RECIPE_LIMITS = {
   maxVars: 40,
   maxHostSecrets: 8,
   maxContainers: 4,
+  maxDurableObjects: 16,
+  maxRunWorkerFirst: 32,
   maxDoneLinks: 8,
   /** Per resource, for the match declaration. */
   maxMatchNames: 12,
