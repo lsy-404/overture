@@ -336,7 +336,8 @@
       "cfApiToken": "为该应用创建的 Cloudflare API 令牌"
     },
     "confirm": "开始部署",
-    "confirmWait": "开始部署（{seconds}s）"
+    "confirmWait": "开始部署（{seconds}s）",
+    "scrollToEnd": "请滚动到页面底部，查看完全部部署信息后再继续。"
   },
   "deploy": {
     "title": "正在部署",

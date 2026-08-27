@@ -336,7 +336,8 @@
       "cfApiToken": "Cloudflare API token created for this app"
     },
     "confirm": "Deploy now",
-    "confirmWait": "Deploy now ({seconds}s)"
+    "confirmWait": "Deploy now ({seconds}s)",
+    "scrollToEnd": "Review all deployment details by scrolling to the end before continuing."
   },
   "deploy": {
     "title": "Deploying",
