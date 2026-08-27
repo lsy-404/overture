@@ -195,6 +195,48 @@ const checks: Array<[string, boolean, string?]> = [
   ["a plain package-relative path is accepted",
     accepts(tweak((r) => ((r.worker as Json).module = "worker/index.js")))
     && accepts(tweak((r) => ((r.worker as Json).assetsManifest = "assets-manifest.json")))],
+  ["declarative Durable Object exports are accepted",
+    accepts(tweak((r) => ((r.worker as Json).durableObjects = [{ binding: "ROOM_DO", className: "RoomDO", storage: "sqlite" }])))
+    && rejects(tweak((r) => ((r.worker as Json).durableObjects = [{ binding: "ROOM_DO", className: "RoomDO", storage: "kv" }])))],
+  ["Durable Object bindings and classes must each be unique",
+    rejects(tweak((r) => ((r.worker as Json).durableObjects = [
+      { binding: "ROOM_DO", className: "RoomDO", storage: "sqlite" },
+      { binding: "ROOM_DO", className: "OtherDO", storage: "sqlite" },
+    ])))
+    && rejects(tweak((r) => ((r.worker as Json).durableObjects = [
+      { binding: "ROOM_DO", className: "RoomDO", storage: "sqlite" },
+      { binding: "OTHER_DO", className: "RoomDO", storage: "sqlite" },
+    ])))],
+  ["static asset routing accepts valid SPA and Worker-first routes",
+    accepts(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { notFoundHandling: "single-page-application", runWorkerFirst: ["/api/*"] };
+    }))],
+  ["invalid static asset routing is rejected instead of silently discarded",
+    rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { notFoundHandling: "pages-404" };
+    }))
+    && rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { runWorkerFirst: [] };
+    }))
+    && rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { runWorkerFirst: ["api/*"] };
+    }))
+    && rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { runWorkerFirst: ["/api/*", "/api/*"] };
+    }))
+    && rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = { runWorkerFirst: [`/${"a".repeat(300)}`] };
+    }))
+    && rejects(tweak((r) => {
+      (r.worker as Json).assetsManifest = "assets-manifest.json";
+      (r.worker as Json).assetsRouting = {};
+    }))],
   ["a container image is a controlled immutable Docker Hub digest",
     accepts(tweak((r) => ((r.worker as Json).containers = [{ className: "Sandbox", mode: "ask", image: {
       reference: `docker.io/wuyilingwei/edgesonic@sha256:${VALID_SHA256}`,
