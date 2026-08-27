@@ -76,6 +76,9 @@ export function buildBindings(input: BuildBindingsInput): Binding[] {
     for (const className of declareContainers) {
       bindings.push({ type: "durable_object_namespace", name: className, class_name: className });
     }
+    for (const entry of input.recipe.worker.durableObjects || []) {
+      bindings.push({ type: "durable_object_namespace", name: entry.binding, class_name: entry.className });
+    }
   }
 
   for (const [name, value] of Object.entries(vars)) {

@@ -19,6 +19,7 @@
 
 import { parseSource, parseSourceLoose, sourceSlug, isReleaseAssetUrl, assetOf, isDeployable, tagMatchesVersion, PACKAGE_ARTIFACT_NAME, PACKAGE_CONFIG_NAME, type GithubRelease } from "../../shared/package";
 import { isSourceAllowed, normalizeSourceEntry, parseSourceList, policyFromVars, MAX_POLICY_SOURCES } from "../../shared/policy";
+import { readFileSync } from "node:fs";
 
 const ref = { owner: "acme", repo: "widget" };
 const download = (owner: string, repo: string, file: string) =>
@@ -36,6 +37,8 @@ const fullRelease = release([
 
 const policyOf = (sources: string, allowlistEnabled?: string) =>
   policyFromVars({ ALLOWLIST_ENABLED: allowlistEnabled, ALLOWED_SOURCES: sources });
+const exampleConfig = readFileSync("wrangler.toml.example", "utf8");
+const exampleSources = exampleConfig.match(/^ALLOWED_SOURCES\s*=\s*"([^"]+)"/m)?.[1] || "";
 
 const checks: Array<[string, boolean, string?]> = [
   ["owner/repo parses", (() => {
@@ -125,6 +128,9 @@ const checks: Array<[string, boolean, string?]> = [
     parseSourceList("Acme/Widget, other/repo\n bad entry\tthird/repo").join(",") === "acme/widget,other/repo,third/repo"],
   ["normalizeSourceEntry returns null instead of a half-cleaned value",
     normalizeSourceEntry("acme/widget") === "acme/widget" && normalizeSourceEntry("acme/wid get") === null],
+  ["the public deployment template allows both EdgeSonic and OMEW",
+    isSourceAllowed(policyOf(exampleSources), { owner: "wuyilingwei", repo: "edgesonic" })
+    && isSourceAllowed(policyOf(exampleSources), { owner: "wuyilingwei", repo: "OMEW" })],
 ];
 
 let failures = 0;
