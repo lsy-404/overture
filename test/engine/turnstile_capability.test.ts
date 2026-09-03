@@ -9,6 +9,7 @@ const WORKER_SECRET = "worker-turnstile-secret";
 const paths: string[] = [];
 const widgetBodies: Array<{ name: string; domains: string[] }> = [];
 const workerSecrets: Array<{ name: string; text: string }> = [];
+const stepDetails: string[] = [];
 let failSecretWrite = false;
 
 const recipe = {
@@ -50,10 +51,11 @@ async function main(): Promise<void> {
     target: { mode: "fresh", workerName: "demo", resourceNames: {}, adopted: {}, inputs: { domain: "app.example.com" }, declareContainers: [], fullRebuild: false, domain: "" },
     live: { exists: false, vars: {}, crons: [], customDomains: [], containerClasses: [] },
     deploymentUuid: "uuid",
-    onStep: () => {},
+    onStep: (_id, _status, detail) => { if (detail) stepDetails.push(detail); },
     onProgress: () => {},
   });
   const recipeResult = await host.invoke("turnstile.provision", ["recipe"]) as { sitekey: string; secret?: string };
+  await host.invoke("step.set", ["deploy", "running", recipeResult.secret]);
   const recipeAgain = await host.invoke("turnstile.provision", ["recipe"]) as { sitekey: string; secret?: string };
   const workerResult = await host.invoke("turnstile.provision", ["worker"]) as { sitekey: string; secret?: string };
   await host.pushTurnstileSecrets();
@@ -91,6 +93,7 @@ async function main(): Promise<void> {
   const checks: Array<[string, boolean, string?]> = [
     ["declared widget names and domains interpolate before creation", creates.length === 2 && widgetBodies[0]?.name === "demo contact" && widgetBodies[0]?.domains.join(",") === "app.example.com", JSON.stringify(widgetBodies)],
     ["recipe-targeted secrets return only to the recipe and are deployment-idempotent", recipeResult.secret === RECIPE_SECRET && recipeAgain.secret === RECIPE_SECRET && recipeResult.sitekey === recipeAgain.sitekey],
+    ["step details redact recipe-targeted Turnstile secrets", stepDetails.length === 1 && stepDetails[0].includes("[redacted]") && !stepDetails[0].includes(RECIPE_SECRET), stepDetails.join(", ")],
     ["Worker-secret target never returns the secret", workerResult.secret === undefined],
     ["Worker-secret target is delivered only through the Worker secret API", workerSecrets.filter((secret) => secret.name === "TURNSTILE_SECRET").length === 1 && workerSecrets.some((secret) => secret.name === "TURNSTILE_SECRET" && secret.text === WORKER_SECRET), JSON.stringify(workerSecrets)],
     ["an undeclared Turnstile widget id is refused", /declares no Turnstile widget/.test(unknown), unknown],
