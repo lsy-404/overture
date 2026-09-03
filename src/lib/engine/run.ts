@@ -133,6 +133,12 @@ export async function runRecipe(input: {
     }
   }
 
+  try {
+    await host.pushTurnstileSecrets();
+  } catch (error) {
+    throw new DeployError(host.currentStep(), messageOf(error));
+  }
+
   const result = host.result();
   const url = result.url || (target.domain ? `https://${target.domain}` : "");
 
