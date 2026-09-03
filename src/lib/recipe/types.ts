@@ -170,6 +170,22 @@ export interface RecipeVar {
   value: Interpolated;
 }
 
+export type RecipeTurnstileSecret =
+  | { target: "recipe" }
+  | { target: "workerSecret"; name: string };
+
+/** A Turnstile widget the deployment creates for this application. */
+export interface RecipeTurnstile {
+  id: string;
+  /** Human-readable Cloudflare dashboard name. */
+  name: string;
+  /** Hostname/IP templates; their final values are verified before creation. */
+  domains: Interpolated[];
+  mode: "managed" | "non-interactive" | "invisible";
+  /** Where the generated secret may go; it is never a Worker var or UI value. */
+  secret: RecipeTurnstileSecret;
+}
+
 /**
  * A container class the Worker declares. Declaring one the live script never
  * had is rejected by Cloudflare, and omitting one it does have orphans it, so
@@ -246,6 +262,7 @@ export type Capability =
   | "assets"
   | "cron"
   | "domains"
+  | "turnstile"
   | "probe";
 
 // No "apiToken": the session credential is a cookie the recipe's Worker could
@@ -354,6 +371,8 @@ export interface Recipe {
   permissions: RecipePermission[];
   checks?: RecipeCheck[];
   resources: RecipeResource[];
+  /** Widgets created during deployment. */
+  turnstiles?: RecipeTurnstile[];
   worker: RecipeWorker;
   inputs?: RecipeInput[];
   capabilities: Capability[];
@@ -375,6 +394,7 @@ export const RECIPE_LIMITS = {
   maxPermissions: 40,
   maxChecks: 20,
   maxResources: 12,
+  maxTurnstiles: 8,
   maxInputs: 24,
   maxSteps: 40,
   maxVars: 40,
