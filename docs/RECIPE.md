@@ -126,12 +126,13 @@ before anything is downloaded.
 
   // Questions the wizard asks on the options page.
   "inputs": [
+    { "id": "domain", "kind": "domain", "label": { "en": "Application domain" } },
     { "id": "admin_username", "kind": "text", "default": "admin", "label": { "en": "Administrator" } },
     { "id": "admin_password", "kind": "password", "generate": 12, "label": { "en": "Password" } }
   ],
 
   // What recipe.js is allowed to reach. Anything not listed does not exist for it.
-  "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "probe"],
+  "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "turnstile", "probe"],
 
   // Workers Secrets whose value comes from Overture, not from recipe.js. The
   // review page states these plainly — an app keeping a copy of anything about
@@ -162,9 +163,9 @@ before anything is downloaded.
   // Any package declaring this field must include "auto" in authModes; the
   // account-token link adds the Turnstile permission automatically.
   "turnstiles": [
-    { "id": "login", "name": "Login protection", "domains": ["app.example.com"], "mode": "managed",
+    { "id": "login", "name": "Login protection", "domains": ["${input:domain}"], "mode": "managed",
       "secret": { "target": "workerSecret", "name": "TURNSTILE_SECRET" } },
-    { "id": "admin", "name": "Admin protection", "domains": [], "mode": "invisible",
+    { "id": "admin", "name": "Admin protection", "domains": ["admin.example.com"], "mode": "invisible",
       "secret": { "target": "recipe" } }
   ],
 
@@ -267,6 +268,12 @@ export async function deploy(ctx) {
   await ctx.step("schema", "success");
 
   await ctx.step("upload", "running");
+  const turnstile = await ctx.turnstile.provision("login");
+  // `secret` exists only when this widget declares { "target": "recipe" }.
+  // A { "target": "workerSecret", "name": "…" } secret is written by the
+  // host after this recipe finishes and is never returned here.
+  const turnstileSitekey = turnstile.sitekey;
+  const turnstileSecret = turnstile.secret;
   const assets = await ctx.assets.upload();
   const { versionId } = await ctx.worker.uploadVersion({ assets });
   await ctx.worker.switchTraffic(versionId);

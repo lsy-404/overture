@@ -61,15 +61,7 @@ const capabilities = computed(() => recipe.value?.capabilities ?? []);
 /** The full report was shown when the package was picked; only what bites repeats here. */
 const alerts = computed(() => (wizard.analysis?.findings ?? []).filter((finding) => finding.severity !== "note"));
 const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
-// The Turnstile contract is supplied by the recipe schema; keep this UI usable
-// while older packages without the optional field are still loaded.
-const turnstiles = computed(() => (recipe.value as unknown as { turnstiles?: Array<{
-  id: string;
-  name: string;
-  domains: string[];
-  mode: string;
-  secret: { target: "recipe" } | { target: "workerSecret"; name: string };
-}> } | null)?.turnstiles ?? []);
+const turnstiles = computed(() => recipe.value?.turnstiles ?? []);
 const turnstileRecipeSecret = computed(() => turnstiles.value.some((widget) => widget.secret.target === "recipe"));
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));

@@ -130,6 +130,7 @@
       "computedAccess": "Part of the script decides at runtime which action to call, so this analysis may not have caught everything it does.",
       "hostSecretCredential": "The deployed app is given your {source} and keeps it for as long as it stays deployed.",
       "hostSecretAccountId": "The deployed app is given your Cloudflare account ID.",
+      "turnstileSecretToRecipe": "Turnstile widget {widget} gives its secret to recipe.js during deployment. Treat the package as high risk because its code can read that secret.",
       "passwordInVar": "The value of “{input}” is written into the plain Worker variable {var}, where anyone with dashboard access can read it.",
       "adoptsExisting": "This app looks for resources it already owns in your account ({resources}) and writes into them instead of creating new ones.",
       "oauthScopeUnderReported": "The script appears to need {scopes}, but the package's declared permissions don't cover them, so those permissions are never requested when you sign in. Those calls are refused part-way through the deployment.",
@@ -324,6 +325,7 @@
       "assets": "Upload the package's static assets",
       "cron": "Read and set the Worker's scheduled tasks",
       "domains": "List custom domains and attach one to the Worker",
+      "turnstile": "Create the declared Turnstile widgets and return their sitekeys (and, when requested, secrets)",
       "probe": "Send a plain request to the deployed URL to see whether it answers"
     },
     "hostSecretsTitle": "Application runtime credentials",
