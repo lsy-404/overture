@@ -61,10 +61,20 @@ const capabilities = computed(() => recipe.value?.capabilities ?? []);
 /** The full report was shown when the package was picked; only what bites repeats here. */
 const alerts = computed(() => (wizard.analysis?.findings ?? []).filter((finding) => finding.severity !== "note"));
 const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
+// The Turnstile contract is supplied by the recipe schema; keep this UI usable
+// while older packages without the optional field are still loaded.
+const turnstiles = computed(() => (recipe.value as unknown as { turnstiles?: Array<{
+  id: string;
+  name: string;
+  domains: string[];
+  mode: string;
+  secret: { target: "recipe" } | { target: "workerSecret"; name: string };
+}> } | null)?.turnstiles ?? []);
+const turnstileRecipeSecret = computed(() => turnstiles.value.some((widget) => widget.secret.target === "recipe"));
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
 
-watch([recipe, capabilities, alerts, hostSecrets, () => wizard.activeInputs, () => wizard.domainValue], refreshViewedEnd, {
+watch([recipe, capabilities, alerts, hostSecrets, turnstiles, () => wizard.activeInputs, () => wizard.domainValue], refreshViewedEnd, {
   deep: true,
   flush: "post",
 });
@@ -208,6 +218,29 @@ function start() {
           <code>{{ secret.name }}</code> — {{ t(`confirm.secretSources.${secret.source}`) }}
           <span :class="`requirement-${secret.requirement}`">({{ t(`authorize.requirements.${secret.requirement}`) }})</span>
           — {{ localized(secret.reason, locale) }}
+        </li>
+      </ul>
+    </template>
+
+    <template v-if="turnstiles.length > 0">
+      <h3 class="section-heading">{{ t("confirm.turnstilesTitle") }}</h3>
+      <WinInfoBar
+        v-if="turnstileRecipeSecret"
+        :IsOpen="true"
+        Severity="Error"
+        :IsClosable="false"
+        :IsIconVisible="false"
+      >
+        <strong>{{ t("confirm.turnstileRecipeWarningTitle") }}</strong>
+        <p style="margin: 6px 0 0">{{ t("confirm.turnstileRecipeWarningBody") }}</p>
+      </WinInfoBar>
+      <ul class="plain-list">
+        <li v-for="widget in turnstiles" :key="widget.id">
+          <strong>{{ widget.name }}</strong> — {{ t("confirm.turnstileMode", { mode: widget.mode }) }}
+          <span v-if="widget.domains.length > 0"> · {{ t("confirm.turnstileDomains", { domains: widget.domains.join(", ") }) }}</span>
+          <p class="field-help" style="margin: 2px 0 0">{{ t("confirm.turnstileSiteKey") }}</p>
+          <p v-if="widget.secret.target === 'recipe'" class="field-help tone-bad">{{ t("confirm.turnstileSecretRecipe") }}</p>
+          <p v-else class="field-help">{{ t("confirm.turnstileSecretWorker", { name: widget.secret.name }) }}</p>
         </li>
       </ul>
     </template>

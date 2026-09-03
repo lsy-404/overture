@@ -62,6 +62,7 @@ const includedPermissions = computed(() =>
   (cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
 );
 const preflightPermissions = computed(() => preflightPermissionsForChecks(checks.value));
+const turnstiles = computed(() => (wizard.recipe as unknown as { turnstiles?: unknown[] } | null)?.turnstiles ?? []);
 const excludedPreflightKeys = ref<Set<string>>(new Set());
 function togglePreflightPermission(key: string) {
   const next = new Set(excludedPreflightKeys.value);
@@ -81,7 +82,11 @@ const preflightPermissionRows = computed(() =>
 // Overture's own read verifies the token's resulting grant; preflight reads
 // are derived separately from the requested GET endpoints above.
 const OVERTURE_TOKEN_PERM = { key: "account_api_tokens", type: "read" } as const;
-const tokenPermissions = computed(() => mergeTokenPermissions(includedPermissions.value, includedPreflightPermissions.value, [OVERTURE_TOKEN_PERM]));
+const tokenPermissions = computed(() => mergeTokenPermissions(
+  includedPermissions.value,
+  includedPreflightPermissions.value,
+  [OVERTURE_TOKEN_PERM, ...(turnstiles.value.length > 0 ? [{ key: "challenge_widgets", type: "edit" as const }] : [])],
+));
 const dangerPermissions = computed(() => describePermissions(tokenPermissions.value).filter((row) => row.danger));
 
 /** The account-token creation link includes the app, every kept pre-check, and Overture's disclosed read. */

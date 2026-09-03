@@ -51,3 +51,8 @@ These are not style preferences. A change that breaks one of them is a vulnerabi
   stored nowhere.
 - **No persistence.** The Worker has no KV, no D1, no cache of its own. The deploy policy is plain
   Worker vars read per request. Nothing about a deployment survives the request that made it.
+- Turnstile declarations are the exception to the generic host-secret shape: the public sitekey and
+  widget configuration go to recipe.js; a `recipe` target exposes the secret there and is high risk,
+  while a `workerSecret` target is written by the host after recipe completion and never enters the
+  recipe context. Turnstile requires auto authentication and the token link adds `challenge_widgets`
+  edit; it must not rely on `cfApiToken`.

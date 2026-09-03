@@ -156,6 +156,18 @@ before anything is downloaded.
       "reason": { "en": "The app manages its own cron and storage after deploy" } }
   ],
 
+  // Turnstile widgets. The public sitekey and this configuration are always
+  // available to recipe.js. A secret may be handed to recipe.js (high risk),
+  // or written by the host to a named Worker Secret after recipe.js finishes.
+  // Any package declaring this field must include "auto" in authModes; the
+  // account-token link adds the Turnstile permission automatically.
+  "turnstiles": [
+    { "id": "login", "name": "Login protection", "domains": ["app.example.com"], "mode": "managed",
+      "secret": { "target": "workerSecret", "name": "TURNSTILE_SECRET" } },
+    { "id": "admin", "name": "Admin protection", "domains": [], "mode": "invisible",
+      "secret": { "target": "recipe" } }
+  ],
+
   // The execution checklist. recipe.js drives the transitions. Overture prepends
   // its own line for fetching the package, and appends one for the health probe.
   "steps": [
