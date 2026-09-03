@@ -165,6 +165,18 @@ const passwordVar = analyzePackage(
   DEPLOY('  await ctx.d1.provision("db");'),
 );
 
+const recipeTurnstileSecret = analyzePackage(
+  build({
+    authModes: ["auto"],
+    capabilities: ["turnstile"],
+    inputs: [{ id: "domain", kind: "domain", label: { "*": "Domain" } }],
+    turnstiles: [
+      { id: "contact", name: "Contact", domains: ["${input:domain}"], mode: "managed", secret: { target: "recipe" } },
+    ],
+  }),
+  DEPLOY('  await ctx.turnstile.provision("contact");'),
+);
+
 const checks: Array<[string, boolean, string?]> = [
   ["a matching declaration and script raises nothing", plain.findings.length === 0, plain.findings.map((f) => f.code).join(", ")],
   ["the declared capability is reported as used", plain.capabilities.some((entry) => entry.capability === "d1" && entry.used)],
@@ -179,6 +191,12 @@ const checks: Array<[string, boolean, string?]> = [
     plain.permissions.map((need) => need.scopes.join("+")).join(" | "),
   ],
   ["a full read is reported as certain", plain.certain],
+  [
+    "giving a Turnstile secret to recipe.js is critical",
+    recipeTurnstileSecret.findings.some(
+      (finding) => finding.code === "turnstileSecretToRecipe" && finding.severity === "critical" && finding.values?.widget === "contact",
+    ),
+  ],
 
   ["calling an undeclared capability is serious", codes(build({ capabilities: ["d1"] }), DEPLOY("  await ctx.worker.uploadVersion();")).includes("undeclaredCapability")],
   [
