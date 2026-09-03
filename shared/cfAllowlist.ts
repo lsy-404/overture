@@ -62,6 +62,7 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "d1.query", method: "POST", segments: ["accounts", null, "d1", "database", null, "query"] },
   { id: "kv.namespaceList", method: "GET", segments: ["accounts", null, "storage", "kv", "namespaces"], accountTokenReadPermission: "workers_kv_storage" },
   { id: "kv.namespaceCreate", method: "POST", segments: ["accounts", null, "storage", "kv", "namespaces"] },
+  { id: "turnstile.widgetCreate", method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { id: "worker.scriptList", method: "GET", segments: ["accounts", null, "workers", "scripts"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scriptRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scriptDelete", method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },

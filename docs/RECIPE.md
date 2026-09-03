@@ -54,7 +54,7 @@ before anything is downloaded.
   // shows "not available here" when none are. A package that needs a cfApiToken
   // host secret (below) must offer "auto", since "oauth" cannot furnish an app a
   // long-lived credential.
-  "authModes": ["oauth", "auto"],
+  "authModes": ["auto"],
 
   // The authority table shown before any credential is asked for. `oauthScopes`
   // are Cloudflare OAuth scope names — dotted and lowercase, a different
@@ -126,12 +126,13 @@ before anything is downloaded.
 
   // Questions the wizard asks on the options page.
   "inputs": [
+    { "id": "domain", "kind": "domain", "label": { "en": "Application domain" } },
     { "id": "admin_username", "kind": "text", "default": "admin", "label": { "en": "Administrator" } },
     { "id": "admin_password", "kind": "password", "generate": 12, "label": { "en": "Password" } }
   ],
 
   // What recipe.js is allowed to reach. Anything not listed does not exist for it.
-  "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "probe"],
+  "capabilities": ["d1", "r2", "secrets", "worker", "assets", "cron", "domains", "turnstile", "probe"],
 
   // Workers Secrets whose value comes from Overture, not from recipe.js. The
   // review page states these plainly — an app keeping a copy of anything about
@@ -154,6 +155,18 @@ before anything is downloaded.
     { "name": "CF_API_TOKEN", "source": "cfApiToken", "requirement": "required", "placeholder": { "en": "cfat_…" },
       "permissions": [{ "key": "workers_scripts", "type": "edit" }, { "key": "workers_r2", "type": "edit" }],
       "reason": { "en": "The app manages its own cron and storage after deploy" } }
+  ],
+
+  // Turnstile widgets. The public sitekey and this configuration are always
+  // available to recipe.js. A secret may be handed to recipe.js (high risk),
+  // or written by the host to a named Worker Secret after recipe.js finishes.
+  // Any package declaring this field must use only "auto" in authModes; the
+  // account-token link adds the Turnstile permission automatically.
+  "turnstiles": [
+    { "id": "login", "name": "Login protection", "domains": ["${input:domain}"], "mode": "managed",
+      "secret": { "target": "workerSecret", "name": "TURNSTILE_SECRET" } },
+    { "id": "admin", "name": "Admin protection", "domains": ["admin.example.com"], "mode": "invisible",
+      "secret": { "target": "recipe" } }
   ],
 
   // The execution checklist. recipe.js drives the transitions. Overture prepends
@@ -255,8 +268,15 @@ export async function deploy(ctx) {
   await ctx.step("schema", "success");
 
   await ctx.step("upload", "running");
+  const turnstile = await ctx.turnstile.provision("login");
+  // `secret` exists only when this widget declares { "target": "recipe" }.
+  // A { "target": "workerSecret", "name": "…" } secret is written by the
+  // host after this recipe finishes and is never returned here.
   const assets = await ctx.assets.upload();
-  const { versionId } = await ctx.worker.uploadVersion({ assets });
+  const { versionId } = await ctx.worker.uploadVersion({
+    assets,
+    extraVars: { TURNSTILE_SITE_KEY: turnstile.sitekey },
+  });
   await ctx.worker.switchTraffic(versionId);
   await ctx.step("upload", "success");
 
