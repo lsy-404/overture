@@ -206,6 +206,8 @@ const checks: Array<[string, boolean, string?]> = [
       : !guestLiteral
         ? "no GuestContext literal found in engine/run.ts"
         : CREDENTIAL_FIELDS.filter((field) => guestLiteral.includes(field)).join(", ")],
+  ["sandbox failures pass through the capability host scrubber before becoming DeployError",
+    /host\.scrubMessage\(outcome\.message\s*\|\|\s*"the recipe failed"\)/.test(runSource)],
 ];
 
 let failures = 0;

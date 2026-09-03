@@ -123,6 +123,8 @@ export interface CapabilityHost {
   pushHostSecret(name: string): Promise<void>;
   /** Delivers created Turnstile secrets whose recipe target is a Worker Secret. */
   pushTurnstileSecrets(): Promise<void>;
+  /** Removes host-private values before a sandbox-originated message is shown. */
+  scrubMessage(message: string): string;
   /** Step last set running, so a host-side failure lands on the right line. */
   currentStep(): string;
   /** The Worker version whose traffic this recipe switched, if any. */
@@ -527,7 +529,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         const status = text(args[1], "the step status", 32) as StepStatus;
         if (!STEP_STATUSES.has(status)) throw new Error(`"${clip(status, 40)}" is not a step status`);
         if (status === "running") step = id;
-        input.onStep(id, status, args[2] === undefined ? undefined : clip(text(args[2], "the step detail", 4000), BRIDGE_LIMITS.maxErrorChars));
+        input.onStep(id, status, args[2] === undefined ? undefined : scrub(text(args[2], "the step detail", 4000)));
         return undefined;
       }
       case "step.progress":
@@ -655,6 +657,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     pushedHostSecrets: () => pushed,
     pushHostSecret: (name) => scrubbed(() => putHostSecret(name)),
     pushTurnstileSecrets: () => scrubbed(() => pushTurnstileSecrets()),
+    scrubMessage: scrub,
     currentStep: () => step,
     activeVersionId: () => activeVersion,
   };

@@ -107,7 +107,7 @@ export async function runRecipe(input: {
   };
 
   const outcome = await runSandbox({ recipe, context, script: dataPackage.script, invoke: host.invoke });
-  if (!outcome.ok) throw new DeployError(outcome.step || host.currentStep(), outcome.message || "the recipe failed");
+  if (!outcome.ok) throw new DeployError(outcome.step || host.currentStep(), host.scrubMessage(outcome.message || "the recipe failed"));
 
   const activeVersion = host.activeVersionId();
   if (activeVersion) {
