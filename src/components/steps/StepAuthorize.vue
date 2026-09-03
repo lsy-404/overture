@@ -47,7 +47,6 @@ const TURNSTILE_PERMISSION = {
   key: "challenge_widgets",
   type: "edit",
   requirement: "required",
-  scenario: "Create the declared Turnstile widgets during deployment.",
 } as const;
 
 /** Every permission the app's token needs, with its display name and danger flag. */

@@ -62,6 +62,11 @@ const capabilities = computed(() => recipe.value?.capabilities ?? []);
 const alerts = computed(() => (wizard.analysis?.findings ?? []).filter((finding) => finding.severity !== "note"));
 const hostSecrets = computed(() => recipe.value?.hostSecrets ?? []);
 const turnstiles = computed(() => recipe.value?.turnstiles ?? []);
+const turnstileSummaries = computed(() => turnstiles.value.map((widget) => ({
+  ...widget,
+  name: wizard.interpolate(widget.name),
+  domains: widget.domains.map((domain) => wizard.interpolate(domain)),
+})));
 const turnstileRecipeSecret = computed(() => turnstiles.value.some((widget) => widget.secret.target === "recipe"));
 /** The credentials the app itself will end up holding, stated plainly. */
 const handsOverCredentials = computed(() => hostSecrets.value.some((secret) => secret.source !== "accountId"));
@@ -214,7 +219,7 @@ function start() {
       </ul>
     </template>
 
-    <template v-if="turnstiles.length > 0">
+    <template v-if="turnstileSummaries.length > 0">
       <h3 class="section-heading">{{ t("confirm.turnstilesTitle") }}</h3>
       <WinInfoBar
         v-if="turnstileRecipeSecret"
@@ -227,7 +232,7 @@ function start() {
         <p style="margin: 6px 0 0">{{ t("confirm.turnstileRecipeWarningBody") }}</p>
       </WinInfoBar>
       <ul class="plain-list">
-        <li v-for="widget in turnstiles" :key="widget.id">
+        <li v-for="widget in turnstileSummaries" :key="widget.id">
           <strong>{{ widget.name }}</strong> — {{ t("confirm.turnstileMode", { mode: widget.mode }) }}
           <span v-if="widget.domains.length > 0"> · {{ t("confirm.turnstileDomains", { domains: widget.domains.join(", ") }) }}</span>
           <p class="field-help" style="margin: 2px 0 0">{{ t("confirm.turnstileSiteKey") }}</p>
