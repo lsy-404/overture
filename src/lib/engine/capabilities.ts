@@ -28,7 +28,7 @@
 //   - every failure message is scrubbed before the sandbox can read it
 
 import type { DeployCredentials, DeployTarget, LiveScriptFacts, ResultCredential, StepStatus } from "../deploy/types";
-import { RECIPE_LIMITS, type HostSecretSource, type Recipe, type RecipeResource, type ResourceKind } from "../recipe/types";
+import { RECIPE_LIMITS, type HostSecretSource, type Recipe, type RecipeResource, type RecipeTurnstile, type ResourceKind } from "../recipe/types";
 import { BRIDGE_LIMITS } from "../sandbox/protocol";
 
 import { uploadAssets, type AssetManifest } from "../deploy/assets";
@@ -41,6 +41,7 @@ import { createNamespace } from "../deploy/kv";
 import { effectiveResourceNames } from "../deploy/match";
 import { createBucket } from "../deploy/r2";
 import { pushSecret } from "../deploy/secrets";
+import { createTurnstileWidget } from "../deploy/turnstile";
 import { deleteScript, readCrons, switchTraffic, uploadWorkerVersion } from "../deploy/workerVersion";
 
 const MAX_PATH_CHARS = 512;
@@ -56,6 +57,25 @@ const STEP_STATUSES = new Set<StepStatus>(["running", "success", "skipped", "fai
 const CRON_RE = /^[0-9A-Za-z*/,\-? ]{1,120}$/;
 const HOSTNAME_RE = /^(?=.{1,253}$)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
 const VERSION_ID_RE = /^[0-9a-f-]{8,64}$/i;
+
+function isIpv4(value: string): boolean {
+  const parts = value.split(".");
+  return parts.length === 4 && parts.every((part) => /^\d{1,3}$/.test(part) && Number(part) <= 255);
+}
+
+function isIpv6(value: string): boolean {
+  try {
+    return new URL(`http://[${value}]`).hostname.startsWith("[");
+  } catch {
+    return false;
+  }
+}
+
+function turnstileDomain(value: string): string {
+  const domain = value.trim().toLowerCase();
+  if (HOSTNAME_RE.test(domain) || isIpv4(domain) || isIpv6(domain)) return domain;
+  throw new Error(`"${clip(domain, 80)}" is not a hostname or IP address`);
+}
 
 /** Ambiguous glyphs left out: these get read off a screen and typed back in. */
 const PASSWORD_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
@@ -101,6 +121,8 @@ export interface CapabilityHost {
   pushedHostSecrets(): Set<string>;
   /** Pushes one declared host secret, for the ones a recipe left out. */
   pushHostSecret(name: string): Promise<void>;
+  /** Delivers created Turnstile secrets whose recipe target is a Worker Secret. */
+  pushTurnstileSecrets(): Promise<void>;
   /** Step last set running, so a host-side failure lands on the right line. */
   currentStep(): string;
   /** The Worker version whose traffic this recipe switched, if any. */
@@ -190,6 +212,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   const mode = target.fullRebuild ? "fresh" : target.mode;
 
   const provisioned = new Map<string, Provisioned>();
+  const turnstiles = new Map<string, { sitekey: string; secret: string; target: RecipeTurnstile["secret"] }>();
   const assetSessions = new Map<string, string>();
   const uploadedVersions = new Set<string>();
   let activeVersion: string | undefined;
@@ -217,7 +240,14 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
   // read, so it cannot leak into an error message either.
   const scrub = (message: string): string => {
     let out = message;
-    const secrets = [creds.cfApiToken, creds.r2SecretAccessKey, creds.r2AccessKeyId, accountId, ...assetSessions.values()];
+    const secrets = [
+      creds.cfApiToken,
+      creds.r2SecretAccessKey,
+      creds.r2AccessKeyId,
+      accountId,
+      ...assetSessions.values(),
+      ...[...turnstiles.values()].map((widget) => widget.secret),
+    ];
     for (const secret of secrets) {
       if (typeof secret === "string" && secret.length >= 8) out = out.split(secret).join("[redacted]");
     }
@@ -248,6 +278,33 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     if (!resource) throw new Error(`recipe.json declares no resource "${clip(id, 60)}"`);
     if (resource.kind !== kind) throw new Error(`resource "${resource.id}" is ${resource.kind}, not ${kind}`);
     return resource;
+  };
+
+  const turnstileOf = (value: unknown): RecipeTurnstile => {
+    const id = text(value, "the Turnstile widget id", 64);
+    const widget = (recipe.turnstiles || []).find((entry) => entry.id === id);
+    if (!widget) throw new Error(`recipe.json declares no Turnstile widget "${clip(id, 60)}"`);
+    return widget;
+  };
+
+  const provisionTurnstile = async (value: unknown, signal?: AbortSignal): Promise<{ sitekey: string; secret?: string }> => {
+    const widget = turnstileOf(value);
+    const prior = turnstiles.get(widget.id);
+    if (prior) return prior.target.target === "recipe" ? { sitekey: prior.sitekey, secret: prior.secret } : { sitekey: prior.sitekey };
+    const name = text(interpolate(widget.name, tokens), "the Turnstile widget name", 254).trim();
+    if (!name) throw new Error("the Turnstile widget name is empty");
+    const domains = widget.domains.map((domain) => turnstileDomain(text(interpolate(domain, tokens), "a Turnstile domain", 253)));
+    if (new Set(domains).size !== domains.length) throw new Error("the Turnstile widget domains resolve to duplicates");
+    const created = await createTurnstileWidget(accountId, { name, domains, mode: widget.mode }, signal);
+    turnstiles.set(widget.id, { ...created, target: widget.secret });
+    return widget.secret.target === "recipe" ? created : { sitekey: created.sitekey };
+  };
+
+  const pushTurnstileSecrets = async (): Promise<void> => {
+    for (const widget of turnstiles.values()) {
+      if (widget.target.target !== "workerSecret") continue;
+      await pushSecret(accountId, script, widget.target.name, widget.secret);
+    }
   };
 
   /**
@@ -522,6 +579,8 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
         const entry = await provision(resourceOf(args[0], "kv"), (name) => createNamespace(accountId, name, signal));
         return { namespaceId: entry.id };
       }
+      case "turnstile.provision":
+        return provisionTurnstile(args[0], signal);
 
       case "secrets.put": {
         const name = text(args[0], "the secret name", 64);
@@ -595,6 +654,7 @@ export function createCapabilityHost(input: CapabilityInput): CapabilityHost {
     result: () => collected,
     pushedHostSecrets: () => pushed,
     pushHostSecret: (name) => scrubbed(() => putHostSecret(name)),
+    pushTurnstileSecrets: () => scrubbed(() => pushTurnstileSecrets()),
     currentStep: () => step,
     activeVersionId: () => activeVersion,
   };

@@ -46,6 +46,8 @@ export interface EndpointPermission {
    * Cloudflare issued for it rather than by the session credential.
    */
   ungated?: typeof SESSION_JWT;
+  /** Required by a user-supplied Account API Token, but unavailable to OAuth. */
+  accountToken?: { key: string; type: "read" | "edit" };
   /** Where Cloudflare's own documentation left the answer incomplete. */
   uncertain?: string;
 }
@@ -60,6 +62,7 @@ export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
   "d1.query": { scopes: ["d1.write"], uncertain: "writeAssumed" },
   "kv.namespaceList": { scopes: ["workers-kv-storage.read"] },
   "kv.namespaceCreate": { scopes: ["workers-kv-storage.write"] },
+  "turnstile.widgetCreate": { scopes: [], accountToken: { key: "challenge_widgets", type: "edit" } },
   "worker.scriptList": { scopes: ["workers-scripts.read"] },
   "worker.scriptRead": { scopes: ["workers-scripts.read"] },
   "worker.scriptDelete": { scopes: ["workers-scripts.write"] },
