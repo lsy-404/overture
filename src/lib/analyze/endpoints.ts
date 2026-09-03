@@ -32,6 +32,7 @@ export const METHOD_ENDPOINTS: Record<string, string[]> = {
   "d1.query": ["d1.query"],
   "r2.provision": ["r2.bucketCreate"],
   "kv.provision": ["kv.namespaceCreate"],
+  "turnstile.provision": ["turnstile.widgetCreate"],
   "secrets.put": ["worker.secretPut"],
   "secrets.putHostValue": ["worker.secretPut"],
   "worker.deleteScript": ["worker.scriptDelete"],
@@ -81,6 +82,7 @@ export function hostEndpointsFor(recipe: Recipe): string[] {
     const id = KIND_INVENTORY[resource.kind];
     if (id && !out.includes(id)) out.push(id);
   }
+  if ((recipe.turnstiles || []).some((widget) => widget.secret.target === "workerSecret")) out.push("worker.secretPut");
   if ((recipe.worker.containers || []).some((container) => container.image)) {
     out.push("worker.versionRead", "containers.applicationList", "containers.applicationCreate", "containers.applicationModify", "containers.rolloutCreate");
   }
