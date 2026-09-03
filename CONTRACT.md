@@ -100,7 +100,8 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/versions` | Upload the new version (multipart) |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | Point traffic at the new version |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/assets-upload-session` | Begin a static-asset upload |
-| PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/secrets` | Push the secrets the recipe declared |
+| POST | `/accounts/{accountId}/challenges/widgets` | Create only the Turnstile widgets declared by the recipe |
+| PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/secrets` | Push secrets declared by the recipe, or a Turnstile secret declared with the `workerSecret` target |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | Read the cron triggers |
 | PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | Write the cron triggers the recipe declared |
 | POST | `/accounts/{accountId}/workers/assets/upload` | Upload asset bytes for an open session (`?base64=true`) |
