@@ -25,6 +25,7 @@ const tokenPlaceholder = computed(() =>
 // the stored value; request a fresh paste before proceeding instead.
 const needsRequiredAppToken = computed(() => wizard.requiresAutoAppToken && !wizard.credentials.cfApiToken.trim());
 const checks = computed(() => wizard.recipe?.checks ?? []);
+const turnstiles = computed(() => wizard.recipe?.turnstiles ?? []);
 const manualPaidChecks = computed(() =>
   wizard.authMode === "oauth" ? checks.value.filter((check) => check.expect === "paid") : [],
 );
@@ -42,8 +43,18 @@ function setManualConfirmation(checkId: string, event: Event) {
   wizard.confirmManualCheck(checkId, (event.target as HTMLInputElement).checked);
 }
 
+const TURNSTILE_PERMISSION = {
+  key: "challenge_widgets",
+  type: "edit",
+  requirement: "required",
+  scenario: "Create the declared Turnstile widgets during deployment.",
+} as const;
+
 /** Every permission the app's token needs, with its display name and danger flag. */
-const permissionRows = computed(() => describePermissions(cfApiTokenSecret.value?.permissions ?? []));
+const permissionRows = computed(() => describePermissions([
+  ...(cfApiTokenSecret.value?.permissions ?? []),
+  ...(turnstiles.value.length > 0 ? [TURNSTILE_PERMISSION] : []),
+]));
 
 // Optional permissions the user has chosen to leave out. They stay in the list
 // but drop out of the pre-filled link, so the token the user creates asks for
@@ -59,10 +70,12 @@ function togglePermission(key: string): void {
 }
 
 const includedPermissions = computed(() =>
-  (cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
+  [
+    ...(cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
+    ...(turnstiles.value.length > 0 ? [TURNSTILE_PERMISSION] : []),
+  ],
 );
 const preflightPermissions = computed(() => preflightPermissionsForChecks(checks.value));
-const turnstiles = computed(() => (wizard.recipe as unknown as { turnstiles?: unknown[] } | null)?.turnstiles ?? []);
 const excludedPreflightKeys = ref<Set<string>>(new Set());
 function togglePreflightPermission(key: string) {
   const next = new Set(excludedPreflightKeys.value);
@@ -85,7 +98,7 @@ const OVERTURE_TOKEN_PERM = { key: "account_api_tokens", type: "read" } as const
 const tokenPermissions = computed(() => mergeTokenPermissions(
   includedPermissions.value,
   includedPreflightPermissions.value,
-  [OVERTURE_TOKEN_PERM, ...(turnstiles.value.length > 0 ? [{ key: "challenge_widgets", type: "edit" as const }] : [])],
+  [OVERTURE_TOKEN_PERM],
 ));
 const dangerPermissions = computed(() => describePermissions(tokenPermissions.value).filter((row) => row.danger));
 
