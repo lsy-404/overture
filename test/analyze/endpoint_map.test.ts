@@ -87,7 +87,7 @@ const checks: Array<[string, boolean, string?]> = [
     hostEndpointsFor(recipeWithWorkerSecret).includes("worker.secretPut") && !hostEndpointsFor(recipeWithRecipeSecret).includes("worker.secretPut"),
   ],
   [
-    "Turnstile creation is explicitly classic-token-only",
+    "Turnstile creation is explicitly account-token-only",
     ENDPOINT_PERMISSIONS["turnstile.widgetCreate"]?.accountToken?.key === "challenge_widgets"
       && ENDPOINT_PERMISSIONS["turnstile.widgetCreate"]?.accountToken?.type === "edit"
       && ENDPOINT_PERMISSIONS["turnstile.widgetCreate"]?.scopes.length === 0,

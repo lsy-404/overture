@@ -9,6 +9,7 @@ const WORKER_SECRET = "worker-turnstile-secret";
 const paths: string[] = [];
 const widgetBodies: Array<{ name: string; domains: string[] }> = [];
 const workerSecrets: Array<{ name: string; text: string }> = [];
+let failSecretWrite = false;
 
 const recipe = {
   resources: [],
@@ -31,6 +32,12 @@ globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
   }
   if (path.endsWith("/secrets")) {
     workerSecrets.push(JSON.parse(String(init?.body)) as { name: string; text: string });
+    if (failSecretWrite) {
+      return new Response(JSON.stringify({ success: false, errors: [{ message: `Cloudflare echoed ${WORKER_SECRET}` }] }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
     return new Response(JSON.stringify({ success: true, result: {} }), { headers: { "Content-Type": "application/json" } });
   }
   return new Response(JSON.stringify({ success: false, errors: [{ message: WORKER_SECRET }] }), { status: 400, headers: { "Content-Type": "application/json" } });
@@ -73,6 +80,7 @@ async function main(): Promise<void> {
     duplicate = error instanceof Error ? error.message : String(error);
   }
   let scrubbed = "";
+  failSecretWrite = true;
   try {
     await host.invoke("secrets.put", ["OTHER_SECRET", "value"]);
   } catch (error) {
@@ -87,7 +95,7 @@ async function main(): Promise<void> {
     ["Worker-secret target is delivered only through the Worker secret API", workerSecrets.filter((secret) => secret.name === "TURNSTILE_SECRET").length === 1 && workerSecrets.some((secret) => secret.name === "TURNSTILE_SECRET" && secret.text === WORKER_SECRET), JSON.stringify(workerSecrets)],
     ["an undeclared Turnstile widget id is refused", /declares no Turnstile widget/.test(unknown), unknown],
     ["invalid or duplicate final domains are refused before a POST", /not a hostname or IP address/.test(invalid) && /resolve to duplicates/.test(duplicate) && creates.length === 2, `${invalid}; ${duplicate}`],
-    ["created Turnstile secrets are scrubbed from later capability errors", !scrubbed.includes(WORKER_SECRET), scrubbed],
+    ["created Turnstile secrets are scrubbed from later capability errors", scrubbed.includes("[redacted]") && !scrubbed.includes(WORKER_SECRET), scrubbed],
   ];
   let failures = 0;
   for (const [label, passed, detail] of checks) {
