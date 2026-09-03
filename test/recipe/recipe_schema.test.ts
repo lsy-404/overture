@@ -351,6 +351,71 @@ const checks: Array<[string, boolean, string?]> = [
       { name: "CF_ACCOUNT_ID", source: "accountId", requirement: "required", reason: { en: "why" } },
     ])))],
 
+  ["a Turnstile widget accepts both secret delivery targets",
+    accepts(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact form", domains: ["${domain}", "example.com"], mode: "managed", secret: { target: "recipe" } }];
+    })) && accepts(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact form", domains: ["example.com"], mode: "invisible", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } }];
+    }))],
+  ["Turnstile widgets require valid fields and secret targets",
+    rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "", domains: [], mode: "automatic", secret: { target: "recipe" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["x".repeat(254)], mode: "managed", secret: { target: "workerSecret", name: "not-valid" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "recipe", name: "NOPE" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "workerSecret" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "elsewhere" } }];
+    }))],
+  ["Turnstile domains require one to ten distinct bounded templates",
+    rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: [], mode: "managed", secret: { target: "recipe" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: Array.from({ length: 11 }, (_, i) => `site${i}.example`), mode: "managed", secret: { target: "recipe" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com", "example.com"], mode: "managed", secret: { target: "recipe" } }];
+    }))],
+  ["Turnstile declarations are auto-only and must declare their capability",
+    rejects(tweak((r) => {
+      r.authModes = ["oauth", "auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "recipe" } }];
+    })) && rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "recipe" } }];
+    }))],
+  ["Turnstile widget ids and Worker-secret names are unique",
+    rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.turnstiles = [
+        { id: "one", name: "One", domains: ["one.example"], mode: "managed", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } },
+        { id: "one", name: "Two", domains: ["two.example"], mode: "managed", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } },
+      ];
+    }))],
+
   ["a requirement outside the three levels is rejected",
     rejects(tweak((r) => ((r.permissions as Json[])[0].requirement = "mandatory")))],
 
