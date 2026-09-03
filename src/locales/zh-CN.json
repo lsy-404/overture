@@ -130,6 +130,7 @@
       "computedAccess": "脚本有一部分行为是运行时才决定调用什么，这次分析可能没能覆盖到它做的所有事。",
       "hostSecretCredential": "被部署的应用会拿到你的 {source}，并在其运行期间一直持有。",
       "hostSecretAccountId": "被部署的应用会拿到你的 Cloudflare 账户 ID。",
+      "turnstileSecretToRecipe": "Turnstile 小组件 {widget} 会在部署期间把 secret 交给 recipe.js。请将此包视为高风险：它的代码可以读取这个 secret。",
       "passwordInVar": "「{input}」的值被写进了普通 Worker 变量 {var}，能进仪表盘的人都读得到。",
       "adoptsExisting": "这个应用会在你账户里找它已有的资源（{resources}），找到就直接写进去，而不是另建新的。",
       "oauthScopeUnderReported": "脚本似乎需要 {scopes}，但这个包声明的权限没有覆盖它们，登录时也就不会申请这些权限。这些调用会在部署进行到一半时被拒绝。",
@@ -324,6 +325,7 @@
       "assets": "上传包内的静态资源",
       "cron": "读取并设置该 Worker 的定时任务",
       "domains": "列出自定义域名，并为该 Worker 绑定一个",
+      "turnstile": "创建声明的 Turnstile 小组件并返回 sitekey（按声明返回 secret）",
       "probe": "向部署好的地址发一个普通请求，看它是否响应"
     },
     "hostSecretsTitle": "应用运行时凭证",
@@ -335,6 +337,14 @@
       "r2SecretAccessKey": "你的 R2 Secret Access Key",
       "cfApiToken": "为该应用创建的 Cloudflare API 令牌"
     },
+    "turnstilesTitle": "Turnstile 小组件",
+    "turnstileMode": "模式：{mode}",
+    "turnstileDomains": "域名：{domains}",
+    "turnstileSiteKey": "公开 sitekey 会提供给部署脚本。",
+    "turnstileSecretRecipe": "Turnstile secret 也会提供给部署脚本。请按高风险凭证对待：recipe 代码可以读取它。",
+    "turnstileSecretWorker": "recipe 完成后由 Overture 将 Turnstile secret 写入 Worker Secret {name}；recipe 无法读取它。",
+    "turnstileRecipeWarningTitle": "此包会拿到 Turnstile secret",
+    "turnstileRecipeWarningBody": "部署期间 secret 会交给 recipe.js。只有信任包代码时才继续；它可以读取并复制这个 secret。",
     "confirm": "开始部署",
     "confirmWait": "开始部署（{seconds}s）",
     "scrollToEnd": "请滚动到页面底部，查看完全部部署信息后再继续。"

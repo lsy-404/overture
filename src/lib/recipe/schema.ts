@@ -1007,6 +1007,14 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     if (new Set(workerSecretNames).size !== workerSecretNames.length) {
       errors.add("turnstiles", "must contain unique worker secret names");
     }
+    if (hostSecrets) {
+      const hostSecretNames = new Set(hostSecrets.map((secret) => secret.name));
+      for (const [index, widget] of turnstiles.entries()) {
+        if (widget.secret.target === "workerSecret" && hostSecretNames.has(widget.secret.name)) {
+          errors.add(`turnstiles[${index}].secret.name`, "must not conflict with a host secret name");
+        }
+      }
+    }
   }
   if (inputs) requireUnique(errors, "inputs", inputs, (entry) => entry.id, "input id");
   if (inputs) {
