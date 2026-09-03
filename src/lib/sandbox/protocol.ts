@@ -95,6 +95,7 @@ export const METHOD_GATES: Record<string, Capability | null> = {
   "cron.set": "cron",
   "domains.list": "domains",
   "domains.attach": "domains",
+  "turnstile.provision": "turnstile",
   "probe.reachable": "probe",
 };
 
@@ -158,6 +159,10 @@ export interface RecipeContext {
   domains: {
     list(): Promise<string[]>;
     attach(hostname: string): Promise<void>;
+  };
+  turnstile: {
+    /** Creates the declared widget. The secret is returned only for `target: "recipe"`. */
+    provision(id: string): Promise<{ sitekey: string; secret?: string }>;
   };
   probe: {
     /** Best-effort GET; resolves with the outcome instead of throwing. */
