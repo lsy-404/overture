@@ -355,7 +355,8 @@ const checks: Array<[string, boolean, string?]> = [
     accepts(tweak((r) => {
       r.authModes = ["auto"];
       r.capabilities = ["d1", "worker", "turnstile"];
-      r.turnstiles = [{ id: "contact", name: "Contact form", domains: ["${domain}", "example.com"], mode: "managed", secret: { target: "recipe" } }];
+      r.inputs = [{ id: "domain", kind: "domain", label: { en: "Domain" } }];
+      r.turnstiles = [{ id: "contact", name: "Contact form", domains: ["${input:domain}", "example.com"], mode: "managed", secret: { target: "recipe" } }];
     })) && accepts(tweak((r) => {
       r.authModes = ["auto"];
       r.capabilities = ["d1", "worker", "turnstile"];
@@ -414,6 +415,13 @@ const checks: Array<[string, boolean, string?]> = [
         { id: "one", name: "One", domains: ["one.example"], mode: "managed", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } },
         { id: "one", name: "Two", domains: ["two.example"], mode: "managed", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } },
       ];
+    }))],
+  ["a Turnstile Worker-secret target cannot overwrite a host secret",
+    rejects(tweak((r) => {
+      r.authModes = ["auto"];
+      r.capabilities = ["d1", "worker", "turnstile"];
+      r.hostSecrets = [{ name: "TURNSTILE_SECRET", source: "accountId", requirement: "required", reason: { en: "Account" } }];
+      r.turnstiles = [{ id: "contact", name: "Contact", domains: ["example.com"], mode: "managed", secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } }];
     }))],
 
   ["a requirement outside the three levels is rejected",
