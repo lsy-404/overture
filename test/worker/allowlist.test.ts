@@ -42,6 +42,7 @@ const RULES: Rule[] = [
   { method: "POST", segments: ["accounts", null, "d1", "database", null, "query"] },
   { method: "GET", segments: ["accounts", null, "storage", "kv", "namespaces"] },
   { method: "POST", segments: ["accounts", null, "storage", "kv", "namespaces"] },
+  { method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null] },
   { method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
@@ -139,6 +140,10 @@ const checks: Array<[string, boolean, string?]> = [
   ["the Workers custom domain entries are present",
     isPathAllowed("GET", ["accounts", ACCOUNT, "workers", "domains"])
     && isPathAllowed("PUT", ["accounts", ACCOUNT, "workers", "domains"])],
+  ["only Turnstile widget creation is present",
+    isPathAllowed("POST", ["accounts", ACCOUNT, "challenges", "widgets"])
+    && !isPathAllowed("GET", ["accounts", ACCOUNT, "challenges", "widgets"])
+    && !isPathAllowed("PUT", ["accounts", ACCOUNT, "challenges", "widgets", "0x4AAAAA"])],
   ["matching is exact on segment count and method", leakedVariants.length === 0, leakedVariants.map(describe).join(", ")],
   ["traversal, encoded slashes and empty segments are refused", leakedTraversal.length === 0, leakedTraversal.map(describe).join(", ")],
   ["nothing outside the list is relayed", leakedUnlisted.length === 0, leakedUnlisted.map(describe).join(", ")],
