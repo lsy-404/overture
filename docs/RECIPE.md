@@ -54,7 +54,7 @@ before anything is downloaded.
   // shows "not available here" when none are. A package that needs a cfApiToken
   // host secret (below) must offer "auto", since "oauth" cannot furnish an app a
   // long-lived credential.
-  "authModes": ["oauth", "auto"],
+  "authModes": ["auto"],
 
   // The authority table shown before any credential is asked for. `oauthScopes`
   // are Cloudflare OAuth scope names — dotted and lowercase, a different
@@ -160,7 +160,7 @@ before anything is downloaded.
   // Turnstile widgets. The public sitekey and this configuration are always
   // available to recipe.js. A secret may be handed to recipe.js (high risk),
   // or written by the host to a named Worker Secret after recipe.js finishes.
-  // Any package declaring this field must include "auto" in authModes; the
+  // Any package declaring this field must use only "auto" in authModes; the
   // account-token link adds the Turnstile permission automatically.
   "turnstiles": [
     { "id": "login", "name": "Login protection", "domains": ["${input:domain}"], "mode": "managed",
@@ -272,10 +272,11 @@ export async function deploy(ctx) {
   // `secret` exists only when this widget declares { "target": "recipe" }.
   // A { "target": "workerSecret", "name": "…" } secret is written by the
   // host after this recipe finishes and is never returned here.
-  const turnstileSitekey = turnstile.sitekey;
-  const turnstileSecret = turnstile.secret;
   const assets = await ctx.assets.upload();
-  const { versionId } = await ctx.worker.uploadVersion({ assets });
+  const { versionId } = await ctx.worker.uploadVersion({
+    assets,
+    extraVars: { TURNSTILE_SITE_KEY: turnstile.sitekey },
+  });
   await ctx.worker.switchTraffic(versionId);
   await ctx.step("upload", "success");
 
