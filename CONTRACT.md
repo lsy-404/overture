@@ -100,7 +100,8 @@ capability (`src/lib/sandbox/protocol.ts`), and only then can the resulting call
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/versions` | Upload the new version (multipart) |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/deployments` | Point traffic at the new version |
 | POST | `/accounts/{accountId}/workers/scripts/{scriptName}/assets-upload-session` | Begin a static-asset upload |
-| PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/secrets` | Push the secrets the recipe declared |
+| POST | `/accounts/{accountId}/challenges/widgets` | Create only the Turnstile widgets declared by the recipe |
+| PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/secrets` | Push secrets declared by the recipe, or a Turnstile secret declared with the `workerSecret` target |
 | GET | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | Read the cron triggers |
 | PUT | `/accounts/{accountId}/workers/scripts/{scriptName}/schedules` | Write the cron triggers the recipe declared |
 | POST | `/accounts/{accountId}/workers/assets/upload` | Upload asset bytes for an open session (`?base64=true`) |
@@ -146,6 +147,18 @@ double duty: it authenticates the deploy, and — when the recipe declares a `cf
 *is* the app's own long-lived credential, written into the app's Worker Secret unchanged. Overture never
 mints a narrower token and never deletes the pasted one: the user created it with exactly the permissions
 the recipe's pre-filled creation link declared, and it stays theirs.
+
+### Turnstile delivery
+
+A recipe may declare top-level `turnstiles[]` entries with `{ id, name, domains, mode, secret }`.
+The public sitekey and widget configuration are always included in the recipe context. A
+`secret.target: "recipe"` entry also exposes the secret to `recipe.js` during deployment and is a
+high-risk disclosure shown on the confirmation page. A `secret.target: "workerSecret"` entry names a
+Workers Secret; Overture writes the secret there after the recipe completes, without exposing it to
+the recipe. Turnstile declarations require `authModes: ["auto"]` because the account-token creation
+link must grant the `challenge_widgets` edit permission. This does not use or require a `cfApiToken`
+host secret. The deployed application remains responsible for server-side Siteverify validation; the
+browser sitekey is not a substitute for the secret.
 
 Cookies: both carry the `__Host-` prefix, so a sibling host on the same registrable domain cannot toss
 either one up to the parent — the login-CSRF session-fixation this closes is the whole reason the prefix

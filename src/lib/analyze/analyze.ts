@@ -254,6 +254,9 @@ export function analyzePackage(recipe: Recipe, script: string): PackageAnalysis 
     if (secret.source === "accountId") add("hostSecretAccountId", "note", { name: secret.name });
     else add("hostSecretCredential", "critical", { name: secret.name, source: secret.source });
   }
+  for (const widget of recipe.turnstiles || []) {
+    if (widget.secret.target === "recipe") add("turnstileSecretToRecipe", "critical", { widget: widget.id });
+  }
 
   // ---- resources this deployment may write into rather than create ---------
 
