@@ -335,6 +335,14 @@
       "r2SecretAccessKey": "Your R2 secret access key",
       "cfApiToken": "Cloudflare API token created for this app"
     },
+    "turnstilesTitle": "Turnstile widgets",
+    "turnstileMode": "mode: {mode}",
+    "turnstileDomains": "domains: {domains}",
+    "turnstileSiteKey": "The public sitekey is provided to the deployment script.",
+    "turnstileSecretRecipe": "The Turnstile secret is also provided to the deployment script. Treat this as high risk: recipe code can read it.",
+    "turnstileSecretWorker": "The Turnstile secret is written by Overture to Worker Secret {name} after the recipe completes; the recipe cannot read it.",
+    "turnstileRecipeWarningTitle": "This package will receive a Turnstile secret",
+    "turnstileRecipeWarningBody": "The secret is handed to recipe.js during deployment. Continue only if you trust the package code; it can read and copy this secret.",
     "confirm": "Deploy now",
     "confirmWait": "Deploy now ({seconds}s)",
     "scrollToEnd": "Review all deployment details by scrolling to the end before continuing."

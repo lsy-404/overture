@@ -335,6 +335,14 @@
       "r2SecretAccessKey": "你的 R2 Secret Access Key",
       "cfApiToken": "为该应用创建的 Cloudflare API 令牌"
     },
+    "turnstilesTitle": "Turnstile 小组件",
+    "turnstileMode": "模式：{mode}",
+    "turnstileDomains": "域名：{domains}",
+    "turnstileSiteKey": "公开 sitekey 会提供给部署脚本。",
+    "turnstileSecretRecipe": "Turnstile secret 也会提供给部署脚本。请按高风险凭证对待：recipe 代码可以读取它。",
+    "turnstileSecretWorker": "recipe 完成后由 Overture 将 Turnstile secret 写入 Worker Secret {name}；recipe 无法读取它。",
+    "turnstileRecipeWarningTitle": "此包会拿到 Turnstile secret",
+    "turnstileRecipeWarningBody": "部署期间 secret 会交给 recipe.js。只有信任包代码时才继续；它可以读取并复制这个 secret。",
     "confirm": "开始部署",
     "confirmWait": "开始部署（{seconds}s）",
     "scrollToEnd": "请滚动到页面底部，查看完全部部署信息后再继续。"

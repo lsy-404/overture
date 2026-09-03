@@ -147,6 +147,18 @@ double duty: it authenticates the deploy, and — when the recipe declares a `cf
 mints a narrower token and never deletes the pasted one: the user created it with exactly the permissions
 the recipe's pre-filled creation link declared, and it stays theirs.
 
+### Turnstile delivery
+
+A recipe may declare top-level `turnstiles[]` entries with `{ id, name, domains, mode, secret }`.
+The public sitekey and widget configuration are always included in the recipe context. A
+`secret.target: "recipe"` entry also exposes the secret to `recipe.js` during deployment and is a
+high-risk disclosure shown on the confirmation page. A `secret.target: "workerSecret"` entry names a
+Workers Secret; Overture writes the secret there after the recipe completes, without exposing it to
+the recipe. Turnstile declarations require `authModes: ["auto"]` because the account-token creation
+link must grant the `challenge_widgets` edit permission. This does not use or require a `cfApiToken`
+host secret. The deployed application remains responsible for server-side Siteverify validation; the
+browser sitekey is not a substitute for the secret.
+
 Cookies: both carry the `__Host-` prefix, so a sibling host on the same registrable domain cannot toss
 either one up to the parent — the login-CSRF session-fixation this closes is the whole reason the prefix
 matters. `__Host-ov_state` is HMAC-signed, `SameSite=Lax` — it has to survive the cross-site top-level
