@@ -53,6 +53,8 @@ import {
   type RecipeResourceMatch,
   type RecipeStep,
   type RecipeTerms,
+  type RecipeTurnstile,
+  type RecipeTurnstileSecret,
   type RecipeVar,
   type RecipeWorker,
   type Requirement,
@@ -87,6 +89,8 @@ const CONTAINER_MODES = ["ask", "always", "never"] as const;
 const HOST_SECRET_SOURCES = ["accountId", "r2AccessKeyId", "r2SecretAccessKey", "cfApiToken"] as const;
 const AUTH_MODES = ["oauth", "auto"] as const;
 const CHECK_EXPECTATIONS = ["paid"] as const;
+const TURNSTILE_MODES = ["managed", "non-interactive", "invisible"] as const;
+const TURNSTILE_SECRET_TARGETS = ["recipe", "workerSecret"] as const;
 const PAID_SUBSCRIPTION_PATH = "/accounts/${accountId}/subscriptions";
 
 // Derived from the bridge itself, so a capability the host cannot gate can never
@@ -503,6 +507,35 @@ function workerVar(errors: Errors, path: string, value: unknown): RecipeVar | un
   return { name, value: varValue };
 }
 
+function turnstileSecret(errors: Errors, path: string, value: unknown): RecipeTurnstileSecret | undefined {
+  const raw = bag(errors, path, value, true);
+  if (!raw) return undefined;
+  const target = oneOf(errors, `${path}.target`, raw.target, TURNSTILE_SECRET_TARGETS, true);
+  if (target === "recipe") {
+    if (raw.name !== undefined) errors.add(`${path}.name`, "is only valid when target is workerSecret");
+    return { target };
+  }
+  const name = matching(errors, `${path}.name`, raw.name, RECIPE_LIMITS.bindingPattern, true);
+  if (target !== "workerSecret" || !name) return undefined;
+  return { target, name };
+}
+
+function turnstile(errors: Errors, path: string, value: unknown): RecipeTurnstile | undefined {
+  const raw = bag(errors, path, value, true);
+  if (!raw) return undefined;
+  const id = matching(errors, `${path}.id`, raw.id, RECIPE_LIMITS.idPattern, true);
+  const name = str(errors, `${path}.name`, raw.name, true, 254);
+  const domains = items(errors, `${path}.domains`, raw.domains, 10, true, (entry, itemPath) =>
+    str(errors, itemPath, entry, true, 253),
+  );
+  if (domains && domains.length === 0) errors.add(`${path}.domains`, "must contain at least one domain");
+  if (domains) requireUnique(errors, `${path}.domains`, domains, (entry) => entry, "domain");
+  const mode = oneOf(errors, `${path}.mode`, raw.mode, TURNSTILE_MODES, true);
+  const secret = turnstileSecret(errors, `${path}.secret`, raw.secret);
+  if (!id || name === undefined || !domains || domains.length === 0 || !mode || !secret) return undefined;
+  return { id, name, domains, mode, secret };
+}
+
 function container(errors: Errors, path: string, value: unknown): RecipeContainer | undefined {
   const raw = bag(errors, path, value, true);
   if (!raw) return undefined;
@@ -901,6 +934,12 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
   const resources = items(errors, "resources", raw.resources, RECIPE_LIMITS.maxResources, true, (entry, path) =>
     resource(errors, path, entry),
   );
+  const turnstiles =
+    raw.turnstiles === undefined
+      ? undefined
+      : items(errors, "turnstiles", raw.turnstiles, RECIPE_LIMITS.maxTurnstiles, true, (entry, path) =>
+          turnstile(errors, path, entry),
+        );
   const workerSection = worker(errors, "worker", raw.worker);
   const inputs =
     raw.inputs === undefined
@@ -960,6 +999,15 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     requireUnique(errors, "resources", resources, (entry) => entry.id, "resource id");
     requireUnique(errors, "resources", resources, (entry) => entry.binding, "resource binding");
   }
+  if (turnstiles) {
+    requireUnique(errors, "turnstiles", turnstiles, (entry) => entry.id, "widget id");
+    const workerSecretNames = turnstiles
+      .filter((entry): entry is RecipeTurnstile & { secret: { target: "workerSecret"; name: string } } => entry.secret.target === "workerSecret")
+      .map((entry) => entry.secret.name);
+    if (new Set(workerSecretNames).size !== workerSecretNames.length) {
+      errors.add("turnstiles", "must contain unique worker secret names");
+    }
+  }
   if (inputs) requireUnique(errors, "inputs", inputs, (entry) => entry.id, "input id");
   if (inputs) {
     const knownInputIds = new Set(inputs.map((entry) => entry.id));
@@ -982,6 +1030,14 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
     !authModes.some((mode) => mode === "auto")
   ) {
     errors.add("authModes", "must include \"auto\" when a cfApiToken host secret is declared");
+  }
+  if (turnstiles && turnstiles.length > 0) {
+    if (!authModes || authModes.length !== 1 || authModes[0] !== "auto") {
+      errors.add("authModes", "must contain only \"auto\" when Turnstile widgets are declared");
+    }
+    if (!capabilities?.includes("turnstile")) {
+      errors.add("capabilities", "must include \"turnstile\" when Turnstile widgets are declared");
+    }
   }
 
   if (
@@ -1025,6 +1081,7 @@ export function validateRecipe(input: unknown): { ok: true; recipe: Recipe } | {
       permissions,
       ...(checks === undefined ? {} : { checks }),
       resources,
+      ...(turnstiles === undefined ? {} : { turnstiles }),
       worker: workerSection,
       ...(inputs === undefined ? {} : { inputs }),
       capabilities,
