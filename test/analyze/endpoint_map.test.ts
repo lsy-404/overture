@@ -23,6 +23,7 @@ import { CF_ENDPOINTS } from "../../shared/cfAllowlist";
 import { METHOD_ENDPOINTS, HOST_ENDPOINTS, endpointPath, hostEndpointsFor } from "../../src/lib/analyze/endpoints";
 import { ENDPOINT_PERMISSIONS } from "../../src/lib/analyze/permissions";
 import { isKnownScope } from "../../shared/oauthScopes";
+import { isKnownTokenPermission } from "../../shared/cfTokenPermissions";
 import { METHOD_GATES } from "../../src/lib/sandbox/protocol";
 import type { Recipe } from "../../src/lib/recipe/types";
 
@@ -64,6 +65,9 @@ const manualOauthRows = Object.entries(ENDPOINT_PERMISSIONS)
 const silentlyUngated = Object.entries(ENDPOINT_PERMISSIONS)
   .filter(([, permission]) => permission.scopes.length === 0 && !permission.ungated && !permission.accountToken)
   .map(([id]) => id);
+const unknownAccountTokenKeys = Object.entries(ENDPOINT_PERMISSIONS)
+  .filter(([, permission]) => permission.accountToken !== undefined && !isKnownTokenPermission(permission.accountToken.key))
+  .map(([id, permission]) => `${id}: ${permission.accountToken?.key}`);
 
 const recipeWithWorkerSecret = { resources: [], worker: {}, turnstiles: [{ secret: { target: "workerSecret", name: "TURNSTILE_SECRET" } }] } as Recipe;
 const recipeWithRecipeSecret = { resources: [], worker: {}, turnstiles: [{ secret: { target: "recipe" } }] } as Recipe;
@@ -82,6 +86,7 @@ const checks: Array<[string, boolean, string?]> = [
   ["every scope is one this deployment can request", unknownScopeNames.length === 0, unknownScopeNames.join(", ")],
   ["Billing Read is the only documented OAuth manual-confirmation exception", manualOauthRows.join(", ") === "account.subscriptionList: billing.read", manualOauthRows.join(", ")],
   ["an endpoint needing no scope says why", silentlyUngated.length === 0, silentlyUngated.join(", ")],
+  ["every Account API Token permission key is known", unknownAccountTokenKeys.length === 0, unknownAccountTokenKeys.join(", ")],
   [
     "a Worker-secret Turnstile discloses its host-side secret write",
     hostEndpointsFor(recipeWithWorkerSecret).includes("worker.secretPut") && !hostEndpointsFor(recipeWithRecipeSecret).includes("worker.secretPut"),
