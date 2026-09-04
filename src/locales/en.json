@@ -25,8 +25,8 @@
     "subtitle": "Read and accept before continuing. These terms govern your use of this Overture instance.",
     "sections": {
       "auth": {
-        "heading": "Authentication",
-        "body": "The package determines the authentication mode: standard Cloudflare OAuth, or a Cloudflare API token you create and paste yourself. Either way, the credential is handled server-side and never reaches this page's JavaScript. A pasted token becomes the app's own long-lived credential, written into the deployed app unchanged and scoped to exactly the permissions the app's creation link requested — Overture neither mints nor deletes it."
+        "heading": "Authorization and Credentials",
+        "body": "By using this deployer, you confirm that you are authorized to create, modify and delete resources in the Cloudflare account you select. Credentials are handled server-side and never reach page JavaScript. A pasted API token is written unchanged into the deployed Worker, scoped exactly to the permissions the creation link requested — Overture neither creates nor revokes tokens."
       },
       "privacy": {
         "heading": "No Data Retention",
@@ -37,12 +37,12 @@
         "body": "All resources are created within your own Cloudflare account. You are responsible for all associated costs. Overture holds no ownership of anything it deploys on your behalf."
       },
       "liability": {
-        "heading": "Deployment Liability",
-        "body": "You bear full responsibility for every deployment made through this tool and for all consequences that follow. Overture is an automated executor of your instructions and assumes no liability for outcomes."
+        "heading": "No Warranty and Limitation of Liability",
+        "body": "This deployer is provided as-is, without warranty of any kind. You bear full responsibility for every deployment made through this tool and for all consequences that follow. The operator of this instance is not liable for any loss, data corruption or costs arising from your use of this tool."
       },
       "capabilities": {
-        "heading": "Package Capabilities",
-        "body": "Any package this instance of Overture accepts may exercise, within your Cloudflare account, any capability it declares. The wizard presents a complete disclosure of those capabilities before you authorize any deployment."
+        "heading": "Package Capabilities and Acceptable Use",
+        "body": "Any package this instance of Overture accepts may exercise, within your Cloudflare account, any capability it declares. The wizard presents a complete disclosure of those capabilities before you authorize any deployment. Only deploy packages you trust — you are solely responsible for the packages you choose to run."
       },
       "license": {
         "heading": "License and Availability",
