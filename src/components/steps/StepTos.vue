@@ -17,8 +17,10 @@ const SECTIONS = ["auth", "privacy", "ownership", "liability", "capabilities", "
 
     <div class="guide-card disclaimer-body">
       <section v-for="(section, index) in SECTIONS" :key="section" class="disclaimer-section">
-        <div class="section-rule" v-if="index > 0" aria-hidden="true" />
-        <h2 class="section-heading">{{ t(`tos.sections.${section}.heading`) }}</h2>
+        <h2 class="section-heading">
+          <span class="section-num" aria-hidden="true">{{ index + 1 }}.</span>
+          {{ t(`tos.sections.${section}.heading`) }}
+        </h2>
         <p class="section-body">{{ t(`tos.sections.${section}.body`) }}</p>
       </section>
     </div>
@@ -44,6 +46,7 @@ const SECTIONS = ["auth", "privacy", "ownership", "liability", "capabilities", "
 .disclaimer-body {
   display: flex;
   flex-direction: column;
+  gap: 16px;
 }
 
 .disclaimer-section {
@@ -52,26 +55,27 @@ const SECTIONS = ["auth", "privacy", "ownership", "liability", "capabilities", "
   gap: 4px;
 }
 
-.section-rule {
-  height: 1px;
-  background: var(--card-stroke);
-  margin: 12px 0;
-}
-
 .section-heading {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.875rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--text-primary);
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.section-num {
+  flex: none;
   color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
 }
 
 .section-body {
   margin: 0;
   font-size: 0.875rem;
-  line-height: 1.6;
-  color: var(--text-primary);
+  line-height: 1.65;
+  color: var(--text-secondary);
 }
 
 .accept-row {
