@@ -22,7 +22,7 @@
   },
   "tos": {
     "title": "使用条款",
-    "subtitle": "请在继续之前阅读并接受以下条款。这些条款规范你对本 Overture 实例的使用。",
+    "subtitle": "以下使用条款约束你对本 Overture 实例的访问与使用。勾选下方复选框即表示你同意受这些条款约束。",
     "sections": {
       "auth": {
         "heading": "授权与凭证",
@@ -248,7 +248,7 @@
     "workerChecking": "正在检查这个账号…",
     "workerUnknown": "无法判断是否已存在同名 Worker。",
     "workerExists": "账号中已存在名为“{name}”的 Worker。本次部署将覆盖其当前版本。",
-    “workerFresh”: “此账号中尚无名为”{name}”的 Worker，部署时将自动创建。”,
+    "workerFresh": "此账号中尚无名为”{name}”的 Worker，部署时将自动创建。",
     "nameInvalid": "Cloudflare 名称为 1–63 个字符，只能用小写字母、数字和连字符，且以字母或数字开头。",
     "overwriteConfirm": "我确认将覆盖现有 Worker“{name}”。",
     "fullRebuild": "完全重建——删除现有 Worker 后重新创建",

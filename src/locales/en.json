@@ -22,7 +22,7 @@
   },
   "tos": {
     "title": "Terms of Use",
-    "subtitle": "Read and accept before continuing. These terms govern your use of this Overture instance.",
+    "subtitle": "These Terms of Use govern your access to and use of this Overture instance. By checking the box below, you agree to be bound by them.",
     "sections": {
       "auth": {
         "heading": "Authorization and Credentials",
@@ -248,7 +248,7 @@
     "workerChecking": "Checking this account…",
     "workerUnknown": "Couldn't tell whether a Worker of this name already exists.",
     "workerExists": "A Worker named “{name}” already exists. This deployment will overwrite its current version.",
-    “workerFresh”: “This account has no Worker named “{name}” yet; one will be created.”,
+    "workerFresh": "This account has no Worker named “{name}” yet; one will be created.",
     "nameInvalid": "Cloudflare names are 1–63 characters, lowercase letters, digits and hyphens, starting with a letter or digit.",
     "overwriteConfirm": "I confirm that I want to overwrite the existing Worker “{name}”.",
     "fullRebuild": "Full rebuild — delete the existing Worker and create it again",
