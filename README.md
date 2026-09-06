@@ -26,7 +26,7 @@ To make your GitHub repository deployable via Overture, publish two assets with 
 
 Packages may declare Turnstile widgets in `turnstiles[]`. Overture always gives the widget's public sitekey and configuration to `recipe.js`. A Turnstile secret can either be handed to `recipe.js` explicitly (`secret.target: "recipe"`, which the confirmation page flags as high risk) or written by Overture to a named Worker Secret after the recipe completes (`secret.target: "workerSecret"`). Packages using Turnstile must use only Account API Token (`auto`) authentication; the token creation link includes the Turnstile permission automatically.
 
-The full specification is in [`docs/RECIPE.md`](docs/RECIPE.md). See the [EdgeSonic repository](https://github.com/wuyilingwei/edgesonic) for a complete reference implementation.
+The full specification is in [`docs/RECIPE.md`](docs/RECIPE.md). See the [EdgeSonic repository](https://github.com/lsy-404/edgesonic) for a complete reference implementation.
 
 ## For operators: self-host Overture
 
