@@ -159,7 +159,7 @@
       },
       "auto": {
         "title": "Token",
-        "description": "Create a Cloudflare token using a link that already has the right permissions and app name filled in, then paste it in."
+        "description": "Create a Cloudflare token with the preset token link, then paste it in. The link configures this app's name and permissions."
       }
     },
     "notAvailable": {
@@ -221,7 +221,7 @@
       "tokenLabel": "Your Account API Token",
       "placeholder": "cfat_…",
       "tokenRequired": "This app needs its own token to write as a Worker Secret. Paste it again to continue; the existing value is never shown.",
-      "tokenLinkLabel": "Create the pre-named Account API Token on Cloudflare",
+      "tokenLinkLabel": "Create the preset token (Account API Token) on Cloudflare",
       "popupBlocked": "Your browser's popup blocker stopped the token-creation window from opening. Allow popups for this site, then try again.",
       "requirementsTitle": "Permissions to grant",
       "requirementsIntro": "Required permissions can't be removed; optional ones you can uncheck.",

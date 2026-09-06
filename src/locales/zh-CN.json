@@ -159,7 +159,7 @@
       },
       "auto": {
         "title": "令牌",
-        "description": "用一个已填好应用名称和权限的链接创建 Cloudflare 令牌，然后粘贴进来。"
+        "description": "通过预设令牌链接创建 Cloudflare 令牌，然后粘贴进来。链接已按此应用配置好名称和权限。"
       }
     },
     "notAvailable": {
@@ -221,7 +221,7 @@
       "tokenLabel": "你的账户 API 令牌",
       "placeholder": "cfat_…",
       "tokenRequired": "此应用需要将自己的令牌写入 Worker Secret。请重新粘贴后继续；已有值绝不会显示。",
-      "tokenLinkLabel": "去 Cloudflare 创建已预填名称的账户 API 令牌",
+      "tokenLinkLabel": "去 Cloudflare 创建预设令牌（账户 API 令牌）",
       "popupBlocked": "浏览器的弹窗拦截阻止了创建令牌窗口打开。请允许这个网站弹出窗口，然后重试。",
       "requirementsTitle": "要授予的权限",
       "requirementsIntro": "必需权限不可去掉，可选权限可以取消勾选。",
