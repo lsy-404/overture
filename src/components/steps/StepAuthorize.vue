@@ -243,6 +243,7 @@ async function submitToken() {
   if (!value) return;
   submitting.value = true;
   submitError.value = "";
+  popupError.value = "";
   try {
     const session = await submitAuthToken(value, "auto", recipe.package.sha256);
     wizard.applyOAuthSession(session);
