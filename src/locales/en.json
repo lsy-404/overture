@@ -222,6 +222,7 @@
       "placeholder": "cfat_…",
       "tokenRequired": "This app needs its own token to write as a Worker Secret. Paste it again to continue; the existing value is never shown.",
       "tokenLinkLabel": "Create the pre-named Account API Token on Cloudflare",
+      "popupBlocked": "Your browser's popup blocker stopped the token-creation window from opening. Allow popups for this site, then try again.",
       "requirementsTitle": "Permissions to grant",
       "requirementsIntro": "Required permissions can't be removed; optional ones you can uncheck.",
       "checkPermissionsTitle": "Read permissions for account pre-checks",
