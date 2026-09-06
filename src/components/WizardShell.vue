@@ -8,17 +8,19 @@ import { useWizard, STEPS } from "../stores/wizard";
 import { localized } from "../lib/recipe/types";
 import { sourceSlug } from "../../shared/package";
 import { SHELL_SCROLL_AREA } from "./shellScroll";
+import { WinScrollViewer } from "../vendor/winui";
 
 // `step` 0 means "no wizard progress to show" — the policy page uses the same
 // chrome without a step counter.
 const props = defineProps<{ step: number; total: number }>();
 
-const scrollArea = ref<HTMLElement | null>(null);
+const scrollViewer = ref<InstanceType<typeof WinScrollViewer> | null>(null);
+const scrollArea = computed<HTMLElement | null>(() => scrollViewer.value?.scrollViewerRef ?? null);
 provide(SHELL_SCROLL_AREA, scrollArea);
 watch(
   () => props.step,
   () => {
-    if (scrollArea.value) scrollArea.value.scrollTop = 0;
+    scrollViewer.value?.ChangeView(0, 0);
   },
   { flush: "post" },
 );
@@ -131,9 +133,16 @@ const buildLicense = __BUILD_LICENSE__;
            content visually. Each page Teleports its own .step-actions here, so
            navigation stays pinned below the scrolling content. -->
       <div class="shell-card-actions"></div>
-      <div class="shell-card-scroll" ref="scrollArea">
-        <slot />
-      </div>
+      <WinScrollViewer
+        ref="scrollViewer"
+        class="shell-card-scroll"
+        HorizontalScrollBarVisibility="Disabled"
+        :IsTabStop="true"
+      >
+        <div class="shell-card-content">
+          <slot />
+        </div>
+      </WinScrollViewer>
     </main>
 
     <footer class="shell-footer">
@@ -308,7 +317,10 @@ const buildLicense = __BUILD_LICENSE__;
   position: relative;
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
+}
+
+.shell-card-content {
+  position: relative;
   padding: 32px;
 }
 
@@ -351,7 +363,7 @@ const buildLicense = __BUILD_LICENSE__;
 }
 
 @media (max-width: 560px) {
-  .shell-card-scroll {
+  .shell-card-content {
     padding: 20px;
   }
 
