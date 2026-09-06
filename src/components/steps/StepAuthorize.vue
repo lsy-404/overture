@@ -7,6 +7,7 @@ import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
 import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
 import { buildTokenLinkUrl, describePermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
+import { openPopup } from "../../lib/popup";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
 const { t, locale } = useI18n();
@@ -114,6 +115,7 @@ const signingIn = ref(false);
 const popupError = ref("");
 let popupRef: Window | null = null;
 let popupWatch: ReturnType<typeof setInterval> | undefined;
+let tokenPopupRef: Window | null = null;
 
 function stopPopupWatch() {
   clearInterval(popupWatch);
@@ -146,7 +148,7 @@ function startSignIn() {
   if (!recipe) return;
   popupError.value = "";
   const url = oauthAuthorizeUrl(wizard.requestedScope, recipe.package.sha256);
-  const popup = window.open(url, "overture-oauth", "width=520,height=720");
+  const popup = openPopup(url, "overture-oauth", { width: 520, height: 720, keepOpener: true });
   if (!popup) {
     popupError.value = t("authorize.popupBlocked");
     return;
@@ -154,6 +156,25 @@ function startSignIn() {
   popupRef = popup;
   signingIn.value = true;
   watchPopup(popup);
+}
+
+function startTokenCreation() {
+  popupError.value = "";
+  if (tokenPopupRef) {
+    try {
+      if (!tokenPopupRef.closed) {
+        tokenPopupRef.focus();
+        return;
+      }
+      tokenPopupRef = null;
+    } catch {
+      // Do not risk navigating a popup that might show a one-time token.
+      return;
+    }
+  }
+
+  tokenPopupRef = openPopup(tokenLinkUrl.value, "overture-api-token", { width: 760, height: 820, keepOpener: false });
+  if (!tokenPopupRef) popupError.value = t("authorize.auto.popupBlocked");
 }
 
 async function autoSelectAccount() {
@@ -199,6 +220,7 @@ onMounted(async () => {
 onUnmounted(() => {
   window.removeEventListener("message", onMessage);
   stopPopupWatch();
+  tokenPopupRef = null;
 });
 
 // ---- pasted token (auto mode) -----------------------------------------------
@@ -435,7 +457,8 @@ function recheck() {
           </ul>
         </WinInfoBar>
 
-        <a class="btn" :href="tokenLinkUrl" target="_blank" rel="noopener noreferrer">{{ t("authorize.auto.tokenLinkLabel") }}</a>
+        <WinButton Style="SubtleButtonStyle" @Click="startTokenCreation">{{ t("authorize.auto.tokenLinkLabel") }}</WinButton>
+        <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
         <div class="field">
           <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>
           <input
