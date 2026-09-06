@@ -6,7 +6,7 @@ import { STEPS, useWizard } from "../../stores/wizard";
 import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
 import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
-import { buildTokenLinkUrl, describePermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
+import { buildTokenLinkUrl, describePermissions, mergeDeclaredPermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
 import { openPopup } from "../../lib/popup";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
@@ -51,10 +51,10 @@ const TURNSTILE_PERMISSION = {
 } as const;
 
 /** Every permission the app's token needs, with its display name and danger flag. */
-const permissionRows = computed(() => describePermissions([
+const permissionRows = computed(() => describePermissions(mergeDeclaredPermissions([
   ...(cfApiTokenSecret.value?.permissions ?? []),
   ...(turnstiles.value.length > 0 ? [TURNSTILE_PERMISSION] : []),
-]));
+])));
 
 // Optional permissions the user has chosen to leave out. They stay in the list
 // but drop out of the pre-filled link, so the token the user creates asks for

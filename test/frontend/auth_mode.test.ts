@@ -33,7 +33,7 @@ import { fileURLToPath } from "node:url";
 import { createPinia, setActivePinia } from "pinia";
 import { STEPS, useWizard } from "../../src/stores/wizard";
 import { usePolicy } from "../../src/stores/policy";
-import { buildTokenLinkUrl, describePermissions, mergeTokenPermissions, preflightPermissionsForChecks, CF_ACCOUNT_TOKENS_URL } from "../../src/lib/cf/tokenLink";
+import { buildTokenLinkUrl, describePermissions, mergeDeclaredPermissions, mergeTokenPermissions, preflightPermissionsForChecks, CF_ACCOUNT_TOKENS_URL } from "../../src/lib/cf/tokenLink";
 import type { AuthMode, Recipe, RecipeCheck } from "../../src/lib/recipe/types";
 import { CF_ENDPOINTS } from "../../shared/cfAllowlist";
 import type { LoadedConfig } from "../../src/lib/package/config";
@@ -219,6 +219,33 @@ const dangerRow = describePermissions([{ key: "account_api_tokens", type: "edit"
 const billingRow = describePermissions([{ key: "billing", type: "edit" }])[0];
 const billingReadRow = describePermissions([{ key: "billing", type: "read" }])[0];
 const tokenReadRow = describePermissions([{ key: "account_api_tokens", type: "read" }])[0];
+const mergedContainerRows = mergeDeclaredPermissions([
+  { key: "containers", type: "edit", requirement: "optional", scenario: { "*": "Enable transcoding" } },
+  { key: "containers", type: "read", requirement: "optional", scenario: { "*": "Read current declaration" } },
+]);
+const optionalEditWithRequiredRead = mergeDeclaredPermissions([
+  { key: "containers", type: "edit", requirement: "optional" },
+  { key: "containers", type: "read", requirement: "required" },
+]);
+const requiredReadWithOptionalEdit = mergeDeclaredPermissions([
+  { key: "containers", type: "read", requirement: "required" },
+  { key: "containers", type: "edit", requirement: "optional" },
+]);
+const separatePermissionRows = mergeDeclaredPermissions([
+  { key: "containers", type: "edit", requirement: "optional" },
+  { key: "workers_r2", type: "read", requirement: "required" },
+]);
+const requiredAfterOptionalSameType = mergeDeclaredPermissions([
+  { key: "containers", type: "read", requirement: "optional", scenario: { "*": "Optional detail" } },
+  { key: "containers", type: "read", requirement: "required", scenario: { "*": "Required detail" } },
+]);
+const excludedOptionalContainerEdit = [
+  { key: "containers", type: "edit" as const, requirement: "optional" as const },
+  { key: "containers", type: "read" as const, requirement: "required" as const },
+].filter((permission) => !(permission.requirement === "optional" && new Set(["containers"]).has(permission.key)));
+const excludedContainerToken = mergeTokenPermissions(excludedOptionalContainerEdit);
+const excludedContainerTokenParam = new URL(buildTokenLinkUrl(excludedContainerToken)).searchParams.get("permissionGroupKeys");
+const excludedContainerTokenPermissions = excludedContainerTokenParam ? JSON.parse(excludedContainerTokenParam) as Array<{ key: string; type: string }> : [];
 
 const accountChecks: RecipeCheck[] = [
   { id: "r2", requirement: "required", label: { "*": "R2 storage" }, path: "/accounts/${accountId}/r2/buckets" },
@@ -329,6 +356,12 @@ const checks: Array<[string, boolean, string?]> = [
   ["a read on a flagged group (billing) is not dangerous — only writing it is", billingReadRow.danger === false],
   ["a read on the token group (account_api_tokens) is not dangerous", tokenReadRow.danger === false],
   ["an ordinary permission (D1) is not reported as dangerous", d1AndR2[0].danger === false],
+  ["duplicate permission groups collapse to one row while keeping edit", mergedContainerRows.length === 1 && mergedContainerRows[0].key === "containers" && mergedContainerRows[0].type === "edit"],
+  ["optional edit stays optional when required read shares its group", optionalEditWithRequiredRead[0].type === "edit" && optionalEditWithRequiredRead[0].requirement === "optional"],
+  ["permission merge is independent of declaration order", requiredReadWithOptionalEdit[0].type === "edit" && requiredReadWithOptionalEdit[0].requirement === "optional"],
+  ["different permission groups remain separate", separatePermissionRows.length === 2],
+  ["required wins for same-type duplicate requirements with its own scenario", requiredAfterOptionalSameType[0].requirement === "required" && requiredAfterOptionalSameType[0].scenario?.["*"] === "Required detail"],
+  ["excluding optional edit leaves required read in the generated token URL", excludedContainerTokenPermissions.length === 1 && excludedContainerTokenPermissions[0].key === "containers" && excludedContainerTokenPermissions[0].type === "read"],
   ["an R2 pre-check automatically adds Workers R2 Storage read", r2PreflightPermission?.type === "read" && r2PreflightPermission.requirement === "required"],
   ["one read permission lists every check it covers", r2PreflightPermission?.checks.map((check) => check.id).join(",") === "r2,r2Again"],
   ["an optional Images check keeps its generated read optional", imagesPreflightPermission?.type === "read" && imagesPreflightPermission.requirement === "optional"],

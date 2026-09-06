@@ -51,6 +51,35 @@ export interface PreflightPermission extends Pick<CfTokenPermissionRequest, "key
 
 const REQUIREMENT_WEIGHT: Record<Requirement, number> = { optional: 0, recommended: 1, required: 2 };
 
+/** Combines one token permission row per Cloudflare permission group. */
+export function mergeDeclaredPermissions(
+  permissions: readonly CfTokenPermissionRequest[],
+): CfTokenPermissionRequest[] {
+  const merged = new Map<string, CfTokenPermissionRequest>();
+  for (const permission of permissions) {
+    const requirement = permission.requirement ?? "required";
+    const existing = merged.get(permission.key);
+    if (!existing) {
+      merged.set(permission.key, { ...permission, requirement });
+      continue;
+    }
+    const strongerType = existing.type === "edit" || permission.type === "read" ? existing.type : permission.type;
+    const winner = strongerType === existing.type ? existing : permission;
+    const other = winner === existing ? permission : existing;
+    const winnerRequirement = winner.requirement ?? "required";
+    const otherRequirement = other.requirement ?? "required";
+    const requirementWinner = winner.type === other.type && REQUIREMENT_WEIGHT[otherRequirement] > REQUIREMENT_WEIGHT[winnerRequirement]
+      ? other
+      : winner;
+    merged.set(permission.key, {
+      ...requirementWinner,
+      type: strongerType,
+      requirement: requirementWinner.requirement ?? "required",
+    });
+  }
+  return [...merged.values()];
+}
+
 /**
  * The only account-token reads that a pre-check may request. The permission is
  * derived from the allow-listed GET endpoint, never supplied by the recipe, so
