@@ -25,18 +25,29 @@ import { jsonResponse } from "./http";
 
 type RelayContext = Context<{ Bindings: Env }>;
 
+const GITHUB_API = "https://api.github.com";
+
+async function canonicalSource(ref: ReturnType<typeof parseSource>): Promise<ReturnType<typeof parseSource>> {
+  if (!ref) return null;
+  try {
+    const response = await fetch(`${GITHUB_API}/repos/${ref.owner}/${ref.repo}`, {
+      headers: {
+        Accept: "application/vnd.github+json",
+        "User-Agent": "overture-release-relay",
+      },
+    });
+    if (!response.ok) return null;
+    const repository = (await response.json()) as { full_name?: unknown };
+    return typeof repository.full_name === "string" ? parseSource(repository.full_name) : null;
+  } catch {
+    return null;
+  }
+}
+
 export async function handleGithubAsset(c: RelayContext): Promise<Response> {
   const ref = parseSource(c.req.query("src") || "");
   if (!ref) {
     return jsonResponse(c, 400, { ok: false, error: "Expected src=owner/repo" });
-  }
-
-  const url = c.req.query("url") || "";
-  if (!isReleaseAssetUrl(url, ref)) {
-    return jsonResponse(c, 400, {
-      ok: false,
-      error: "url must be a release download of the repository named in src",
-    });
   }
 
   const policy = policyFromVars(c.env);
@@ -44,6 +55,15 @@ export async function handleGithubAsset(c: RelayContext): Promise<Response> {
     return jsonResponse(c, 403, {
       ok: false,
       error: `This Overture deployment only serves packages from its allow-listed sources; ${ref.owner}/${ref.repo} is not one of them.`,
+    });
+  }
+
+  const url = c.req.query("url") || "";
+  const source = isReleaseAssetUrl(url, ref) ? ref : await canonicalSource(ref);
+  if (!source || !isReleaseAssetUrl(url, source)) {
+    return jsonResponse(c, 400, {
+      ok: false,
+      error: "url must be a release download of the repository named in src",
     });
   }
 
