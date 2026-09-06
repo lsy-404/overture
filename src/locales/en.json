@@ -216,7 +216,7 @@
     "blocked": "Something the package requires isn't satisfied yet. Fix the rows marked above, then re-check.",
     "auto": {
       "title": "Create an Account API Token",
-      "subtitle": "Follow the link below to create an Account API Token on Cloudflare, then paste it here. User API Tokens are not accepted.",
+      "subtitle": "Use the button below to create an Account API Token in a Cloudflare popup, then copy and paste it here. User API Tokens are not accepted.",
       "intro": "This token deploys the app, and if the app needs a long-term credential afterward, this same token becomes it. Nothing is deleted or swapped out later — it stays your own token, and you can remove it from your Cloudflare dashboard whenever you want.",
       "tokenLabel": "Your Account API Token",
       "placeholder": "cfat_…",

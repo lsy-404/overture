@@ -216,7 +216,7 @@
     "blocked": "包要求的某项条件还没满足。请按上表标出的行修好后重测。",
     "auto": {
       "title": "创建账户 API 令牌",
-      "subtitle": "打开下面的链接，在 Cloudflare 上创建账户 API 令牌，然后粘贴到这里。用户 API 令牌不被接受。",
+      "subtitle": "点击下方按钮，在 Cloudflare 小窗中创建账户 API 令牌，再复制并粘贴到这里。用户 API 令牌不被接受。",
       "intro": "这个令牌用来部署这个应用；如果应用之后还需要一个长期凭证，用的也是它。之后不会有任何删除或替换——它一直是你自己的令牌，你可以随时在 Cloudflare 控制台里把它删掉。",
       "tokenLabel": "你的账户 API 令牌",
       "placeholder": "cfat_…",
