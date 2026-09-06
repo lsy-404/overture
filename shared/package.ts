@@ -110,20 +110,37 @@ export function parseSourceLoose(value: string): SourceRef | null {
 export function isReleaseAssetUrl(value: string, ref: SourceRef): boolean {
   try {
     const url = new URL(value);
+    const releasePrefix = `/${ref.owner}/${ref.repo}/releases/download/`.toLowerCase();
     return (
       url.protocol === "https:" &&
       url.hostname === "github.com" &&
-      url.pathname.startsWith(`/${ref.owner}/${ref.repo}/releases/download/`)
+      url.pathname.toLowerCase().startsWith(releasePrefix)
     );
   } catch {
     return false;
   }
 }
 
+/**
+ * GitHub keeps a repository's old slug working after an owner transfer, but
+ * release metadata and asset URLs use its current canonical slug.
+ */
+export function releaseSource(release: GithubRelease, fallback: SourceRef): SourceRef {
+  try {
+    const url = new URL(release.html_url || "");
+    if (url.protocol !== "https:" || !/^(www\.)?github\.com$/i.test(url.hostname)) return fallback;
+    const segments = url.pathname.split("/").filter(Boolean);
+    if (segments.length < 4 || segments[2] !== "releases" || segments[3] !== "tag") return fallback;
+    return parseSource(`${segments[0]}/${segments[1]}`) || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export function assetOf(release: GithubRelease, name: string, ref: SourceRef): GithubAsset | null {
   const asset = (release.assets || []).find((candidate) => candidate.name === name);
   if (!asset?.browser_download_url) return null;
-  return isReleaseAssetUrl(asset.browser_download_url, ref) ? asset : null;
+  return isReleaseAssetUrl(asset.browser_download_url, releaseSource(release, ref)) ? asset : null;
 }
 
 export function isDeployable(release: GithubRelease, ref: SourceRef): boolean {

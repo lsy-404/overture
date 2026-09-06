@@ -17,7 +17,7 @@
 // modules decide which repository a package may come from and which URL may be
 // fetched for it, so they are tested as pure functions.
 
-import { parseSource, parseSourceLoose, sourceSlug, isReleaseAssetUrl, assetOf, isDeployable, tagMatchesVersion, PACKAGE_ARTIFACT_NAME, PACKAGE_CONFIG_NAME, type GithubRelease } from "../../shared/package";
+import { parseSource, parseSourceLoose, sourceSlug, isReleaseAssetUrl, assetOf, isDeployable, releaseSource, tagMatchesVersion, PACKAGE_ARTIFACT_NAME, PACKAGE_CONFIG_NAME, type GithubRelease } from "../../shared/package";
 import { isSourceAllowed, normalizeSourceEntry, parseSourceList, policyFromVars, MAX_POLICY_SOURCES } from "../../shared/policy";
 import { readFileSync } from "node:fs";
 
@@ -73,6 +73,8 @@ const checks: Array<[string, boolean, string?]> = [
 
   ["an asset URL under this source's release downloads is accepted",
     isReleaseAssetUrl(download("acme", "widget", PACKAGE_ARTIFACT_NAME), ref)],
+  ["repository owner and slug comparisons follow GitHub's case-insensitive rules",
+    isReleaseAssetUrl(download("AcMe", "WiDgEt", PACKAGE_ARTIFACT_NAME), ref)],
   ["another repository's asset URL is rejected",
     !isReleaseAssetUrl(download("evil", "widget", PACKAGE_ARTIFACT_NAME), ref)
     && !isReleaseAssetUrl(download("acme", "other", PACKAGE_ARTIFACT_NAME), ref)],
@@ -93,6 +95,20 @@ const checks: Array<[string, boolean, string?]> = [
     && !isDeployable(release([]), ref)],
   ["an asset whose URL points elsewhere is not picked up",
     assetOf(release([{ name: PACKAGE_ARTIFACT_NAME, url: download("evil", "widget", PACKAGE_ARTIFACT_NAME) }]), PACKAGE_ARTIFACT_NAME, ref) === null],
+  ["a release's canonical GitHub URL selects its transferred repository assets",
+    (() => {
+      const transferred = {
+        ...fullRelease,
+        html_url: "https://github.com/new-owner/widget/releases/tag/v1.0.0",
+        assets: [
+          { name: PACKAGE_CONFIG_NAME, browser_download_url: download("new-owner", "widget", PACKAGE_CONFIG_NAME) },
+          { name: PACKAGE_ARTIFACT_NAME, browser_download_url: download("new-owner", "widget", PACKAGE_ARTIFACT_NAME) },
+        ],
+      };
+      return sourceSlug(releaseSource(transferred, ref)) === "new-owner/widget" && isDeployable(transferred, ref);
+    })()],
+  ["only a GitHub release URL may select a canonical repository",
+    sourceSlug(releaseSource({ html_url: "https://github.com/new-owner/widget/issues/1" }, ref)) === "acme/widget"],
   ["tags compare with only a leading v ignored",
     tagMatchesVersion("v1.0.0", "1.0.0") && tagMatchesVersion("1.0.0", "1.0.0") && !tagMatchesVersion("v1.0.1", "1.0.0")],
 
@@ -129,8 +145,8 @@ const checks: Array<[string, boolean, string?]> = [
   ["normalizeSourceEntry returns null instead of a half-cleaned value",
     normalizeSourceEntry("acme/widget") === "acme/widget" && normalizeSourceEntry("acme/wid get") === null],
   ["the public deployment template allows both EdgeSonic and OMEW",
-    isSourceAllowed(policyOf(exampleSources), { owner: "wuyilingwei", repo: "edgesonic" })
-    && isSourceAllowed(policyOf(exampleSources), { owner: "wuyilingwei", repo: "OMEW" })],
+    isSourceAllowed(policyOf(exampleSources), { owner: "lsy-404", repo: "edgesonic" })
+    && isSourceAllowed(policyOf(exampleSources), { owner: "lsy-404", repo: "OMEW" })],
 ];
 
 let failures = 0;
