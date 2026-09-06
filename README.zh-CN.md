@@ -26,7 +26,7 @@
 
 包可以在 `turnstiles[]` 中声明 Turnstile 小组件。Overture 总会把小组件的公开 sitekey 和配置交给 `recipe.js`。Turnstile secret 可以显式交给 `recipe.js`（`secret.target: "recipe"`，确认页会标为高风险），也可以在 recipe 完成后由 Overture 写入指定名称的 Worker Secret（`secret.target: "workerSecret"`）。使用 Turnstile 的包只能使用账户 API 令牌（`auto`）认证；创建令牌的链接会自动加入 Turnstile 权限。
 
-完整的规范见 [`docs/RECIPE.md`](docs/RECIPE.md)。可以参考 [EdgeSonic 仓库](https://github.com/wuyilingwei/edgesonic)的完整实现。
+完整的规范见 [`docs/RECIPE.md`](docs/RECIPE.md)。可以参考 [EdgeSonic 仓库](https://github.com/lsy-404/edgesonic)的完整实现。
 
 ## 给运维者：自建 Overture
 

@@ -26,8 +26,8 @@ before anything is downloaded.
   "id": "edgesonic",
   "name": "EdgeSonic",
   "summary": { "en": "Subsonic-compatible music server on Workers", "zh-CN": "运行在 Workers 上的 Subsonic 兼容音乐服务" },
-  "homepage": "https://github.com/wuyilingwei/edgesonic",
-  "issues": { "url": "https://github.com/wuyilingwei/edgesonic/issues/new" },
+  "homepage": "https://github.com/lsy-404/edgesonic",
+  "issues": { "url": "https://github.com/lsy-404/edgesonic/issues/new" },
 
   "version": "1.3.2",
   "tag": "v1.3.2",

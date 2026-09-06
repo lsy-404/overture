@@ -458,7 +458,9 @@ function recheck() {
           </ul>
         </WinInfoBar>
 
-        <WinButton Style="SubtleButtonStyle" @Click="startTokenCreation">{{ t("authorize.auto.tokenLinkLabel") }}</WinButton>
+        <WinButton Style="AccentButtonStyle" MinHeight="44" Padding="20,10" Margin="0,8,0,4" @Click="startTokenCreation">
+          {{ t("authorize.auto.tokenLinkLabel") }}
+        </WinButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
         <div class="field">
           <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>

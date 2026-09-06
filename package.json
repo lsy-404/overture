@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "private": true,
-  "repository": "https://github.com/wuyilingwei/overture",
+  "repository": "https://github.com/lsy-404/overture",
   "license": "AGPL-3.0-or-later",
   "scripts": {
     "dev": "vite",
