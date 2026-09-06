@@ -26,11 +26,13 @@ export function openPopup(url: string, name: string, options: PopupOptions): Win
 
   try {
     popup.opener = null;
-    const referrer = popup.document.createElement("meta");
-    referrer.name = "referrer";
-    referrer.content = "no-referrer";
-    popup.document.head.append(referrer);
-    popup.location.href = url;
+    const link = popup.document.createElement("a");
+    link.href = url;
+    link.target = "_self";
+    link.rel = "noreferrer";
+    link.referrerPolicy = "no-referrer";
+    popup.document.body.append(link);
+    link.click();
     return popup;
   } catch {
     try {
