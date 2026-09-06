@@ -8,10 +8,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const shellSource = fs.readFileSync(path.join(root, "src/components/WizardShell.vue"), "utf8");
 
 const checks: Array<[string, boolean]> = [
-  ["the shared scroll container has a template ref", /class="shell-card-scroll"\s+ref="scrollArea"/.test(shellSource)],
-  ["top-level page changes reset the shared container to the top",
-    /watch\(\s*\(\)\s*=>\s*props\.step,[\s\S]*?scrollArea\.value\.scrollTop\s*=\s*0[\s\S]*?flush:\s*"post"/.test(shellSource)],
-  ["the reset is not tied to deployment sub-step progress", !/executeProgress[\s\S]*?scrollTop\s*=\s*0/.test(shellSource)],
+  ["the shell uses the WinUI scroll viewer", /<WinScrollViewer\s+ref="scrollViewer"\s+class="shell-card-scroll"/.test(shellSource)],
+  ["the shared scroll area references the actual viewport", /scrollViewer\.value\?\.scrollViewerRef \?\? null/.test(shellSource)],
+  ["top-level page changes reset the viewport and cancel pending scroll animation",
+    /watch\(\s*\(\)\s*=>\s*props\.step,[\s\S]*?scrollViewer\.value\?\.ChangeView\(0, 0\)[\s\S]*?flush:\s*"post"/.test(shellSource)],
+  ["the reset is not tied to deployment sub-step progress", !/executeProgress[\s\S]*?ChangeView\(0, 0\)/.test(shellSource)],
 ];
 
 let failures = 0;
