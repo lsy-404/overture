@@ -46,14 +46,14 @@
       @pointerdown="handleScrollBarPointerDown('vertical', $event)"
       @wheel="handleScrollBarWheel"
     >
-      <button class="scrollbar-button decrease icon" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('vertical', -1, $event)"></button>
+      <button class="scrollbar-button decrease" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('vertical', -1, $event)"></button>
       <div class="scrollbar-track"></div>
       <div
         class="scrollbar-thumb"
         :style="verticalThumbStyle"
         @pointerdown.prevent.stop="startVerticalDrag"
       ></div>
-      <button class="scrollbar-button increase icon" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('vertical', 1, $event)"></button>
+      <button class="scrollbar-button increase" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('vertical', 1, $event)"></button>
     </div>
 
     <div
@@ -66,14 +66,14 @@
       @pointerdown="handleScrollBarPointerDown('horizontal', $event)"
       @wheel="handleScrollBarWheel"
     >
-      <button class="scrollbar-button decrease icon" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('horizontal', -1, $event)"></button>
+      <button class="scrollbar-button decrease" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('horizontal', -1, $event)"></button>
       <div class="scrollbar-track"></div>
       <div
         class="scrollbar-thumb"
         :style="horizontalThumbStyle"
         @pointerdown.prevent.stop="startHorizontalDrag"
       ></div>
-      <button class="scrollbar-button increase icon" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('horizontal', 1, $event)"></button>
+      <button class="scrollbar-button increase" type="button" aria-hidden="true" tabindex="-1" @pointerdown.prevent="startLineScroll('horizontal', 1, $event)"></button>
     </div>
     <div v-if="hasVerticalScrollBar && hasHorizontalScrollBar" class="scrollbar-corner"></div>
   </div>
@@ -1520,6 +1520,27 @@ onBeforeUnmount(() => {
   opacity: 1;
   pointer-events: auto;
   transition-delay: 400ms, 0ms;
+}
+
+.scrollbar-button::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-top: 1px solid currentColor;
+  border-left: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.scrollbar-vertical .scrollbar-button.increase::before {
+  transform: rotate(225deg);
+}
+
+.scrollbar-horizontal .scrollbar-button.decrease::before {
+  transform: rotate(-45deg);
+}
+
+.scrollbar-horizontal .scrollbar-button.increase::before {
+  transform: rotate(135deg);
 }
 
 .scrollbar.contracting .scrollbar-button {

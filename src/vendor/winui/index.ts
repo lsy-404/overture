@@ -3,3 +3,4 @@ export { default as WinCheckBox } from "./components/WinCheckBox.vue";
 export { default as WinInfoBar } from "./components/WinInfoBar.vue";
 export { default as WinProgressRing } from "./components/WinProgressRing.vue";
 export { default as WinProgressBar } from "./components/WinProgressBar.vue";
+export { default as WinScrollViewer } from "./components/WinScrollViewer.vue";

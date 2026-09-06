@@ -16,6 +16,8 @@ by Furry-Xiyi, a Vue implementation of Microsoft's WinUI/Fluent Design controls 
   the intentionally-not-vendored icon font — see below) to the standard Unicode
   `&#x2713;` (CHECK MARK), so the checkbox renders a visible checkmark without
   that font installed.
+- `components/WinScrollViewer.vue`: scrollbar arrow glyphs are drawn with CSS
+  borders so they remain visible without the proprietary icon font.
 
 Combining GPL-3.0 code into this AGPL-3.0-licensed project is permitted by the
 Free Software Foundation's compatibility exception between GPLv3 and AGPLv3;
