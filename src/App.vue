@@ -15,6 +15,8 @@ import StepTarget from "./components/steps/StepTarget.vue";
 import StepConfirm from "./components/steps/StepConfirm.vue";
 import StepDeploy from "./components/steps/StepDeploy.vue";
 import StepDone from "./components/steps/StepDone.vue";
+import { FluentTheme } from "@lsypkg/fluent/vue";
+import { themeMode } from "./theme";
 
 const wizard = useWizard();
 const policy = usePolicy();
@@ -53,9 +55,11 @@ watch(
 </script>
 
 <template>
-  <WizardShell :step="shellStep" :total="TOTAL_STEPS">
-    <Transition :name="transitionName">
-      <component :is="current" :key="pageKey" />
-    </Transition>
-  </WizardShell>
+  <FluentTheme :mode="themeMode === 'auto' ? 'system' : themeMode">
+    <WizardShell :step="shellStep" :total="TOTAL_STEPS">
+      <Transition :name="transitionName">
+        <component :is="current" :key="pageKey" />
+      </Transition>
+    </WizardShell>
+  </FluentTheme>
 </template>

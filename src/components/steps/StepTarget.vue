@@ -6,7 +6,7 @@ import { STEPS, useWizard } from "../../stores/wizard";
 import { listExistingResources, readLiveFacts } from "../../lib/deploy/inventory";
 import { localized, RECIPE_LIMITS, type RecipeInput, type RecipeResource, type ResourceKind } from "../../lib/recipe/types";
 import type { ContainerAction } from "../../lib/deploy/types";
-import { WinButton, WinCheckBox, WinInfoBar, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox, FluentNotice, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -199,22 +199,22 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
     <p class="step-subtitle">{{ t("target.subtitle") }}</p>
 
     <div v-if="scanning" class="inline-status">
-      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <FluentProgressRing :size="20" />
       <span>{{ t("target.scanning") }}</span>
     </div>
 
     <template v-else>
-      <WinInfoBar
+      <FluentNotice
         v-if="unreadableKinds.length > 0"
-        :IsOpen="true"
-        Severity="Error"
-        :IsClosable="false"
-        :IsIconVisible="false"
+
+        tone="danger"
+
+
       >
         <strong>{{ t("target.inventoryFailedTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("target.inventoryFailedBody") }}</p>
-        <WinButton style="margin-top: 10px" @Click="readInventory">{{ t("common.retry") }}</WinButton>
-      </WinInfoBar>
+        <FluentButton style="margin-top: 10px" @click="readInventory">{{ t("common.retry") }}</FluentButton>
+      </FluentNotice>
 
       <div class="field">
         <label for="workerName">{{ t("target.workerName") }}</label>
@@ -230,12 +230,12 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
       </div>
 
       <template v-if="wizard.mode === 'overwrite'">
-        <WinCheckBox v-model="wizard.overwriteConfirmed">
+        <FluentCheckbox v-model="wizard.overwriteConfirmed">
           <span><span class="required-star" aria-hidden="true">*</span>{{ t("target.overwriteConfirm", { name: wizard.workerName }) }}</span>
-        </WinCheckBox>
-        <WinCheckBox v-if="wizard.overwriteConfirmed" v-model="wizard.fullRebuild">
+        </FluentCheckbox>
+        <FluentCheckbox v-if="wizard.overwriteConfirmed" v-model="wizard.fullRebuild">
           {{ t("target.fullRebuild") }}
-        </WinCheckBox>
+        </FluentCheckbox>
         <p v-if="wizard.fullRebuild" class="field-help tone-warn">{{ t("target.fullRebuildHelp") }}</p>
       </template>
 
@@ -278,12 +278,12 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
           <p v-else-if="matchOf(resource)?.via === 'pattern'" class="field-help">
             {{ t("target.adoptViaPattern", { pattern: matchOf(resource)?.matched }) }}
           </p>
-          <WinCheckBox
+          <FluentCheckbox
             :model-value="wizard.isAdoptionConfirmed(resource.id)"
             @update:model-value="wizard.confirmAdoption(resource.id, $event)"
           >
             <span><span class="required-star" aria-hidden="true">*</span>{{ t("target.adoptConfirm", { name: wizard.adoptions[resource.id].name }) }}</span>
-          </WinCheckBox>
+          </FluentCheckbox>
           <button type="button" class="link-button" @click="wizard.chooseAdoption(resource.id, '')">
             {{ t("target.adoptInsteadCreate") }}
           </button>
@@ -358,9 +358,12 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
 
         <div v-for="input in inputs" :key="input.id" class="field">
           <template v-if="input.kind === 'toggle'">
-            <WinCheckBox v-model="wizard.inputs[input.id]">
+            <FluentCheckbox
+              :model-value="Boolean(wizard.inputs[input.id])"
+              @update:model-value="wizard.inputs[input.id] = $event"
+            >
               <span>{{ localized(input.label, locale) }}</span>
-            </WinCheckBox>
+            </FluentCheckbox>
             <p v-if="input.help" class="field-help">{{ localized(input.help, locale) }}</p>
           </template>
 
@@ -387,10 +390,10 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
                 spellcheck="false"
                 :placeholder="input.placeholder ? localized(input.placeholder, locale) : ''"
               />
-              <WinButton @Click="revealed[input.id] = !revealed[input.id]">
+              <FluentButton @click="revealed[input.id] = !revealed[input.id]">
                 {{ revealed[input.id] ? t("common.hide") : t("common.show") }}
-              </WinButton>
-              <WinButton v-if="input.generate" @Click="generate(input)">{{ t("target.generate") }}</WinButton>
+              </FluentButton>
+              <FluentButton v-if="input.generate" @click="generate(input)">{{ t("target.generate") }}</FluentButton>
             </div>
 
             <input
@@ -416,11 +419,11 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.authorize)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.authorize)">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.confirm)">
+        <FluentButton tone="primary" :disabled="!(canContinue)" @click="wizard.goTo(STEPS.confirm)">
           {{ t("common.next") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

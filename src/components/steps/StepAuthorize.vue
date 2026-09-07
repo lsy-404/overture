@@ -11,7 +11,7 @@ import { tokenPermissionsForEndpoints } from "../../lib/analyze/permissions";
 import { FIXED_AUTHORIZATION_DISPLAY_ROWS, deploymentAuthorizationDisplayRows } from "../../lib/analyze/authorizationDisplay";
 import { hostEndpointsFor } from "../../lib/analyze/endpoints";
 import { openPopup } from "../../lib/popup";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { FluentButton, FluentNotice } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -426,9 +426,9 @@ function recheck() {
 
     <template v-if="!wizard.sessionMatchesPackage || needsRequiredAppToken">
       <template v-if="wizard.authMode === 'oauth'">
-        <WinButton Style="AccentButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+        <FluentButton tone="primary" :disabled="!(!signingIn)" @click="startSignIn">
           {{ signingIn ? t("authorize.signingIn") : t("authorize.signInButton") }}
-        </WinButton>
+        </FluentButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
       </template>
 
@@ -476,17 +476,17 @@ function recheck() {
           </ul>
         </div>
 
-        <WinInfoBar v-if="dangerPermissions.length > 0" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+        <FluentNotice v-if="dangerPermissions.length > 0" tone="danger">
           <strong>{{ t("authorize.auto.dangerTitle") }}</strong>
           <p style="margin: 6px 0 0">{{ t("authorize.auto.dangerIntro") }}</p>
           <ul style="margin: 6px 0 0; padding-left: 20px">
             <li v-for="permission in dangerPermissions" :key="permission.key">{{ permission.name }}</li>
           </ul>
-        </WinInfoBar>
+        </FluentNotice>
 
-        <WinButton Style="AccentButtonStyle" MinHeight="44" Padding="20,10" Margin="0,8,0,4" @Click="startTokenCreation">
+        <FluentButton tone="primary" MinHeight="44" Padding="20,10" Margin="0,8,0,4" @click="startTokenCreation">
           {{ t("authorize.auto.tokenLinkLabel") }}
-        </WinButton>
+        </FluentButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
         <div class="field">
           <label for="autoToken">{{ t("authorize.auto.tokenLabel") }}</label>
@@ -500,9 +500,9 @@ function recheck() {
           />
         </div>
         <p v-if="needsRequiredAppToken && wizard.sessionMatchesPackage" class="field-help tone-warn">{{ t("authorize.auto.tokenRequired") }}</p>
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canSubmitToken" @Click="submitToken">
+        <FluentButton tone="primary" :disabled="!(canSubmitToken)" @click="submitToken">
           {{ submitting ? t("authorize.auto.submitting") : t("authorize.auto.submit") }}
-        </WinButton>
+        </FluentButton>
         <p v-if="submitError" class="field-help tone-bad">{{ submitError }}</p>
       </template>
     </template>
@@ -514,9 +514,9 @@ function recheck() {
           <li v-for="grant in wizard.oauthScope" :key="grant">{{ grant }}</li>
         </ul>
         <p v-else class="field-help" style="margin-top: 0">{{ t("authorize.grantedUnknown") }}</p>
-        <WinButton v-if="wizard.authMode === 'oauth'" Style="SubtleButtonStyle" :IsEnabled="!signingIn" @Click="startSignIn">
+        <FluentButton v-if="wizard.authMode === 'oauth'" tone="subtle" :disabled="!(!signingIn)" @click="startSignIn">
           {{ t("authorize.signInAgain") }}
-        </WinButton>
+        </FluentButton>
         <p v-if="popupError" class="field-help tone-bad">{{ popupError }}</p>
       </div>
 
@@ -541,9 +541,9 @@ function recheck() {
         <div v-if="checks.length > 0" class="guide-card">
           <div class="permission-head">
             <h3>{{ t("authorize.checksTitle") }}</h3>
-            <WinButton Style="SubtleButtonStyle" :IsEnabled="canVerify && !verifying" @Click="recheck">
+            <FluentButton tone="subtle" :disabled="!(canVerify && !verifying)" @click="recheck">
               <span aria-hidden="true">⟳</span>{{ verifying ? t("authorize.verifying") : t("authorize.recheck") }}
-            </WinButton>
+            </FluentButton>
           </div>
           <p class="field-help" style="margin-top: 0">{{ t("authorize.checksHelp") }}</p>
           <div class="permission-table-wrap">
@@ -635,11 +635,11 @@ function recheck() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="goBack">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="goBack">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.target)">
+        <FluentButton tone="primary" :disabled="!(canContinue)" @click="wizard.goTo(STEPS.target)">
           {{ t("common.next") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

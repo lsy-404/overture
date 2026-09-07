@@ -10,7 +10,7 @@ import { loadInstallConfig } from "../../lib/package/config";
 import { loadDataPackage } from "../../lib/package/artifact";
 import { analyzePackage } from "../../lib/analyze/analyze";
 import { localized } from "../../lib/recipe/types";
-import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentNotice, FluentProgressBar, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -268,19 +268,19 @@ onMounted(async () => {
     <p class="step-subtitle">{{ t(subtitleKey) }}</p>
 
     <div v-if="!policy.loaded" class="inline-status">
-      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <FluentProgressRing :size="20" />
       <span>{{ t("repository.loadingPolicy") }}</span>
     </div>
 
     <template v-else>
-      <WinInfoBar v-if="malformed" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+      <FluentNotice v-if="malformed" tone="danger">
         {{ t("repository.malformedSrc", { value: malformed }) }}
-      </WinInfoBar>
+      </FluentNotice>
 
-      <WinInfoBar v-if="rejected" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+      <FluentNotice v-if="rejected" tone="danger">
         <strong>{{ t("repository.rejectedTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("repository.rejectedBody", { source: sourceSlug(rejected) }) }}</p>
-      </WinInfoBar>
+      </FluentNotice>
 
       <!-- A `?src=` the policy accepts needs no picker: the link already named
            the one repository this run deploys from. Plain text, not a card —
@@ -306,20 +306,20 @@ onMounted(async () => {
           <p class="field-help" style="margin: 4px 0 0">{{ slug }}</p>
         </button>
 
-        <WinInfoBar
+        <FluentNotice
           v-if="policy.policy.allowlistEnabled && allowlist.length === 0"
-          :IsOpen="true"
-          Severity="Warning"
-          :IsClosable="false"
-          :IsIconVisible="false"
+
+          tone="warning"
+
+
         >
           {{ t("repository.allowlistEmpty") }}
-        </WinInfoBar>
+        </FluentNotice>
 
         <template v-if="freeInput">
-          <WinInfoBar :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
+          <FluentNotice tone="warning">
             {{ t("repository.allowlistOff") }}
-          </WinInfoBar>
+          </FluentNotice>
           <div class="field" style="margin-top: 16px">
             <label for="manualSource">{{ t("repository.manualLabel") }}</label>
             <input
@@ -334,7 +334,7 @@ onMounted(async () => {
             <p class="field-help">{{ t("repository.manualHelp") }}</p>
             <p v-if="manualError" class="field-help tone-bad">{{ manualError }}</p>
           </div>
-          <WinButton @Click="submitManual">{{ t("repository.manualUse") }}</WinButton>
+          <FluentButton @click="submitManual">{{ t("repository.manualUse") }}</FluentButton>
         </template>
       </template>
 
@@ -342,13 +342,13 @@ onMounted(async () => {
         <h3 class="section-heading">{{ t("repository.releaseHeading") }}</h3>
 
         <div v-if="listing" class="inline-status">
-          <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+          <FluentProgressRing :size="20" />
           <span>{{ t("common.loading") }}</span>
         </div>
-        <WinInfoBar v-else-if="listError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">{{ listError }}</WinInfoBar>
-        <WinInfoBar v-else-if="wizard.releases.length === 0" :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
+        <FluentNotice v-else-if="listError" tone="danger">{{ listError }}</FluentNotice>
+        <FluentNotice v-else-if="wizard.releases.length === 0" tone="warning">
           {{ t("repository.noneEligible") }}
-        </WinInfoBar>
+        </FluentNotice>
 
         <template v-else>
           <button
@@ -366,7 +366,7 @@ onMounted(async () => {
             </h3>
             <p>{{ release.tag_name }} · {{ formatDate(release.published_at) }}</p>
           </button>
-          <WinButton style="margin-top: 8px" @Click="listReleases">{{ t("repository.reload") }}</WinButton>
+          <FluentButton style="margin-top: 8px" @click="listReleases">{{ t("repository.reload") }}</FluentButton>
         </template>
       </template>
 
@@ -374,14 +374,14 @@ onMounted(async () => {
         <h3 class="section-heading">{{ t("repository.packageHeading") }}</h3>
 
         <div v-if="configLoading" class="inline-status">
-          <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+          <FluentProgressRing :size="20" />
           <span>{{ t("common.loading") }}</span>
         </div>
-        <WinInfoBar v-else-if="configError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+        <FluentNotice v-else-if="configError" tone="danger">
           <strong>{{ t("repository.configFailed") }}</strong>
           <p style="margin: 6px 0 0">{{ configError }}</p>
-          <WinButton style="margin-top: 10px" @Click="loadConfig">{{ t("common.retry") }}</WinButton>
-        </WinInfoBar>
+          <FluentButton style="margin-top: 10px" @click="loadConfig">{{ t("common.retry") }}</FluentButton>
+        </FluentNotice>
 
         <template v-else-if="ready && wizard.recipe">
           <p class="field-help">
@@ -390,15 +390,15 @@ onMounted(async () => {
           </p>
 
           <div v-if="packageLoading" class="inline-status analysis-status">
-            <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+            <FluentProgressRing :size="20" />
             <span>{{ t("analyze.loading") }}</span>
-            <WinProgressBar v-if="packageProgress > 0" :Value="packageProgress * 100" style="flex: 1 1 120px" />
+            <FluentProgressBar v-if="packageProgress > 0" :value="packageProgress * 100" style="flex: 1 1 120px" />
           </div>
-          <WinInfoBar v-else-if="packageError" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+          <FluentNotice v-else-if="packageError" tone="danger">
             <strong>{{ t("analyze.failed") }}</strong>
             <p style="margin: 6px 0 0">{{ packageError }}</p>
-            <WinButton style="margin-top: 10px" @Click="loadPackage()">{{ t("common.retry") }}</WinButton>
-          </WinInfoBar>
+            <FluentButton style="margin-top: 10px" @click="loadPackage()">{{ t("common.retry") }}</FluentButton>
+          </FluentNotice>
         </template>
       </template>
 
@@ -406,11 +406,11 @@ onMounted(async () => {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.tos)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.tos)">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="wizard.goTo(STEPS.license)">
+        <FluentButton tone="primary" :disabled="!(canContinue)" @click="wizard.goTo(STEPS.license)">
           {{ t("common.next") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

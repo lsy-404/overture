@@ -3,18 +3,18 @@
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import type { PackageAnalysis, Severity } from "../lib/analyze/analyze";
-import { WinInfoBar } from "../vendor/winui";
+import { FluentNotice, type FluentNoticeTone } from "@lsypkg/fluent/vue";
 
 const props = defineProps<{ analysis: PackageAnalysis }>();
 const { t } = useI18n();
 
-const SEVERITY_BARS: Record<Severity, string> = {
-  critical: "Error",
-  warning: "Warning",
-  note: "Informational",
+const SEVERITY_BARS: Record<Severity, FluentNoticeTone> = {
+  critical: "danger",
+  warning: "warning",
+  note: "info",
 };
 
-const barSeverity = computed(() => (props.analysis.worst ? SEVERITY_BARS[props.analysis.worst] : "Success"));
+const barSeverity = computed(() => (props.analysis.worst ? SEVERITY_BARS[props.analysis.worst] : "success"));
 
 // Findings that name a credential source carry the raw internal id (e.g.
 // "cfApiToken"); swap it for the human name before it reaches the sentence.
@@ -32,10 +32,10 @@ const hasEgress = computed(() => props.analysis.network.length > 0 || props.anal
   <div class="package-report">
     <h3 class="section-heading">{{ t("analyze.title") }}</h3>
 
-    <WinInfoBar :IsOpen="true" :Severity="barSeverity" :IsClosable="false" :IsIconVisible="false">
+    <FluentNotice :tone="barSeverity">
       <strong>{{ analysis.worst ? t("analyze.summaryFindings") : t("analyze.summaryClean") }}</strong>
       <p style="margin: 6px 0 0">{{ analysis.certain ? t("analyze.certain") : t("analyze.uncertainScan") }}</p>
-    </WinInfoBar>
+    </FluentNotice>
 
     <ul v-if="analysis.findings.length > 0" class="plain-list finding-list">
       <li v-for="(finding, index) in analysis.findings" :key="`${finding.code}-${index}`">
