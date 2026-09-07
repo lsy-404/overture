@@ -65,6 +65,7 @@ export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
   "turnstile.widgetCreate": { scopes: [], accountToken: { key: "challenge_widgets", type: "edit" } },
   "worker.scriptList": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
   "worker.scriptRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.scriptCreate": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
   "worker.scriptDelete": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
   "worker.settingsRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
   "worker.deploymentList": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
