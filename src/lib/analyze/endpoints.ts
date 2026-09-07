@@ -36,7 +36,7 @@ export const METHOD_ENDPOINTS: Record<string, string[]> = {
   "secrets.put": ["worker.secretPut"],
   "secrets.putHostValue": ["worker.secretPut"],
   "worker.deleteScript": ["worker.scriptDelete"],
-  "worker.uploadVersion": ["worker.versionCreate"],
+  "worker.uploadVersion": ["worker.scriptCreate", "worker.versionCreate"],
   "worker.switchTraffic": ["worker.deploymentCreate"],
   "assets.upload": ["worker.assetSession", "worker.assetUpload"],
   "cron.read": ["worker.scheduleRead"],
