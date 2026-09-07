@@ -289,6 +289,7 @@
     "optionsHeading": "应用选项",
     "generate": "随机生成",
     "domainPlaceholder": "app.example.com（留空则使用 *.workers.dev）",
+    "workersDevDefault": "留空时，Worker 会发布到自动生成的 workers.dev 地址。",
     "requiredMissing": "这一项必须填写。",
     "domainInvalid": "这不是这个包接受的主机名。",
     "patternAdvisory": "这个值不符合包建议的格式，但你仍然可以继续。"

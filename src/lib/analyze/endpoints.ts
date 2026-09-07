@@ -77,6 +77,7 @@ const KIND_INVENTORY: Record<ResourceKind, string> = {
  */
 export function hostEndpointsFor(recipe: Recipe): string[] {
   const out = [...HOST_ENDPOINTS];
+  if (recipe.capabilities?.includes("worker")) out.push("worker.subdomainRead", "worker.subdomainEnable", "worker.accountSubdomainRead");
   if ((recipe.checks || []).some((check) => check.expect === "paid")) out.push("account.subscriptionList");
   for (const resource of recipe.resources) {
     const id = KIND_INVENTORY[resource.kind];

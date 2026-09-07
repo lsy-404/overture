@@ -404,6 +404,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
             />
 
             <p v-if="input.help" class="field-help">{{ localized(input.help, locale) }}</p>
+            <p v-if="input.kind === 'domain' && !input.required" class="field-help">{{ t("target.workersDevDefault") }}</p>
             <p v-if="missing(input)" class="field-help tone-bad">{{ t("target.requiredMissing") }}</p>
             <p v-else-if="!patternOk(input)" class="field-help" :class="input.kind === 'domain' ? 'tone-bad' : 'tone-warn'">
               {{ input.kind === "domain" ? t("target.domainInvalid") : t("target.patternAdvisory") }}

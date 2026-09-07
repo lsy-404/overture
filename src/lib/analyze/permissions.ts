@@ -53,37 +53,40 @@ export interface EndpointPermission {
 }
 
 export const ENDPOINT_PERMISSIONS: Record<string, EndpointPermission> = {
-  "account.read": { scopes: ["account-settings.read"] },
+  "account.read": { scopes: ["account-settings.read"], accountToken: { key: "account_settings", type: "read" } },
   "account.subscriptionList": { scopes: ["billing.read"], oauthManualConfirmation: true },
-  "r2.bucketList": { scopes: ["workers-r2.read"] },
-  "r2.bucketCreate": { scopes: ["workers-r2.write"] },
-  "d1.databaseList": { scopes: ["d1.read"] },
-  "d1.databaseCreate": { scopes: ["d1.write"] },
-  "d1.query": { scopes: ["d1.write"], uncertain: "writeAssumed" },
-  "kv.namespaceList": { scopes: ["workers-kv-storage.read"] },
-  "kv.namespaceCreate": { scopes: ["workers-kv-storage.write"] },
+  "r2.bucketList": { scopes: ["workers-r2.read"], accountToken: { key: "workers_r2", type: "read" } },
+  "r2.bucketCreate": { scopes: ["workers-r2.write"], accountToken: { key: "workers_r2", type: "edit" } },
+  "d1.databaseList": { scopes: ["d1.read"], accountToken: { key: "d1", type: "read" } },
+  "d1.databaseCreate": { scopes: ["d1.write"], accountToken: { key: "d1", type: "edit" } },
+  "d1.query": { scopes: ["d1.write"], accountToken: { key: "d1", type: "edit" }, uncertain: "writeAssumed" },
+  "kv.namespaceList": { scopes: ["workers-kv-storage.read"], accountToken: { key: "workers_kv_storage", type: "read" } },
+  "kv.namespaceCreate": { scopes: ["workers-kv-storage.write"], accountToken: { key: "workers_kv_storage", type: "edit" } },
   "turnstile.widgetCreate": { scopes: [], accountToken: { key: "challenge_widgets", type: "edit" } },
-  "worker.scriptList": { scopes: ["workers-scripts.read"] },
-  "worker.scriptRead": { scopes: ["workers-scripts.read"] },
-  "worker.scriptDelete": { scopes: ["workers-scripts.write"] },
-  "worker.settingsRead": { scopes: ["workers-scripts.read"] },
-  "worker.deploymentList": { scopes: ["workers-scripts.read"] },
-  "worker.versionRead": { scopes: ["workers-scripts.read"] },
-  "worker.versionCreate": { scopes: ["workers-scripts.write", "workers-scripts.bind"] },
-  "worker.deploymentCreate": { scopes: ["workers-scripts.write"] },
-  "worker.assetSession": { scopes: ["workers-scripts.write"] },
-  "worker.secretPut": { scopes: ["workers-scripts.write"] },
-  "worker.scheduleRead": { scopes: ["workers-scripts.read"] },
-  "worker.scheduleWrite": { scopes: ["workers-scripts.write"] },
+  "worker.scriptList": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.scriptRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.scriptDelete": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.settingsRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.deploymentList": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.versionRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.versionCreate": { scopes: ["workers-scripts.write", "workers-scripts.bind"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.deploymentCreate": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.assetSession": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.secretPut": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.scheduleRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.scheduleWrite": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.subdomainRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
+  "worker.subdomainEnable": { scopes: ["workers-scripts.write"], accountToken: { key: "workers_scripts", type: "edit" } },
+  "worker.accountSubdomainRead": { scopes: ["workers-scripts.read"], accountToken: { key: "workers_scripts", type: "read" } },
   "worker.assetUpload": { scopes: [], ungated: SESSION_JWT },
-  "worker.domainList": { scopes: ["workers-routes.read"] },
-  "worker.domainAttach": { scopes: ["workers-routes.write"], uncertain: "zoneMayBeNeeded" },
+  "worker.domainList": { scopes: ["workers-routes.read"], accountToken: { key: "workers_routes", type: "read" } },
+  "worker.domainAttach": { scopes: ["workers-routes.write"], accountToken: { key: "workers_routes", type: "edit" }, uncertain: "zoneMayBeNeeded" },
   "containers.applicationList": { scopes: ["containers.read"] },
   "containers.applicationCreate": { scopes: ["containers.write"] },
   "containers.applicationModify": { scopes: ["containers.write"] },
   "containers.rolloutCreate": { scopes: ["containers.write"] },
   "images.stats": { scopes: ["images.read"] },
-  "zone.list": { scopes: ["zone.read"] },
+  "zone.list": { scopes: ["zone.read"], accountToken: { key: "zone", type: "read" } },
   "zone.imageResizing": { scopes: ["zone-settings.read"] },
 };
 
@@ -128,6 +131,17 @@ export function scopesForEndpoints(endpointIds: readonly string[]): string[] {
     for (const scope of permission?.scopes || []) out.add(scope);
   }
   return [...out].sort();
+}
+
+/** Account API Token groups required by the same endpoint set Overture will call. */
+export function tokenPermissionsForEndpoints(endpointIds: readonly string[]): Array<{ key: string; type: "read" | "edit" }> {
+  const permissions = new Map<string, "read" | "edit">();
+  for (const id of endpointIds) {
+    const permission = ENDPOINT_PERMISSIONS[id]?.accountToken;
+    if (!permission) continue;
+    if (permissions.get(permission.key) !== "edit") permissions.set(permission.key, permission.type);
+  }
+  return [...permissions].map(([key, type]) => ({ key, type }));
 }
 
 export interface ScopeDeviation {
