@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { useWizard } from "../../stores/wizard";
 import { localized } from "../../lib/recipe/types";
 import { revokeOAuthSession } from "../../lib/relay";
-import { WinButton, WinCheckBox, WinInfoBar } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox, FluentNotice } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -88,28 +88,28 @@ function finish() {
       <h3>{{ t("done.urlLabel") }}</h3>
       <code class="url-text">{{ result.url }}</code>
       <div class="url-actions">
-        <WinButton @Click="copy(result.url, 'url')">
+        <FluentButton @click="copy(result.url, 'url')">
           {{ copiedField === "url" ? t("common.copied") : t("common.copy") }}
-        </WinButton>
+        </FluentButton>
         <a :href="result.url" target="_blank" rel="noreferrer" class="btn">{{ t("done.openLink") }} ↗</a>
       </div>
     </div>
 
-    <WinInfoBar :IsOpen="true" Severity="Informational" :IsClosable="false" :IsIconVisible="false" style="margin-top: 16px">
+    <FluentNotice tone="info" style="margin-top: 16px">
       {{ t("done.propagationNotice") }}
-    </WinInfoBar>
+    </FluentNotice>
 
     <section v-if="(result?.credentials || []).length > 0" class="guide-card">
       <h3>{{ t("done.credentialsTitle") }}</h3>
       <div v-for="(credential, index) in result?.credentials || []" :key="`${credential.label}-${index}`" class="credential-row">
         <span class="credential-label">{{ credential.label }}</span>
         <code class="credential-value">{{ credential.secret && !revealed[index] ? maskedValue(credential.value) : credential.value }}</code>
-        <WinButton v-if="credential.secret" style="padding: 2px 10px; font-size: 0.75rem" @Click="revealed[index] = !revealed[index]">
+        <FluentButton v-if="credential.secret" style="padding: 2px 10px; font-size: 0.75rem" @click="revealed[index] = !revealed[index]">
           {{ revealed[index] ? t("common.hide") : t("common.show") }}
-        </WinButton>
-        <WinButton style="padding: 2px 10px; font-size: 0.75rem" @Click="copy(credential.value, `cred-${index}`)">
+        </FluentButton>
+        <FluentButton style="padding: 2px 10px; font-size: 0.75rem" @click="copy(credential.value, `cred-${index}`)">
           {{ copiedField === `cred-${index}` ? t("common.copied") : t("common.copy") }}
-        </WinButton>
+        </FluentButton>
       </div>
       <p style="margin: 10px 0 0">{{ t("done.saveWarning") }}</p>
     </section>
@@ -129,10 +129,10 @@ function finish() {
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinCheckBox v-model="clearCredentials" class="clear-credentials-check">
+        <FluentCheckbox v-model="clearCredentials" class="clear-credentials-check">
           <span>{{ t("done.clearCredentials") }}</span>
-        </WinCheckBox>
-        <WinButton Style="AccentButtonStyle" @Click="finish">{{ t("done.finish") }}</WinButton>
+        </FluentCheckbox>
+        <FluentButton tone="primary" @click="finish">{{ t("done.finish") }}</FluentButton>
       </div>
     </Teleport>
   </div>

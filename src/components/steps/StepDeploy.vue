@@ -7,7 +7,7 @@ import { runRecipe } from "../../lib/engine/run";
 import { DeployError, HOST_STEP_HEALTH } from "../../lib/deploy/types";
 import { localized } from "../../lib/recipe/types";
 import { issueReport, issueUrl } from "../../lib/recipe/issueReport";
-import { WinButton, WinInfoBar, WinProgressBar, WinProgressRing } from "../../vendor/winui";
+import { FluentButton, FluentNotice, FluentProgressBar, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -102,7 +102,7 @@ function retry() {
         <dt class="execute-step-label">
           <!-- MinWidth/MinHeight default to 16 and clamp Width/Height, so both
                have to be set for the ring to match the dot it replaces. -->
-          <WinProgressRing v-if="state.status === 'running'" :Width="10" :Height="10" :MinWidth="10" :MinHeight="10" />
+          <FluentProgressRing v-if="state.status === 'running'" :size="10" />
           <span v-else class="status-dot" :class="`status-dot-${state.status}`" />
           {{ labelFor(state.id) }}
         </dt>
@@ -113,32 +113,32 @@ function retry() {
           <template v-else>{{ t(`deploy.status.${state.status}`) }}</template>
           <p v-if="state.detail && state.status === 'failed'" class="field-help" style="margin: 4px 0 0">{{ state.detail }}</p>
         </dd>
-        <WinProgressBar
+        <FluentProgressBar
           v-if="state.status === 'running' && state.progress !== undefined"
-          :Value="state.progress * 100"
+          :value="state.progress * 100"
           class="execute-step-progress"
         />
       </div>
     </dl>
 
-    <WinInfoBar v-if="wizard.deployFailed" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false" style="margin-top: 20px">
+    <FluentNotice v-if="wizard.deployFailed" tone="danger" style="margin-top: 20px">
       <strong>{{ t("deploy.failedTitle") }}</strong>
       <p v-if="wizard.failedStep" style="margin: 6px 0 0">{{ t("deploy.failedAt", { step: labelFor(wizard.failedStep) }) }}</p>
       <p style="margin: 6px 0 0">{{ wizard.failedMessage }}</p>
-    </WinInfoBar>
+    </FluentNotice>
 
     <p v-if="wizard.deployFailed" class="field-help">{{ t("deploy.retryFromHere") }}</p>
 
     <div v-if="wizard.deployFailed && reportUrl" class="link-row">
-      <WinButton @Click="copyReport">{{ copiedReport ? t("common.copied") : t("deploy.copyReport") }}</WinButton>
+      <FluentButton @click="copyReport">{{ copiedReport ? t("common.copied") : t("deploy.copyReport") }}</FluentButton>
       <a :href="reportUrl" target="_blank" rel="noopener noreferrer" class="btn">{{ t("deploy.reportIssue") }} ↗</a>
     </div>
 
     <Teleport defer to=".shell-card-actions">
       <div v-if="wizard.deployFailed && !running" class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.confirm)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.confirm)">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" @Click="retry">{{ t("common.retry") }}</WinButton>
+        <FluentButton tone="primary" @click="retry">{{ t("common.retry") }}</FluentButton>
       </div>
     </Teleport>
   </div>

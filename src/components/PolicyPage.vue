@@ -3,7 +3,7 @@
 import { onMounted } from "vue";
 import { useI18n } from "vue-i18n";
 import { usePolicy } from "../stores/policy";
-import { WinButton, WinInfoBar, WinProgressRing } from "../vendor/winui";
+import { FluentButton, FluentNotice, FluentProgressRing } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const policy = usePolicy();
@@ -19,7 +19,7 @@ onMounted(() => {
     <p class="step-subtitle">{{ t("policy.subtitle") }}</p>
 
     <div v-if="!policy.loaded" class="inline-status">
-      <WinProgressRing :Width="20" :Height="20" :IsActive="true" />
+      <FluentProgressRing :size="20" />
       <span>{{ t("common.loading") }}</span>
     </div>
 
@@ -35,10 +35,10 @@ onMounted(() => {
         </div>
       </dl>
 
-      <WinInfoBar :IsOpen="true" Severity="Warning" :IsClosable="false" :IsIconVisible="false">
+      <FluentNotice tone="warning">
         <strong>{{ t("policy.riskTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("policy.riskBody") }}</p>
-      </WinInfoBar>
+      </FluentNotice>
 
       <h3 class="section-heading">{{ t("policy.sourcesTitle") }}</h3>
       <ul class="plain-list">
@@ -51,7 +51,7 @@ onMounted(() => {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="policy.show('wizard')">{{ t("policy.backToWizard") }}</WinButton>
+        <FluentButton @click="policy.show('wizard')">{{ t("policy.backToWizard") }}</FluentButton>
       </div>
     </Teleport>
   </div>

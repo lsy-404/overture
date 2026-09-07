@@ -2,7 +2,7 @@
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
-import { WinButton, WinCheckBox } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -26,17 +26,17 @@ const SECTIONS = ["scope", "eligibility", "auth", "capabilities", "ownership", "
     </div>
 
     <div class="accept-row">
-      <WinCheckBox v-model="wizard.tosAccepted">
+      <FluentCheckbox v-model="wizard.tosAccepted">
         <span><span class="required-star" aria-hidden="true">*</span>{{ t("tos.accept") }}</span>
-      </WinCheckBox>
+      </FluentCheckbox>
     </div>
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="wizard.tosAccepted" @Click="wizard.goTo(STEPS.repository)">
+        <FluentButton tone="primary" :disabled="!(wizard.tosAccepted)" @click="wizard.goTo(STEPS.repository)">
           {{ t("common.next") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>

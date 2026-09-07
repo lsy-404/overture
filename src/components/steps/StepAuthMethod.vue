@@ -4,7 +4,7 @@ import { computed } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import type { AuthMode } from "../../lib/recipe/types";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { FluentButton, FluentNotice } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -30,11 +30,11 @@ function choose(mode: AuthMode) {
     <h1 class="step-title">{{ t("authMethod.title") }}</h1>
     <p class="step-subtitle">{{ t("authMethod.subtitle") }}</p>
 
-    <WinInfoBar v-if="wizard.noAuthModeAvailable" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+    <FluentNotice v-if="wizard.noAuthModeAvailable" tone="danger">
       <strong>{{ t("authMethod.notAvailable.title") }}</strong>
       <p v-if="scopeShortfall.length" style="margin: 6px 0 0">{{ t("authMethod.notAvailable.scopeShortfall", { scopes: scopeShortfall.join(" ") }) }}</p>
       <p v-else style="margin: 6px 0 0">{{ t("authMethod.notAvailable.body") }}</p>
-    </WinInfoBar>
+    </FluentNotice>
 
     <button
       v-for="authMode in modes"
@@ -50,7 +50,7 @@ function choose(mode: AuthMode) {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.license)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.license)">{{ t("common.back") }}</FluentButton>
       </div>
     </Teleport>
   </div>

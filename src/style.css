@@ -1,14 +1,40 @@
-@import "./vendor/winui/styles/theme.css";
+@import "@lsypkg/fluent/style.css";
 
 :root {
-  /* Standard Microsoft/WinUI look: theme.css's own accent (#0067C0 light /
-     #4CC2FF dark) and neutral white/gray surfaces, unmodified — only the
-     geometry/type tokens it doesn't define are added here. */
+  /* Shared geometry and type tokens for the Fluent surface. */
   --radius-md: 4px;
   --radius-lg: 8px;
   --shadow-card: 0 1px 2px var(--ctrl-elevation-bottom, rgba(0, 0, 0, 0.08)), 0 8px 24px -12px rgba(0, 0, 0, 0.22);
   --font-sans: "Segoe UI Variable", "Segoe UI", -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.fluent-theme {
+  min-height: 100vh;
+  background: var(--fluent-bg);
+  --app-bg: var(--fluent-bg);
+  --text-primary: var(--fluent-text);
+  --text-secondary: var(--fluent-muted);
+  --text-disabled: var(--fluent-muted);
+  --accent-base: var(--fluent-accent);
+  --accent-hover: var(--fluent-accent);
+  --card-bg: var(--fluent-surface);
+  --card-bg-secondary: var(--fluent-control);
+  --card-stroke: var(--fluent-border);
+  --stroke-divider: var(--fluent-border);
+  --ctrl-border: var(--fluent-border);
+  --ctrl-fill-default: var(--fluent-control);
+  --ctrl-fill-secondary: var(--fluent-control-hover);
+  --ctrl-fill-tertiary: var(--fluent-control-pressed);
+  --ctrl-fill-input-active: var(--fluent-control);
+  --ctrl-fill-disabled: var(--fluent-control-pressed);
+  --ctrl-strong-fill: var(--fluent-muted);
+  --SystemFillColorSuccessBrush: var(--fluent-success);
+  --SystemFillColorCautionBrush: var(--fluent-warning);
+  --SystemFillColorCriticalBrush: var(--fluent-danger);
+  --SystemFillColorCriticalBackgroundBrush: color-mix(in srgb, var(--fluent-danger) 16%, transparent);
+  --SystemFillColorCautionBackgroundBrush: color-mix(in srgb, var(--fluent-warning) 16%, transparent);
+  --subtle-secondary: var(--fluent-selection);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,11 +47,7 @@
   box-sizing: border-box;
 }
 
-/* theme.css (vendor/winui) styles its own demo shell as a fixed-viewport
-   app with `height: 100%; overflow: hidden` on html/body/#app — it manages
-   scrolling itself via internal regions. We're a normal scrolling document
-   (and #app is Vite's default mount id, so that rule targets us too), so
-   undo it here. */
+/* The application owns its document viewport; the wizard scrolls internally. */
 html,
 body,
 #app {
@@ -40,16 +62,12 @@ body {
 }
 
 body {
-  background: var(--app-bg);
-  color: var(--text-primary);
+  background: #f3f3f3;
+  color: #1b1b1b;
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
-}
-
-#app {
-  min-height: 100vh;
 }
 
 h1,
@@ -208,14 +226,14 @@ code {
 }
 
 /* Primary step navigation reads as more prominent than an inline control. */
-.step-actions .win-btn {
+.step-actions .fluent-button {
   padding: 10px 22px;
   min-height: 40px;
   font-size: 0.95rem;
 }
 
-/* Reserved for <a class="btn ..."> link-buttons (WinButton can't render an <a>).
-   Actual <button> elements use the WinButton component instead. */
+/* Reserved for <a class="btn ..."> link-buttons (FluentButton can't render an <a>).
+   Actual <button> elements use the FluentButton component instead. */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -475,20 +493,12 @@ code {
   margin-right: 3px;
 }
 
-/* WinCheckBox renders `display: inline-flex` (fine standalone, but several
+/* FluentCheckbox renders `display: inline-flex` (fine standalone, but several
    in a row flow side by side with no line break). Stack them like the old
    .check-row labels did. */
-.win-checkbox {
+.fluent-checkbox {
   display: flex;
   margin-bottom: 12px;
-}
-
-/* WinInfoBar's own layout has no top/bottom padding — it relies on the
-   (16px-tall) severity icon's margin for vertical breathing room, which we
-   don't render (IsIconVisible="false", no bundled icon font). Add it back. */
-.win-infobar-layout {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
 }
 
 .credential-row {

@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { localized } from "../../lib/recipe/types";
 import { sourceSlug } from "../../../shared/package";
-import { WinButton, WinInfoBar } from "../../vendor/winui";
+import { FluentButton, FluentNotice } from "@lsypkg/fluent/vue";
 import { SHELL_SCROLL_AREA } from "../shellScroll";
 
 const { t, locale } = useI18n();
@@ -112,9 +112,9 @@ function start() {
     <h1 class="step-title">{{ t("confirm.title") }}</h1>
     <p class="step-subtitle">{{ t("confirm.subtitle") }}</p>
 
-    <WinInfoBar v-if="!sessionOk" :IsOpen="true" Severity="Error" :IsClosable="false" :IsIconVisible="false">
+    <FluentNotice v-if="!sessionOk" tone="danger">
       {{ t("confirm.sessionStale") }}
-    </WinInfoBar>
+    </FluentNotice>
 
     <dl class="kv-list">
       <div class="kv-row">
@@ -174,11 +174,11 @@ function start() {
 
     <template v-if="alerts.length > 0">
       <h3 class="section-heading">{{ t("confirm.alertsTitle") }}</h3>
-      <WinInfoBar
-        :IsOpen="true"
-        :Severity="alerts.some((finding) => finding.severity === 'critical') ? 'Error' : 'Warning'"
-        :IsClosable="false"
-        :IsIconVisible="false"
+      <FluentNotice
+
+        :tone="alerts.some((finding) => finding.severity === 'critical') ? 'danger' : 'warning'"
+
+
       >
         <strong>{{ t("confirm.alertsIntro") }}</strong>
         <ul style="margin: 8px 0 0; padding-left: 20px">
@@ -186,7 +186,7 @@ function start() {
             {{ t(`analyze.findings.${finding.code}`, finding.values || {}) }}
           </li>
         </ul>
-      </WinInfoBar>
+      </FluentNotice>
     </template>
 
     <h3 class="section-heading">{{ t("confirm.capabilitiesTitle") }}</h3>
@@ -200,16 +200,16 @@ function start() {
 
     <template v-if="hostSecrets.length > 0">
       <h3 class="section-heading">{{ t("confirm.hostSecretsTitle") }}</h3>
-      <WinInfoBar
+      <FluentNotice
         v-if="handsOverCredentials"
-        :IsOpen="true"
-        Severity="Warning"
-        :IsClosable="false"
-        :IsIconVisible="false"
+
+        tone="warning"
+
+
       >
         <strong>{{ t("confirm.hostSecretsWarnTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("confirm.hostSecretsWarnBody") }}</p>
-      </WinInfoBar>
+      </FluentNotice>
       <ul class="plain-list">
         <li v-for="secret in hostSecrets" :key="secret.name">
           <code>{{ secret.name }}</code> — {{ t(`confirm.secretSources.${secret.source}`) }}
@@ -221,16 +221,16 @@ function start() {
 
     <template v-if="turnstileSummaries.length > 0">
       <h3 class="section-heading">{{ t("confirm.turnstilesTitle") }}</h3>
-      <WinInfoBar
+      <FluentNotice
         v-if="turnstileRecipeSecret"
-        :IsOpen="true"
-        Severity="Error"
-        :IsClosable="false"
-        :IsIconVisible="false"
+
+        tone="danger"
+
+
       >
         <strong>{{ t("confirm.turnstileRecipeWarningTitle") }}</strong>
         <p style="margin: 6px 0 0">{{ t("confirm.turnstileRecipeWarningBody") }}</p>
-      </WinInfoBar>
+      </FluentNotice>
       <ul class="plain-list">
         <li v-for="widget in turnstileSummaries" :key="widget.id">
           <strong>{{ widget.name }}</strong> — {{ t("confirm.turnstileMode", { mode: widget.mode }) }}
@@ -244,11 +244,11 @@ function start() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.target)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.target)">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="lockSecondsLeft <= 0 && sessionOk && hasViewedEnd" @Click="start">
+        <FluentButton tone="primary" :disabled="!(lockSecondsLeft <= 0 && sessionOk && hasViewedEnd)" @click="start">
           {{ lockSecondsLeft > 0 ? t("confirm.confirmWait", { seconds: lockSecondsLeft }) : t("confirm.confirm") }}
-        </WinButton>
+        </FluentButton>
       </div>
       <p v-if="!hasViewedEnd" class="field-help accept-hint">{{ t("confirm.scrollToEnd") }}</p>
     </Teleport>

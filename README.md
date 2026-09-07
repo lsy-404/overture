@@ -89,4 +89,4 @@ That said, **a whitelisted package can still do whatever its recipe declares wit
 
 [AGPL-3.0-or-later](LICENSE)
 
-The browser UI uses components from [WinUIonWeb](https://github.com/Furry-Xiyi/WinUIonWeb) (GPL-3.0). See [`src/vendor/winui/NOTICE.md`](src/vendor/winui/NOTICE.md) for details.
+The browser UI uses the Apache-2.0 Platform Kit Fluent package.

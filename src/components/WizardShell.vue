@@ -8,19 +8,19 @@ import { useWizard, STEPS } from "../stores/wizard";
 import { localized } from "../lib/recipe/types";
 import { sourceSlug } from "../../shared/package";
 import { SHELL_SCROLL_AREA } from "./shellScroll";
-import { WinScrollViewer } from "../vendor/winui";
+import { FluentScrollViewer, type FluentScrollViewerHandle } from "@lsypkg/fluent/vue";
 
 // `step` 0 means "no wizard progress to show" — the policy page uses the same
 // chrome without a step counter.
 const props = defineProps<{ step: number; total: number }>();
 
-const scrollViewer = ref<InstanceType<typeof WinScrollViewer> | null>(null);
-const scrollArea = computed<HTMLElement | null>(() => scrollViewer.value?.scrollViewerRef ?? null);
+const scrollViewer = ref<FluentScrollViewerHandle | null>(null);
+const scrollArea = computed<HTMLElement | null>(() => scrollViewer.value?.element() ?? null);
 provide(SHELL_SCROLL_AREA, scrollArea);
 watch(
   () => props.step,
   () => {
-    scrollViewer.value?.ChangeView(0, 0);
+    scrollViewer.value?.scrollTo({ left: 0, top: 0 });
   },
   { flush: "post" },
 );
@@ -133,16 +133,16 @@ const buildLicense = __BUILD_LICENSE__;
            content visually. Each page Teleports its own .step-actions here, so
            navigation stays pinned below the scrolling content. -->
       <div class="shell-card-actions"></div>
-      <WinScrollViewer
+      <FluentScrollViewer
         ref="scrollViewer"
         class="shell-card-scroll"
-        HorizontalScrollBarVisibility="Disabled"
-        :IsTabStop="true"
+        :horizontal="false"
+        :focusable="true"
       >
         <div class="shell-card-content">
           <slot />
         </div>
-      </WinScrollViewer>
+      </FluentScrollViewer>
     </main>
 
     <footer class="shell-footer">
