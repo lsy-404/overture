@@ -32,6 +32,7 @@ import {
   type StepStatus,
 } from "../deploy/types";
 import { probeReachable } from "../deploy/health";
+import { enableWorkersDevUrl } from "../deploy/workersDev";
 import type { LoadedConfig } from "../package/config";
 import type { DataPackage } from "../package/artifact";
 import { effectiveResourceNames } from "../deploy/match";
@@ -140,7 +141,10 @@ export async function runRecipe(input: {
   }
 
   const result = host.result();
-  const url = result.url || (target.domain ? `https://${target.domain}` : "");
+  const defaultUrl = !result.url && !target.domain && activeVersion && recipe.capabilities.includes("worker")
+    ? await enableWorkersDevUrl(creds.accountId, target.workerName, locale)
+    : "";
+  const url = result.url || (target.domain ? `https://${target.domain}` : defaultUrl);
 
   if (recipe.health && url) {
     const path = recipe.health.path.startsWith("/") ? recipe.health.path : `/${recipe.health.path}`;

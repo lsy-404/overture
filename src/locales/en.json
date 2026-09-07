@@ -289,6 +289,7 @@
     "optionsHeading": "Application options",
     "generate": "Generate",
     "domainPlaceholder": "app.example.com (leave empty to use *.workers.dev)",
+    "workersDevDefault": "Leave this blank to publish the Worker at its generated workers.dev address.",
     "requiredMissing": "This value is required.",
     "domainInvalid": "That isn't a hostname this package accepts.",
     "patternAdvisory": "This value doesn't match the format the package suggests. You can continue anyway."
