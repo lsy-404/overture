@@ -65,6 +65,7 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "turnstile.widgetCreate", method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { id: "worker.scriptList", method: "GET", segments: ["accounts", null, "workers", "scripts"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scriptRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.scriptCreate", method: "PUT", segments: ["accounts", null, "workers", "scripts", null] },
   { id: "worker.scriptDelete", method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
   { id: "worker.settingsRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.deploymentList", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"], accountTokenReadPermission: "workers_scripts" },
