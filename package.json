@@ -16,6 +16,7 @@
     "test": "./test/run-all.sh"
   },
   "dependencies": {
+    "@lsypkg/fluent": "https://github.com/lsy-404/platform-kit/releases/download/v0.1.1/platform-kit-fluent-0.1.1.tgz",
     "@vitejs/plugin-vue": "^6.0.7",
     "acorn": "^8.18.0",
     "aws4fetch": "^1.0.20",
