@@ -199,8 +199,8 @@
     "deploymentScopesIntro": "这些权限取决于该应用及其部署选项。",
     "hostPermissions": {
       "accountInfo": { "name": "账户信息", "scenario": "确认用于部署的 Cloudflare 账户。" },
-      "workerTarget": { "name": "Worker 部署目标", "scenario": "更新前检查已有的 Worker 脚本和部署。" },
-      "workersDev": { "name": "workers.dev 地址", "scenario": "解析此 Worker 的自动生成 workers.dev 地址，必要时将其启用。" },
+      "workerTarget": { "name": "Workers 脚本（读取）", "scenario": "检查已有 Worker 及其部署状态。" },
+      "workersDev": { "name": "workers.dev 地址", "scenario": "未填写自定义域名时，启用 Worker 的 workers.dev 访问地址。" },
       "d1Inventory": { "name": "D1 数据库", "scenario": "检查本次部署可复用的数据库。" },
       "r2Inventory": { "name": "R2 存储桶", "scenario": "检查本次部署可复用的存储桶。" },
       "kvInventory": { "name": "Workers KV 命名空间", "scenario": "检查本次部署可复用的命名空间。" },

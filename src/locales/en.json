@@ -199,8 +199,8 @@
     "deploymentScopesIntro": "These permissions depend on this app and its deployment options.",
     "hostPermissions": {
       "accountInfo": { "name": "Account information", "scenario": "Confirm the Cloudflare account used for deployment." },
-      "workerTarget": { "name": "Worker deployment target", "scenario": "Inspect existing Worker scripts and deployments before updating them." },
-      "workersDev": { "name": "workers.dev address", "scenario": "Resolve and, if needed, enable this Worker's generated workers.dev address." },
+      "workerTarget": { "name": "Workers Scripts (read)", "scenario": "Read existing Workers and their deployment status." },
+      "workersDev": { "name": "workers.dev address", "scenario": "When no custom domain is provided, enable access through the Worker's workers.dev address." },
       "d1Inventory": { "name": "D1 databases", "scenario": "Check for a database this deployment can reuse." },
       "r2Inventory": { "name": "R2 buckets", "scenario": "Check for a bucket this deployment can reuse." },
       "kvInventory": { "name": "Workers KV namespaces", "scenario": "Check for a namespace this deployment can reuse." },
