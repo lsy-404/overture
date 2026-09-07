@@ -4,7 +4,7 @@ import { computed, onMounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import { STEPS, useWizard } from "../../stores/wizard";
 import { renderMarkdown } from "../../lib/markdown";
-import { WinButton, WinCheckBox } from "../../vendor/winui";
+import { FluentButton, FluentCheckbox } from "@lsypkg/fluent/vue";
 
 const { t } = useI18n();
 const wizard = useWizard();
@@ -61,9 +61,9 @@ function goNext() {
         v-html="termsHtml"
       ></div>
       <div v-if="mustAccept" class="accept-row">
-        <WinCheckBox v-model="wizard.termsAccepted" :IsEnabled="termsRead">
+        <FluentCheckbox v-model="wizard.termsAccepted" :disabled="!(termsRead)">
           <span><span class="required-star" aria-hidden="true">*</span>{{ t("license.accept") }}</span>
-        </WinCheckBox>
+        </FluentCheckbox>
         <span v-if="!termsRead" class="field-help accept-hint">{{ t("license.scrollToEnd") }}</span>
       </div>
       <p v-else class="field-help accept-hint">{{ t("license.acceptOptional") }}</p>
@@ -78,11 +78,11 @@ function goNext() {
 
     <Teleport defer to=".shell-card-actions">
       <div class="step-actions">
-        <WinButton @Click="wizard.goTo(STEPS.repository)">{{ t("common.back") }}</WinButton>
+        <FluentButton @click="wizard.goTo(STEPS.repository)">{{ t("common.back") }}</FluentButton>
         <div class="spacer" />
-        <WinButton Style="AccentButtonStyle" :IsEnabled="canContinue" @Click="goNext">
+        <FluentButton tone="primary" :disabled="!(canContinue)" @click="goNext">
           {{ t("common.next") }}
-        </WinButton>
+        </FluentButton>
       </div>
     </Teleport>
   </div>
