@@ -8,6 +8,8 @@ import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthTok
 import { localized } from "../../lib/recipe/types";
 import { buildTokenLinkUrl, describePermissions, mergeDeclaredPermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
 import { tokenPermissionsForEndpoints } from "../../lib/analyze/permissions";
+import { FIXED_AUTHORIZATION_DISPLAY_ROWS, deploymentAuthorizationDisplayRows } from "../../lib/analyze/authorizationDisplay";
+import { hostEndpointsFor } from "../../lib/analyze/endpoints";
 import { openPopup } from "../../lib/popup";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
@@ -16,6 +18,10 @@ const wizard = useWizard();
 
 const titleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto.title" : "authorize.title"));
 const subtitleKey = computed(() => (wizard.authMode === "auto" ? "authorize.auto.subtitle" : "authorize.subtitle"));
+const fixedAuthorizationRows = FIXED_AUTHORIZATION_DISPLAY_ROWS;
+const deploymentAuthorizationRows = computed(() =>
+  wizard.recipe ? deploymentAuthorizationDisplayRows(hostEndpointsFor(wizard.recipe)) : [],
+);
 
 /** The long-lived token this app wants, when the recipe declares one. */
 const cfApiTokenSecret = computed(() => wizard.recipe?.hostSecrets?.find((secret) => secret.source === "cfApiToken"));
@@ -399,7 +405,23 @@ function recheck() {
 
       <h3>{{ t("authorize.hostScopesTitle") }}</h3>
       <p class="field-help" style="margin-top: 0">{{ t("authorize.hostScopesIntro") }}</p>
-      <p class="field-help scope-codes">{{ wizard.hostBaselineScope.join(" ") }}</p>
+      <ul class="plain-list">
+        <li v-for="permission in fixedAuthorizationRows" :key="permission.id">
+          {{ t(`authorize.hostPermissions.${permission.id}.name`) }}
+          <p class="field-help" style="margin: 2px 0 0">{{ t(`authorize.hostPermissions.${permission.id}.scenario`) }}</p>
+        </li>
+      </ul>
+
+      <template v-if="deploymentAuthorizationRows.length">
+        <h3>{{ t("authorize.deploymentScopesTitle") }}</h3>
+        <p class="field-help" style="margin-top: 0">{{ t("authorize.deploymentScopesIntro") }}</p>
+        <ul class="plain-list">
+          <li v-for="permission in deploymentAuthorizationRows" :key="permission.id">
+            {{ t(`authorize.hostPermissions.${permission.id}.name`) }}
+            <p class="field-help" style="margin: 2px 0 0">{{ t(`authorize.hostPermissions.${permission.id}.scenario`) }}</p>
+          </li>
+        </ul>
+      </template>
     </div>
 
     <template v-if="!wizard.sessionMatchesPackage || needsRequiredAppToken">
@@ -631,9 +653,4 @@ function recheck() {
   font-family: var(--font-mono);
 }
 
-.scope-codes {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  word-break: break-word;
-}
 </style>
