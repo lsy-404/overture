@@ -112,9 +112,7 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
     return result.id;
   }
 
-  // A version cannot be uploaded until the script exists. PUT creates the
-  // first script and activates it, but its `id` names the script rather than
-  // its version, so read the active deployment before returning to recipe.js.
+  // PUT returns the script identity, so obtain its active version from deployments.
   await callCfMultipart(`${path}`, form, CONTEXT, signal, "PUT");
   const deployments = await callCfJson<{ deployments?: Array<{ versions?: Array<{ version_id?: string }> }> }>(
     `${path}/deployments`,
