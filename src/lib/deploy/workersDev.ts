@@ -12,10 +12,7 @@ interface AccountSubdomain {
   subdomain?: string;
 }
 
-/**
- * Makes the Worker reachable at its account's workers.dev hostname and returns
- * that hostname. A custom domain never needs this path.
- */
+// Resolve the account hostname before enabling the Worker's default route.
 export async function enableWorkersDevUrl(accountId: string, script: string, locale: string, signal?: AbortSignal): Promise<string> {
   const encodedScript = encodeURIComponent(script);
   const scriptPath = `/accounts/${accountId}/workers/scripts/${encodedScript}/subdomain`;
