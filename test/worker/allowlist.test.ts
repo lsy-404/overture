@@ -45,6 +45,7 @@ const RULES: Rule[] = [
   { method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null] },
+  { method: "PUT", segments: ["accounts", null, "workers", "scripts", null] },
   { method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
