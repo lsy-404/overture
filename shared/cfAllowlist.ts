@@ -65,6 +65,7 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "turnstile.widgetCreate", method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { id: "worker.scriptList", method: "GET", segments: ["accounts", null, "workers", "scripts"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scriptRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.scriptCreate", method: "PUT", segments: ["accounts", null, "workers", "scripts", null] },
   { id: "worker.scriptDelete", method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
   { id: "worker.settingsRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.deploymentList", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"], accountTokenReadPermission: "workers_scripts" },
@@ -79,6 +80,9 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "worker.secretPut", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "secrets"] },
   { id: "worker.scheduleRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scheduleWrite", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
+  { id: "worker.subdomainRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "subdomain"], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.subdomainEnable", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "subdomain"] },
+  { id: "worker.accountSubdomainRead", method: "GET", segments: ["accounts", null, "workers", "subdomain"], accountTokenReadPermission: "workers_scripts" },
   {
     id: "worker.assetUpload",
     method: "POST",

@@ -7,7 +7,7 @@ import { WinButton, WinCheckBox } from "../../vendor/winui";
 const { t } = useI18n();
 const wizard = useWizard();
 
-const SECTIONS = ["eligibility", "auth", "prohibited", "privacy", "ownership", "capabilities", "liability", "indemnification", "license", "changes"] as const;
+const SECTIONS = ["scope", "eligibility", "auth", "capabilities", "ownership", "privacy", "prohibited", "license", "availability", "liability", "changes"] as const;
 </script>
 
 <template>

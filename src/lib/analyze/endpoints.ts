@@ -36,7 +36,7 @@ export const METHOD_ENDPOINTS: Record<string, string[]> = {
   "secrets.put": ["worker.secretPut"],
   "secrets.putHostValue": ["worker.secretPut"],
   "worker.deleteScript": ["worker.scriptDelete"],
-  "worker.uploadVersion": ["worker.versionCreate"],
+  "worker.uploadVersion": ["worker.scriptCreate", "worker.versionCreate"],
   "worker.switchTraffic": ["worker.deploymentCreate"],
   "assets.upload": ["worker.assetSession", "worker.assetUpload"],
   "cron.read": ["worker.scheduleRead"],
@@ -77,6 +77,7 @@ const KIND_INVENTORY: Record<ResourceKind, string> = {
  */
 export function hostEndpointsFor(recipe: Recipe): string[] {
   const out = [...HOST_ENDPOINTS];
+  if (recipe.capabilities?.includes("worker")) out.push("worker.subdomainRead", "worker.subdomainEnable", "worker.accountSubdomainRead");
   if ((recipe.checks || []).some((check) => check.expect === "paid")) out.push("account.subscriptionList");
   for (const resource of recipe.resources) {
     const id = KIND_INVENTORY[resource.kind];

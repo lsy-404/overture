@@ -24,45 +24,49 @@
     "title": "Terms of Use",
     "subtitle": "These Terms of Use govern your access to and use of this Overture instance. By checking the box below, you agree to be bound by them.",
     "sections": {
+      "scope": {
+        "heading": "Service scope and parties",
+        "body": "These terms govern your access to and use of this Overture instance and form an agreement between you and its operator. Overture is a deployment tool for self-hosted applications. Application packages, Cloudflare, GitHub, and other third-party services remain subject to their own terms and licenses. Assisting with deployment does not make the operator the operator of your deployed application."
+      },
       "eligibility": {
-        "heading": "Eligibility",
-        "body": "By using this service, you represent that you are of legal age to enter into binding contracts in your jurisdiction, that you have the authority to bind yourself and, where applicable, your organization to these terms, and that your use of this service does not violate any applicable law or regulation."
+        "heading": "Eligibility and authority",
+        "body": "You must have legal capacity to accept these terms and authority to use the selected account, resources, and domains. If you act for an organization, you must be authorized to do so. You must not use credentials, resources, or application content without permission."
       },
       "auth": {
-        "heading": "Authorization and Credentials",
-        "body": "By using this deployer, you confirm that you are duly authorized to create, modify, and delete resources in the Cloudflare account you select. All credentials are processed server-side and never exposed to page JavaScript. Any API token you provide is written unchanged into the deployed Worker, scoped precisely to the permissions the package's creation link requested. Overture does not create, widen, or revoke tokens on your behalf."
-      },
-      "prohibited": {
-        "heading": "Prohibited Uses",
-        "body": "You may not use this service to deploy packages that: (a) violate any applicable law or regulation; (b) infringe the intellectual property rights of any party; (c) facilitate unauthorized access to computer systems or networks; (d) distribute malware, ransomware, spyware, or other malicious software; (e) engage in fraud, phishing, or other deceptive conduct; (f) send unsolicited communications; or (g) violate Cloudflare's Terms of Service or Acceptable Use Policy. The operator reserves the right to restrict access to this instance for any reason and without prior notice."
-      },
-      "privacy": {
-        "heading": "No Data Retention",
-        "body": "This service keeps no server-side logs and retains no record of what was deployed, by whom, or when. No information about your usage is transmitted to or stored by the operator. Deployment state exists only in your browser for the duration of your session."
-      },
-      "ownership": {
-        "heading": "Account Ownership and Billing",
-        "body": "All resources are created within your own Cloudflare account. You are solely responsible for all associated costs, usage, and compliance with Cloudflare's terms. The operator of this instance holds no ownership interest in any resource deployed on your behalf and is not responsible for any charges incurred."
+        "heading": "Authentication and credentials",
+        "body": "OAuth authorization is handled by the server using a secure session cookie. Manually entered API tokens, application secrets, and deployment options may be processed in your browser during input and deployment. Only application credentials explicitly declared by the package and disclosed by the wizard are written to the target Worker; package scripts cannot read the account authentication session. You are responsible for reviewing permissions and revoking grants or tokens in Cloudflare when needed. Closing this page neither removes deployed resources nor revokes manually created tokens."
       },
       "capabilities": {
-        "heading": "Package Capabilities and Disclosure",
-        "body": "Each package accepted by this instance declares the Cloudflare capabilities it requires. The wizard presents a complete disclosure of those capabilities before you authorize any deployment. By proceeding, you confirm that you have reviewed and accepted the package's declared capabilities. You are solely responsible for the packages you choose to deploy."
+        "heading": "Packages, permissions, and deployment risks",
+        "body": "Before deploying, review the package source, version, license, permissions, and target resources. Allowing a source does not guarantee its safety. Deployment may create resources, modify data or configuration, switch traffic, or delete and recreate a Worker when you select a full rebuild. These operations are not an atomic transaction: a failure may leave completed changes in place. Back up important data and prepare a recovery plan."
       },
-      "liability": {
-        "heading": "Disclaimer of Warranties and Limitation of Liability",
-        "body": "This service is provided as-is and as-available, without warranty of any kind, express or implied, including but not limited to warranties of merchantability, fitness for a particular purpose, or non-infringement. To the maximum extent permitted by applicable law, the operator shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to loss of profits, data, or goodwill, arising from or in connection with your use of this service or any deployment made through it. Your sole remedy for dissatisfaction is to cease using the service."
+      "ownership": {
+        "heading": "Resources and charges",
+        "body": "Target resources belong to and are managed through your selected Cloudflare account. You are responsible for plans, usage, domains, third-party services, and related charges. Overture does not guarantee free deployment or operation, assume your charges, or manage your billing. Stopping use of the deployer does not stop resource operation or billing."
       },
-      "indemnification": {
-        "heading": "Indemnification",
-        "body": "You agree to indemnify, defend, and hold harmless the operator of this instance and its affiliates from and against any claims, liabilities, damages, losses, judgments, and expenses, including reasonable legal fees, arising out of or in connection with: (a) your use of or access to this service; (b) your violation of any provision of these terms; (c) any package you deploy through this service; or (d) your infringement of any third-party right, including intellectual property rights or privacy rights."
+      "privacy": {
+        "heading": "Sessions, data, and third parties",
+        "body": "This instance does not maintain deployment logs, analytics tracking, or a server-side deployment-history database. Temporary operating state is handled through browser memory, tab storage, and protected session cookies; do not enter credentials on untrusted devices. Requests are still processed by Cloudflare, GitHub, and services declared by the package, which may retain records under their own policies. Processing of comments, accounts, or other user data by the deployed application is the responsibility of that application and its operator, and is outside this deployer’s no-logging commitment."
+      },
+      "prohibited": {
+        "heading": "Acceptable use",
+        "body": "Do not use this service for unlawful activity, infringement of intellectual property or privacy, malware distribution, unauthorized system access, fraud, phishing, or unsolicited messaging. Do not circumvent source policies, permission checks, or other security boundaries. You must also comply with the applicable rules of Cloudflare and other service providers."
       },
       "license": {
-        "heading": "License and Source Availability",
-        "body": "Overture's own code is licensed under AGPL-3.0-or-later. Distributed packages may incorporate additional components subject to their own licenses, which are disclosed in the deployment wizard. Source code is publicly available. This service is never sold; any offer of paid access to Overture is fraudulent."
+        "heading": "Open-source licenses and independent services",
+        "body": "Overture source code and included components are provided under their respective open-source licenses; these terms do not restrict rights those licenses grant you. The application package’s software license is shown separately in the wizard. Use of this instance creates no agency, partnership, or guarantee involving Cloudflare, GitHub, or application authors."
+      },
+      "availability": {
+        "heading": "Availability and termination",
+        "body": "This instance is provided as is and as available and may be suspended or discontinued for maintenance, failures, security incidents, third-party restrictions, or operational reasons. The operator does not promise uninterrupted availability, particular performance, or continuing maintenance. You may stop using the service at any time; managing, backing up, updating, or deleting deployed resources remains your responsibility in the owning account."
+      },
+      "liability": {
+        "heading": "Disclaimer and limitation of liability",
+        "body": "To the extent permitted by applicable law, the operator disclaims warranties of merchantability, fitness for a particular purpose, non-infringement, error-free operation, and uninterrupted service for this service or any package, and is not liable for indirect, incidental, special, or consequential losses, including data loss, downtime, and lost revenue. These terms do not exclude or limit liability that cannot lawfully be excluded or limited, or remove your statutory rights."
       },
       "changes": {
-        "heading": "Modifications to Terms",
-        "body": "The operator may update these Terms of Use at any time. The current version is always displayed in this wizard before you accept. Continuing to use this service after terms are updated constitutes your acceptance of the revised terms. If you do not agree to any revised terms, you must immediately cease use of the service."
+        "heading": "Updates, interpretation, and contact",
+        "body": "This version was updated on 2026-09-07. Revised terms will be displayed before use and do not retroactively change completed deployments. The English and Chinese versions express the same agreement; ambiguities are interpreted under applicable law and the purpose of these terms. An invalid provision does not invalidate the remainder unless the law requires otherwise. Questions about this instance may be raised through the project repository linked in the footer. Do not include tokens, personal information, or deployment data in public reports."
       }
     },
     "accept": "I have read and agree to these terms"
@@ -307,7 +311,8 @@
     "domainPlaceholder": "app.example.com (leave empty to use *.workers.dev)",
     "requiredMissing": "This value is required.",
     "domainInvalid": "That isn't a hostname this package accepts.",
-    "patternAdvisory": "This value doesn't match the format the package suggests. You can continue anyway."
+    "patternAdvisory": "This value doesn't match the format the package suggests. You can continue anyway.",
+    "workersDevDefault": "Leave this blank to publish the Worker at its generated workers.dev address."
   },
   "confirm": {
     "title": "Confirm deployment",

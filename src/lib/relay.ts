@@ -152,9 +152,9 @@ export async function callCfNoContent(path: string, init?: RequestInit, context?
 }
 
 /** Multipart variant for the Worker version upload, authorized by the session cookie. */
-export async function callCfMultipart<T>(path: string, form: FormData, context?: string, signal?: AbortSignal): Promise<T> {
+export async function callCfMultipart<T>(path: string, form: FormData, context?: string, signal?: AbortSignal, method = "POST"): Promise<T> {
   const response = await fetchRelay(`${relayBase()}/cf${path}`, {
-    method: "POST",
+    method,
     credentials: "same-origin",
     headers: RELAY_HEADER,
     body: form,

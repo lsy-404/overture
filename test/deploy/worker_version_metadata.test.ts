@@ -14,13 +14,20 @@ const recipe = {
 const base = { recipe, mode: "fresh" as const, resourceIds: {}, resourceNames: {}, vars: {}, declareContainers: [] };
 const bindings = buildBindings(base);
 const captured: Array<Record<string, unknown>> = [];
+const calls: Array<{ url: string; method: string }> = [];
 const oldFetch = globalThis.fetch;
 
 try {
-  globalThis.fetch = async (_input, init) => {
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    const method = init?.method || "GET";
+    calls.push({ url, method });
+    if (method === "GET" && url.endsWith("/deployments")) {
+      return new Response(JSON.stringify({ success: true, result: { deployments: [{ versions: [{ version_id: "fresh-version" }] }] } }), { status: 200 });
+    }
     const form = init?.body as FormData;
     captured.push(JSON.parse(await (form.get("metadata") as Blob).text()));
-    return new Response(JSON.stringify({ success: true, result: { id: "version" } }), { status: 200 });
+    return new Response(JSON.stringify({ success: true, result: { id: "script-name" } }), { status: 200 });
   };
   for (const mode of ["fresh", "overwrite"] as const) {
     await uploadWorkerVersion({
@@ -59,6 +66,8 @@ const checks: Array<[string, boolean]> = [
     captured.every((metadata) => JSON.stringify(metadata.assets) === JSON.stringify(expectedAssets))],
   ["overwrite retains existing bindings", JSON.stringify(captured[1]?.keep_bindings) === JSON.stringify(KEEP_BINDING_TYPES)],
   ["fresh upload does not request keep_bindings", captured[0]?.keep_bindings === undefined],
+  ["fresh creation PUTs the script then reads its active deployment version", calls[0]?.method === "PUT" && calls[0]?.url.endsWith("/workers/scripts/x") && calls[1]?.method === "GET" && calls[1]?.url.endsWith("/workers/scripts/x/deployments")],
+  ["overwrite uploads a version only after the Worker exists", calls[2]?.method === "POST" && calls[2]?.url.endsWith("/workers/scripts/x/versions")],
 ];
 
 let failures = 0;
