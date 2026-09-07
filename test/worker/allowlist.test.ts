@@ -45,6 +45,7 @@ const RULES: Rule[] = [
   { method: "POST", segments: ["accounts", null, "challenges", "widgets"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null] },
+  { method: "PUT", segments: ["accounts", null, "workers", "scripts", null] },
   { method: "DELETE", segments: ["accounts", null, "workers", "scripts", null] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "settings"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "deployments"] },
@@ -54,6 +55,9 @@ const RULES: Rule[] = [
   { method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "secrets"] },
   { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
   { method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
+  { method: "GET", segments: ["accounts", null, "workers", "scripts", null, "subdomain"] },
+  { method: "POST", segments: ["accounts", null, "workers", "scripts", null, "subdomain"] },
+  { method: "GET", segments: ["accounts", null, "workers", "subdomain"] },
   { method: "POST", segments: ["accounts", null, "workers", "assets", "upload"] },
   { method: "GET", segments: ["accounts", null, "workers", "domains"] },
   { method: "PUT", segments: ["accounts", null, "workers", "domains"] },
@@ -140,6 +144,10 @@ const checks: Array<[string, boolean, string?]> = [
   ["the Workers custom domain entries are present",
     isPathAllowed("GET", ["accounts", ACCOUNT, "workers", "domains"])
     && isPathAllowed("PUT", ["accounts", ACCOUNT, "workers", "domains"])],
+  ["the Workers workers.dev entries are present",
+    isPathAllowed("GET", ["accounts", ACCOUNT, "workers", "scripts", SCRIPT, "subdomain"])
+    && isPathAllowed("POST", ["accounts", ACCOUNT, "workers", "scripts", SCRIPT, "subdomain"])
+    && isPathAllowed("GET", ["accounts", ACCOUNT, "workers", "subdomain"])],
   ["only Turnstile widget creation is present",
     isPathAllowed("POST", ["accounts", ACCOUNT, "challenges", "widgets"])
     && !isPathAllowed("GET", ["accounts", ACCOUNT, "challenges", "widgets"])

@@ -105,14 +105,23 @@ export async function uploadWorkerVersion(input: UploadVersionInput, signal?: Ab
     input.workerModule,
   );
 
-  const result = await callCfMultipart<{ id?: string }>(
-    `/accounts/${input.accountId}/workers/scripts/${encodeURIComponent(input.script)}/versions`,
-    form,
+  const path = `/accounts/${input.accountId}/workers/scripts/${encodeURIComponent(input.script)}`;
+  if (input.mode !== "fresh") {
+    const result = await callCfMultipart<{ id?: string }>(`${path}/versions`, form, CONTEXT, signal);
+    if (!result.id) throw new Error("Cloudflare did not return a Worker version id");
+    return result.id;
+  }
+
+  // PUT returns the script identity, so obtain its active version from deployments.
+  await callCfMultipart(`${path}`, form, CONTEXT, signal, "PUT");
+  const deployments = await callCfJson<{ deployments?: Array<{ versions?: Array<{ version_id?: string }> }> }>(
+    `${path}/deployments`,
+    signal ? { signal } : undefined,
     CONTEXT,
-    signal,
   );
-  if (!result.id) throw new Error("Cloudflare did not return a Worker version id");
-  return result.id;
+  const versionId = deployments.deployments?.[0]?.versions?.[0]?.version_id;
+  if (!versionId) throw new Error("Cloudflare created the Worker but did not report an active version");
+  return versionId;
 }
 
 export async function switchTraffic(accountId: string, script: string, versionId: string, signal?: AbortSignal): Promise<void> {

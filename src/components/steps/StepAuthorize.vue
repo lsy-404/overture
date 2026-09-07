@@ -7,6 +7,7 @@ import { verifyAccount, type CredentialCheck } from "../../lib/cf/verify";
 import { fetchOAuthSession, oauthAuthorizeUrl, selectOAuthAccount, submitAuthToken } from "../../lib/relay";
 import { localized } from "../../lib/recipe/types";
 import { buildTokenLinkUrl, describePermissions, mergeDeclaredPermissions, mergeTokenPermissions, preflightPermissionsForChecks } from "../../lib/cf/tokenLink";
+import { tokenPermissionsForEndpoints } from "../../lib/analyze/permissions";
 import { openPopup } from "../../lib/popup";
 import { WinButton, WinInfoBar } from "../../vendor/winui";
 
@@ -49,10 +50,12 @@ const TURNSTILE_PERMISSION = {
   type: "edit",
   requirement: "required",
 } as const;
+const deploymentPermissions = computed(() => tokenPermissionsForEndpoints(wizard.analysis?.endpoints.map((endpoint) => endpoint.id) || []));
 
 /** Every permission the app's token needs, with its display name and danger flag. */
 const permissionRows = computed(() => describePermissions(mergeDeclaredPermissions([
   ...(cfApiTokenSecret.value?.permissions ?? []),
+  ...deploymentPermissions.value.map((permission) => ({ ...permission, requirement: "required" as const })),
   ...(turnstiles.value.length > 0 ? [TURNSTILE_PERMISSION] : []),
 ])));
 
@@ -72,6 +75,7 @@ function togglePermission(key: string): void {
 const includedPermissions = computed(() =>
   [
     ...(cfApiTokenSecret.value?.permissions ?? []).filter((p) => !(p.requirement === "optional" && excludedKeys.value.has(p.key))),
+    ...deploymentPermissions.value,
     ...(turnstiles.value.length > 0 ? [TURNSTILE_PERMISSION] : []),
   ],
 );
