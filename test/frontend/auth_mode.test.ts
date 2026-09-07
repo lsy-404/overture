@@ -371,6 +371,15 @@ const checks: Array<[string, boolean, string?]> = [
   ["the authorize page presents generated reads as account pre-check requirements", /preflightPermissionsForChecks/.test(authorizeSource) && /checkPermissionsTitle/.test(authorizeSource)],
   ["the authorize page pre-fills the account token's editable name from the package name", /buildTokenLinkUrl\(tokenPermissions\.value, wizard\.recipe\?\.name\)/.test(authorizeSource)],
   ["the authorize page labels paid checks as manual in OAuth and blocks until the user attests", /manualPaidChecks/.test(authorizeSource) && /manualChecksConfirmed/.test(authorizeSource) && /confirmManualCheck/.test(authorizeSource)],
+  ["the OAuth authorization page uses named permission groups instead of raw host scopes",
+    /fixedAuthorizationRows/.test(authorizeSource)
+    && /deploymentAuthorizationRows/.test(authorizeSource)
+    && !/hostBaselineScope\.join/.test(authorizeSource)
+    && enLocale.authorize.hostScopesIntro === "Overture needs the following permissions to confirm account information and inspect the deployment target."
+    && zhLocale.authorize.hostScopesIntro === "Overture 需要以下权限，用于确认账户信息并检查部署目标。"],
+  ["workers.dev activation is described as a deployment-specific permission in both locales",
+    enLocale.authorize.hostPermissions.workersDev.scenario.includes("enable")
+    && zhLocale.authorize.hostPermissions.workersDev.scenario.includes("启用")],
 ];
 
 for (const [label, passed, detail] of checks) {
