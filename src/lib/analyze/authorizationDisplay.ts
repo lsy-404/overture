@@ -1,9 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-/**
- * User-facing groups for the endpoints Overture calls while preparing a
- * deployment. These groups describe the action, never the OAuth scope name.
- */
 export interface AuthorizationDisplayRow {
   id: string;
   endpointIds: readonly string[];
