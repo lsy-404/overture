@@ -79,6 +79,9 @@ export const CF_ENDPOINTS: readonly EndpointRule[] = [
   { id: "worker.secretPut", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "secrets"] },
   { id: "worker.scheduleRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "schedules"], accountTokenReadPermission: "workers_scripts" },
   { id: "worker.scheduleWrite", method: "PUT", segments: ["accounts", null, "workers", "scripts", null, "schedules"] },
+  { id: "worker.subdomainRead", method: "GET", segments: ["accounts", null, "workers", "scripts", null, "subdomain"], accountTokenReadPermission: "workers_scripts" },
+  { id: "worker.subdomainEnable", method: "POST", segments: ["accounts", null, "workers", "scripts", null, "subdomain"] },
+  { id: "worker.accountSubdomainRead", method: "GET", segments: ["accounts", null, "workers", "subdomain"], accountTokenReadPermission: "workers_scripts" },
   {
     id: "worker.assetUpload",
     method: "POST",
