@@ -333,7 +333,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
             <label :for="`container-${container.className}`">{{ container.className }}</label>
             <FluentSelect
               :id="`container-${container.className}`"
-              :label="container.className"
+              :aria-label="container.className"
               :model-value="wizard.containerActions[container.className] || 'off'"
               :options="[
                 ...(wizard.mode === 'overwrite' && wizard.live.containerClasses.includes(container.className) ? [{ value: 'unchanged', label: t('target.containerKeep') }] : []),
@@ -376,7 +376,7 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
               v-if="input.kind === 'select'"
               :id="`input-${input.id}`"
               :model-value="String(wizard.inputs[input.id] ?? '')"
-              :label="localized(input.label, locale)"
+              :aria-label="localized(input.label, locale)"
               :options="(input.options || []).map((option) => ({ value: option.value, label: localized(option.label, locale) }))"
               @update:model-value="wizard.inputs[input.id] = $event"
             />
