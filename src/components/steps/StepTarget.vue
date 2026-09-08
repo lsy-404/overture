@@ -6,7 +6,7 @@ import { STEPS, useWizard } from "../../stores/wizard";
 import { listExistingResources, readLiveFacts } from "../../lib/deploy/inventory";
 import { localized, RECIPE_LIMITS, type RecipeInput, type RecipeResource, type ResourceKind } from "../../lib/recipe/types";
 import type { ContainerAction } from "../../lib/deploy/types";
-import { FluentButton, FluentCheckbox, FluentNotice, FluentProgressRing } from "@lsypkg/fluent/vue";
+import { FluentButton, FluentCheckbox, FluentNotice, FluentProgressRing, FluentSelect } from "@lsypkg/fluent/vue";
 
 const { t, locale } = useI18n();
 const wizard = useWizard();
@@ -16,8 +16,8 @@ const wizard = useWizard();
 const resources = computed(() => wizard.recipe?.resources ?? []);
 const askContainers = computed(() => (wizard.recipe?.worker.containers ?? []).filter((container) => container.mode === "ask"));
 
-function setContainerAction(className: string, event: Event) {
-  wizard.containerActions[className] = (event.target as HTMLSelectElement).value as ContainerAction;
+function setContainerAction(className: string, value: string) {
+  wizard.containerActions[className] = value as ContainerAction;
 }
 
 const scanning = ref(true);
@@ -331,20 +331,17 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
         <template v-for="container in askContainers" :key="container.className">
           <div class="field container-choice">
             <label :for="`container-${container.className}`">{{ container.className }}</label>
-            <select
+            <FluentSelect
               :id="`container-${container.className}`"
-              :value="wizard.containerActions[container.className] || 'off'"
-              @change="setContainerAction(container.className, $event)"
-            >
-              <option
-                v-if="wizard.mode === 'overwrite' && wizard.live.containerClasses.includes(container.className)"
-                value="unchanged"
-              >
-                {{ t("target.containerKeep") }}
-              </option>
-              <option v-if="container.image" value="on">{{ t("target.containerEnable") }}</option>
-              <option value="off">{{ t("target.containerDisable") }}</option>
-            </select>
+              :label="container.className"
+              :model-value="wizard.containerActions[container.className] || 'off'"
+              :options="[
+                ...(wizard.mode === 'overwrite' && wizard.live.containerClasses.includes(container.className) ? [{ value: 'unchanged', label: t('target.containerKeep') }] : []),
+                ...(container.image ? [{ value: 'on', label: t('target.containerEnable') }] : []),
+                { value: 'off', label: t('target.containerDisable') },
+              ]"
+              @update:model-value="setContainerAction(container.className, $event)"
+            />
             <p class="field-help">{{ t("target.containerStateHelp") }}</p>
             <p v-if="!container.image" class="field-help">{{ t("target.containerUnavailable") }}</p>
           </div>
@@ -375,11 +372,14 @@ const canContinue = computed(() => resourcesOk.value && optionsOk.value);
               </span>
             </label>
 
-            <select v-if="input.kind === 'select'" :id="`input-${input.id}`" v-model="wizard.inputs[input.id]">
-              <option v-for="option in input.options || []" :key="option.value" :value="option.value">
-                {{ localized(option.label, locale) }}
-              </option>
-            </select>
+            <FluentSelect
+              v-if="input.kind === 'select'"
+              :id="`input-${input.id}`"
+              :model-value="String(wizard.inputs[input.id] ?? '')"
+              :label="localized(input.label, locale)"
+              :options="(input.options || []).map((option) => ({ value: option.value, label: localized(option.label, locale) }))"
+              @update:model-value="wizard.inputs[input.id] = $event"
+            />
 
             <div v-else-if="input.kind === 'password'" class="password-row">
               <input
