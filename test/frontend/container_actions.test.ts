@@ -42,7 +42,7 @@ const onDeclares = wizard.declareContainers.includes("Sandbox") && wizard.buildT
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const targetSource = fs.readFileSync(path.join(root, "src/components/steps/StepTarget.vue"), "utf8");
-const uiUsesThreeStates = /value="unchanged"/.test(targetSource) && /v-if="container\.image" value="on"/.test(targetSource) && /value="off"/.test(targetSource);
+const uiUsesThreeStates = /value: 'unchanged'/.test(targetSource) && /value: 'on'/.test(targetSource) && /value: 'off'/.test(targetSource) && /FluentSelect/.test(targetSource);
 const uiExplainsUnavailableImage = /target\.containerUnavailable/.test(targetSource);
 
 const checks: Array<[string, boolean]> = [
