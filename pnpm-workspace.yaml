@@ -1,0 +1,7 @@
+packages:
+  - .
+strictDepBuilds: true
+allowBuilds:
+  esbuild: true
+  fsevents: true
+  workerd: true

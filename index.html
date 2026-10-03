@@ -8,7 +8,7 @@
     <!--
       This host page's own CSP, not the sandboxed recipe frame's (that one is
       set per-run in src/lib/sandbox/host.ts). Inventory behind each directive:
-        script-src  'self' for the built (or, in `npm run dev`, Vite-served)
+        script-src  'self' for the built (or, in `pnpm run dev`, Vite-served)
                     module bundle; blob: and the GUEST_BOOTSTRAP script's own
                     hash are here for a reason that has nothing to do with this
                     page's own scripts — a `srcdoc` sandboxed iframe inherits

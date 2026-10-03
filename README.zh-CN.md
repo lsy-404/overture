@@ -52,9 +52,9 @@ Overture 本身也是一个 Cloudflare Worker。要运行自己的实例：
 
 3. 部署：
    ```bash
-   npm install
-   npm run build
-   npx wrangler deploy
+   pnpm install --frozen-lockfile
+   pnpm run build
+   pnpm exec wrangler deploy
    ```
 
 没有其他要配置的东西——不需要设置任何密钥，也不需要创建任何命名空间。这台 Worker 没有任何持久化存储；部署策略就是部署时 `wrangler.toml` 里 `ALLOWLIST_ENABLED` / `ALLOWED_SOURCES` 的取值。

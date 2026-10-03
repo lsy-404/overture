@@ -46,7 +46,7 @@ export default defineConfig({
   server: {
     port: 5174,
     // In production this app is same-origin with its own relay and policy
-    // routes (see worker/index.ts) — `npm run dev` alone can't replicate that,
+    // routes (see worker/index.ts) — `pnpm run dev` alone can't replicate that,
     // so forward those paths to a separately-running `wrangler dev`.
     proxy: {
       "/cf": "http://localhost:8787",

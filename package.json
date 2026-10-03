@@ -10,7 +10,7 @@
     "dev:worker": "wrangler dev",
     "build": "vite build",
     "preview": "vite preview",
-    "predeploy": "npm run build",
+    "predeploy": "pnpm run build",
     "deploy": "wrangler deploy",
     "typecheck": "vue-tsc --noEmit && tsc -p tsconfig.worker.json",
     "test": "./test/run-all.sh"
@@ -37,5 +37,6 @@
     "vite-node": "^6.0.0",
     "vue-tsc": "^3.3.4",
     "wrangler": "^4.94.0"
-  }
+  },
+  "packageManager": "pnpm@10.34.6"
 }

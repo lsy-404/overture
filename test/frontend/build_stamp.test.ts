@@ -29,7 +29,7 @@ const ASSETS = join(ROOT, "dist", "assets");
 const checks: Array<[string, boolean, string?]> = [];
 
 if (!existsSync(ASSETS)) {
-  execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "ignore" });
+  execFileSync("pnpm", ["run", "build"], { cwd: ROOT, stdio: "ignore" });
 }
 
 const bundle = readdirSync(ASSETS)

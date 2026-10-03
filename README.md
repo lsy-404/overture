@@ -52,9 +52,9 @@ Overture itself is a Cloudflare Worker. To run your own:
 
 3. Deploy:
    ```bash
-   npm install
-   npm run build
-   npx wrangler deploy
+   pnpm install --frozen-lockfile
+   pnpm run build
+   pnpm exec wrangler deploy
    ```
 
 Nothing else to configure — no secrets to set, no namespaces to create. The Worker holds no persistent storage; the deployment policy is whatever `ALLOWLIST_ENABLED` / `ALLOWED_SOURCES` say in `wrangler.toml` at deploy time.
