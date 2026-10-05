@@ -23,3 +23,5 @@ dist/
 !/.gitignore
 !/test
 !/wrangler.toml.example
+
+/agents/
