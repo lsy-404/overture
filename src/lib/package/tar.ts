@@ -17,8 +17,8 @@
 // data, so both the expanded size and the entry count are capped, and an entry
 // whose name escapes the package is dropped rather than stored.
 
-const MAX_UNPACKED_BYTES = 32 * 1024 * 1024;
-const MAX_ENTRIES = 1000;
+const MAX_UNPACKED_BYTES = 64 * 1024 * 1024;
+const MAX_ENTRIES = 20_000;
 
 function readTarText(bytes: Uint8Array, start: number, end: number): string {
   return new TextDecoder().decode(bytes.slice(start, end)).replace(/\0.*$/, "").trim();

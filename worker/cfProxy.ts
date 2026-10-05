@@ -16,8 +16,9 @@
 import type { Context } from "hono";
 import { matchEndpoint } from "../shared/cfAllowlist";
 import { CF_UPSTREAM_STATUS_HEADER } from "../shared/cfRelay";
+import { MAX_RELAY_BODY_BYTES } from "../shared/package";
 import { jsonResponse } from "./http";
-import { BodyTooLargeError, MAX_BODY_BYTES, readBodyWithLimit } from "./limits";
+import { BodyTooLargeError, readBodyWithLimit } from "./limits";
 import { readSession } from "./session";
 
 const CF_API_BASE = "https://api.cloudflare.com/client/v4";
@@ -110,7 +111,7 @@ export async function handleCfProxy(c: RelayContext): Promise<Response> {
   const init: RequestInit = { method, headers };
   if (method !== "GET" && method !== "HEAD") {
     try {
-      init.body = await readBodyWithLimit(c.req.raw, MAX_BODY_BYTES);
+      init.body = await readBodyWithLimit(c.req.raw, MAX_RELAY_BODY_BYTES);
     } catch (e) {
       if (e instanceof BodyTooLargeError) {
         return jsonResponse(c, 413, { ok: false, error: "Request body too large" });

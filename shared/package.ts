@@ -36,6 +36,8 @@ export const PACKAGE_ARTIFACT_NAME = "overture.tar.gz";
 
 export const MAX_CONFIG_BYTES = 1024 * 1024;
 export const MAX_ARTIFACT_BYTES = 24 * 1024 * 1024;
+// Allows a 20 MiB asset bucket after base64 expansion and multipart framing.
+export const MAX_RELAY_BODY_BYTES = 36 * 1024 * 1024;
 
 export interface GithubAsset {
   name?: string;

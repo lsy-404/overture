@@ -8,6 +8,12 @@ two fixed-name assets on a GitHub release:
 | `overture.json` | the **install configuration** — everything the wizard needs to ask the user anything | kilobytes |
 | `overture.tar.gz` | the **install data package** — the bytes that get deployed | up to 24 MiB |
 
+The archive may expand to at most 64 MiB and contain at most 20,000 tar entries. Static assets may total
+64 MiB, with a 25 MiB per-file limit and a 20,000-file limit (Cloudflare Free-plan ceiling). Each asset
+upload-session bucket is sent together in one relay request; a bucket whose base64 multipart body exceeds
+36 MiB is refused before upload. Cloudflare currently limits each incoming Worker request to 100 MB on
+the Free plan and each Worker isolate to 128 MB of memory.
+
 They are separate on purpose. The wizard fetches the configuration as soon as a version is picked, and
 renders the terms, the licence, the permission table and the resource-naming form off it alone. The data
 package is only fetched once the user presses deploy, as the first line of the execution checklist.

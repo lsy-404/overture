@@ -13,8 +13,6 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-// Worker version multipart uploads and asset chunks run a few MB each; this
-// ceiling stays above real payloads and well under the platform's own cap.
 export const MAX_BODY_BYTES = 20 * 1024 * 1024;
 
 export class BodyTooLargeError extends Error {}

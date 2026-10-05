@@ -232,10 +232,16 @@ session additionally demand the `Overture-Relay` header and an exact `Origin` ma
 
 ## 7. Size and abuse limits
 
-- Request bodies over 20 MiB are refused with `413`, checked against the declared `Content-Length` first
-  and the buffered length after. Worker version multipart uploads and asset chunks run a few MB, so this
-  sits above real traffic and below the platform's own cap.
+- `/cf/*` request bodies over 36 MiB are refused with `413`, checked against the declared
+  `Content-Length` first and the buffered length after. Token intake and R2 verification remain capped at
+  20 MiB. The relay limit permits a 20 MiB static asset bucket after base64 encoding and multipart
+  framing. It leaves substantial room under Cloudflare's 100 MB Free-plan request limit and 128 MB
+  per-isolate memory limit. Cloudflare upload-session buckets stay intact and are sent as one request each.
 - Release assets are capped at 24 MiB, matching the SPA's own limit for the same artifact.
+- Static assets are limited to 64 MiB total, 25 MiB per file, and 20,000 files. These match Cloudflare's
+  per-file ceiling and Free-plan file-count limit while allowing the current CASSIE package.
+- Install packages may expand to 64 MiB and contain up to 20,000 tar entries; the compressed archive
+  remains capped at 24 MiB.
 - No custom rate limiting beyond the platform's. This is a low-traffic deployment tool, not a public API;
   recorded here as a known limitation rather than something to build.
 

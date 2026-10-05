@@ -20,9 +20,12 @@
 // explicit `Authorization` header, since that JWT was never a secret the SPA
 // had to be kept from seeing.
 
+import { MAX_RELAY_BODY_BYTES } from "../../../shared/package";
 import { callCfJson, callCfMultipartBearer } from "../relay";
 
-const MAX_ASSET_BYTES = 16 * 1024 * 1024;
+const MAX_ASSET_BYTES = 64 * 1024 * 1024;
+const MAX_ASSET_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_ASSET_COUNT = 20_000;
 
 interface AssetEntry {
   hash: string;
@@ -83,12 +86,15 @@ function assetContentType(assetPath: string): string {
 /** Returns the completion JWT the version upload has to carry. */
 export async function uploadAssets(input: UploadAssetsInput): Promise<string> {
   const { accountId, script, files, manifest, assetsDir, onProgress, signal } = input;
+  const entries = Object.entries(manifest);
+  if (entries.length > MAX_ASSET_COUNT) throw new Error("Static asset count exceeds the Workers Free limit");
   const hashes = new Map<string, { path: string; entry: AssetEntry }>();
   let totalBytes = 0;
-  for (const [assetPath, entry] of Object.entries(manifest)) {
+  for (const [assetPath, entry] of entries) {
     if (!entry || typeof entry.hash !== "string" || !/^[0-9a-f]{32}$/i.test(entry.hash) || !Number.isSafeInteger(entry.size) || entry.size < 0) {
       throw new Error("Invalid asset manifest");
     }
+    if (entry.size > MAX_ASSET_FILE_BYTES) throw new Error("Static asset exceeds Cloudflare's 25 MiB per-file limit");
     const bytes = files.get(assetFileName(assetsDir, assetPath));
     if (!bytes || bytes.byteLength !== entry.size) throw new Error(`Asset is missing or has an invalid size: ${assetPath}`);
     totalBytes += bytes.byteLength;
@@ -105,7 +111,14 @@ export async function uploadAssets(input: UploadAssetsInput): Promise<string> {
   const buckets = (session.buckets || []).filter((bucket) => Array.isArray(bucket) && bucket.length > 0);
   // Cloudflare only asks for hashes it doesn't already store, so progress is
   // measured against what it actually requested rather than the whole manifest.
-  const bucketBytes = buckets.map((bucket) => bucket.reduce((sum, hash) => sum + (hashes.get(hash)?.entry.size || 0), 0));
+  const bucketBytes = buckets.map((bucket) => bucket.reduce((sum, hash) => {
+    const found = hashes.get(hash);
+    if (!found) throw new Error("Cloudflare requested an unknown asset hash");
+    return sum + Math.ceil(found.entry.size / 3) * 4 + 512;
+  }, 0));
+  if (bucketBytes.some((size) => size > MAX_RELAY_BODY_BYTES)) {
+    throw new Error("A Cloudflare asset upload bucket exceeds Overture's relay request limit");
+  }
   const requestedBytes = bucketBytes.reduce((sum, size) => sum + size, 0);
   let uploadedBytes = 0;
   onProgress?.(0, requestedBytes);
