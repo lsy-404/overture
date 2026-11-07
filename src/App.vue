@@ -55,7 +55,7 @@ watch(
 </script>
 
 <template>
-  <FluentTheme :mode="themeMode === 'auto' ? 'system' : themeMode">
+  <FluentTheme :mode="themeMode === 'auto' ? 'system' : themeMode" curve="easy-ease-max">
     <WizardShell :step="shellStep" :total="TOTAL_STEPS">
       <Transition :name="transitionName">
         <component :is="current" :key="pageKey" />

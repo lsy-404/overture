@@ -284,7 +284,7 @@ const buildLicense = __BUILD_LICENSE__;
 .progress-segment-fill {
   height: 100%;
   background: var(--accent-base);
-  transition: width 0.4s cubic-bezier(0.65, 0, 0.35, 1);
+  transition: width 0.4s var(--fluent-ease);
 }
 
 .step-caption {
